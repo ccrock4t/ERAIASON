@@ -185,7 +185,8 @@ public abstract class Brain : Mind
         public enum NeuronClass : int
         {
             SumAndSquash,
-            CTRNN
+            CTRNN,
+            CPG
         }
 
         public enum NeuronRole : int
@@ -225,6 +226,11 @@ public abstract class Brain : Mind
         public float voltage;
         public float gain;
         public float tau_time_constant;
+
+        //CPG
+        float r;
+        float w;
+        float p;
 
         // === misc parameters
         public float bias;  // bias
