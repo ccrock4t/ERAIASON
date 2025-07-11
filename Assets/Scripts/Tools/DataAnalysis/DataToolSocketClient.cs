@@ -377,10 +377,14 @@ public class DataToolSocketClient
                     + "," + objective_fitness_table["median_" + key] 
                     + "," + objective_fitness_table["avg_" + key] 
                     + "," + objective_fitness_table["min_" + key];
+
+             
                 line += "," + novelty_table["max_" + key]
-                     + "," + novelty_table["median_" + key]
-                     + "," + novelty_table["avg_" + key]
-                     + "," + novelty_table["min_" + key];
+                    + "," + novelty_table["median_" + key]
+                    + "," + novelty_table["avg_" + key]
+                    + "," + novelty_table["min_" + key];
+                
+
                 line += "," + recent_population_table["max_" + key]
                      + "," + recent_population_table["median_" + key]
                      + "," + recent_population_table["avg_" + key]

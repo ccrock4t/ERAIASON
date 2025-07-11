@@ -372,41 +372,45 @@ public class DataAnalyzer : MonoBehaviour
                 }
 
                 int count = medians["fitness_score"].Count();
-                int hamming_distance_count = count * (count - 1) / 2;
+                if(count != 0)
+                {
+                    int hamming_distance_count = count * (count - 1) / 2;
 
-                int median_idx = count / 2;
-                median_reproductive_score = medians["fitness_score"].ElementAt(median_idx);
-                median_food_eaten = medians["food_eaten"].ElementAt(median_idx);
-                median_distance = medians["distance_travelled"].ElementAt(median_idx);
-                median_times_reproduced = medians["times_reproduced"].ElementAt(median_idx);
-                median_times_reproduced_asexually = medians["times_reproduced_asexually"].ElementAt(median_idx);
-                median_times_reproduced_sexually = medians["times_reproduced_sexually"].ElementAt(median_idx);
-                median_reproduction_chain = medians["reproduction_chain"].ElementAt(median_idx);
-                median_generation = medians["generation"].ElementAt(median_idx);
-                median_num_of_neurons = medians["num_of_neurons"].ElementAt(median_idx);
-                median_num_of_synapses = medians["num_of_synapses"].ElementAt(median_idx);
-                median_NARS_num_beliefs = medians["NARS_num_beliefs"].ElementAt(median_idx);
-                median_NARS_kValue = medians["NARS_kValue"].ElementAt(median_idx);
-                median_NARS_TValue = medians["NARS_TValue"].ElementAt(median_idx);
-                //special count, all unique genome pairs
-                median_hamming_distance = medians["hamming_distance"].ElementAt(hamming_distance_count/2);
+                    int median_idx = count / 2;
+                    median_reproductive_score = medians["fitness_score"].ElementAt(median_idx);
+                    median_food_eaten = medians["food_eaten"].ElementAt(median_idx);
+                    median_distance = medians["distance_travelled"].ElementAt(median_idx);
+                    median_times_reproduced = medians["times_reproduced"].ElementAt(median_idx);
+                    median_times_reproduced_asexually = medians["times_reproduced_asexually"].ElementAt(median_idx);
+                    median_times_reproduced_sexually = medians["times_reproduced_sexually"].ElementAt(median_idx);
+                    median_reproduction_chain = medians["reproduction_chain"].ElementAt(median_idx);
+                    median_generation = medians["generation"].ElementAt(median_idx);
+                    median_num_of_neurons = medians["num_of_neurons"].ElementAt(median_idx);
+                    median_num_of_synapses = medians["num_of_synapses"].ElementAt(median_idx);
+                    median_NARS_num_beliefs = medians["NARS_num_beliefs"].ElementAt(median_idx);
+                    median_NARS_kValue = medians["NARS_kValue"].ElementAt(median_idx);
+                    median_NARS_TValue = medians["NARS_TValue"].ElementAt(median_idx);
+                    //special count, all unique genome pairs
+                    median_hamming_distance = medians["hamming_distance"].ElementAt(hamming_distance_count / 2);
 
 
-                //mean
-                avg_reproductive_score = total_reproductive_score / count;
-                avg_food_eaten = total_food_eaten / count;
-                avg_distance = total_distance / count;
-                avg_times_reproduced = total_times_reproduced / count;
-                avg_times_reproduced_asexually = total_times_reproduced_asexually / count;
-                avg_times_reproduced_sexually = total_times_reproduced_sexually / count;
-                avg_reproduction_chain = total_reproduction_chain / count;
-                avg_generation = total_generation / count;
-                avg_num_of_neurons = total_num_of_neurons / count;
-                avg_num_of_synapses = total_num_of_synapses / count;
-                avg_hamming_distance /= hamming_distance_count;
-                avg_NARS_num_beliefs = total_NARS_num_beliefs / count;
-                avg_NARS_kValue = total_NARS_kValue / count;
-                avg_NARS_TValue = total_NARS_TValue / count;
+                    //mean
+                    avg_reproductive_score = total_reproductive_score / count;
+                    avg_food_eaten = total_food_eaten / count;
+                    avg_distance = total_distance / count;
+                    avg_times_reproduced = total_times_reproduced / count;
+                    avg_times_reproduced_asexually = total_times_reproduced_asexually / count;
+                    avg_times_reproduced_sexually = total_times_reproduced_sexually / count;
+                    avg_reproduction_chain = total_reproduction_chain / count;
+                    avg_generation = total_generation / count;
+                    avg_num_of_neurons = total_num_of_neurons / count;
+                    avg_num_of_synapses = total_num_of_synapses / count;
+                    avg_hamming_distance /= hamming_distance_count;
+                    avg_NARS_num_beliefs = total_NARS_num_beliefs / count;
+                    avg_NARS_kValue = total_NARS_kValue / count;
+                    avg_NARS_TValue = total_NARS_TValue / count;
+                }
+
 
 
 
@@ -486,6 +490,15 @@ public class DataAnalyzer : MonoBehaviour
                     { "min_NARS_kValue", min_NARS_kValue },
                     { "median_NARS_kValue", median_NARS_kValue },
                 };
+                if (count == 0)
+                {
+                    var keys = scores.Keys.ToList();
+
+                    foreach (var key in keys)
+                    {
+                        scores[key] = 0;
+                    }
+                }
 
                 animat_datapoints.Reverse(); //from ascending to descendidng
 
