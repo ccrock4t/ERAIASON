@@ -228,9 +228,9 @@ public abstract class Brain : Mind
         public float tau_time_constant;
 
         //CPG
-        float r;
-        float w;
-        float p;
+        public float r; // mix ratio
+        public float w; // wave frequency
+        public float p; // wave phase offset
 
         // === misc parameters
         public float bias;  // bias
@@ -247,6 +247,8 @@ public abstract class Brain : Mind
 
         public NeuronID ID;
         public int idx;
+
+       
 
         public static Neuron GetNewNeuron()
         {

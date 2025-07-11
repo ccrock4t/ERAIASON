@@ -47,6 +47,6 @@ public class NEATConnection
 
     public static float GetRandomInitialWeight()
     {
-        return UnityEngine.Random.Range(-3f, 3f);
+        return UnityEngine.Random.Range(-1f, 1f);
     }
 }

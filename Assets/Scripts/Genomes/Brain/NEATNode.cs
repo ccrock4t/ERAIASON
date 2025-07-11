@@ -5,10 +5,19 @@ public class NEATNode
 {
     public NeuronID ID;
     public float bias;
+    // sum and squash activation functions
     public float sigmoid_alpha;
     public float sigmoid_alpha2;
+
+    // CTRNN
     public float time_constant;
     public float gain;
+
+    //CPG
+    public float r; // mix ratio
+    public float w; // wave frequency
+    public float p; // wave phase offset
+
     public float4 brainviewer_coords;
     public Neuron.ActivationFunction activation_function;
     public static int NEXT_GLOBAL_HIDDENNODE_ID = -1; 

@@ -35,6 +35,8 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
     public GlobalConfig.NeuralLearningMethod hebb_rule;
     public float brain_update_period;
 
+    public float time;
+
     public void Execute(int i)
     {
         // set the neuron data
@@ -105,9 +107,8 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
 
         if (to_neuron.neuron_class == Neuron.NeuronClass.CTRNN) sum *= to_neuron.gain;
 
-        if(to_neuron.neuron_class == Neuron.NeuronClass.CPG){
-            to_neuron_new_activation = to_neuron.r*to_neuron.RunActivationFunction(sum) + (1 - to_neuron.r)*math.Sine(to_neuron.w*(time.time - to_neuron.p));
-        }
+        to_neuron_new_activation = to_neuron.r*to_neuron.RunActivationFunction(sum) + (1 - to_neuron.r)* math.sin(to_neuron.w*time + to_neuron.p);
+        
 
         to_neuron_new_activation = to_neuron.RunActivationFunction(sum);
 

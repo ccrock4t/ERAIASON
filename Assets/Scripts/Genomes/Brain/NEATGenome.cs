@@ -158,7 +158,7 @@ public class NEATGenome : BrainGenome
 
             }
 
-            //  mutate bias
+            //  mutate bias (bias can be treated like a connection weight in some casesi )
             foreach (NEATNode node in this.nodes)
             {
                 rnd = UnityEngine.Random.Range(0f, 1f);
@@ -201,51 +201,7 @@ public class NEATGenome : BrainGenome
         }
 
 
-        if (EVOLVE_TIME_CONSTANT)
-        {
-            rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < CHANCE_TO_MUTATE_TIME_CONSTANT)
-            {
-                foreach (NEATNode node in this.nodes)
-                {
-                    rnd = UnityEngine.Random.Range(0f, 1f);
-                    if (rnd < 0.9)
-                    {
-                        node.time_constant += GetPerturbation();
-                    }
-                        else
-                    {
-                        node.time_constant += NEATConnection.GetRandomInitialWeight();
-                    }
-                    node.time_constant = math.abs(node.time_constant);
-                }
-            }
-
-        }
-
-
-
-        if (EVOLVE_GAIN)
-        {
-            rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < CHANCE_TO_MUTATE_GAIN)
-            {
-                foreach (NEATNode node in this.nodes)
-                {
-                    rnd = UnityEngine.Random.Range(0f, 1f);
-                    if (rnd < 0.9)
-                    {
-                        node.gain += GetPerturbation();
-                    }
-                    else
-                    {
-                        node.gain += NEATConnection.GetRandomInitialWeight();
-                    }
-                    node.gain = math.abs(node.gain);
-                }
-            }
-
-        }
+        MutateCTNNParameters();
 
 
         if (EVOLVE_SIGMOID_SLOPE)
@@ -281,6 +237,9 @@ public class NEATGenome : BrainGenome
             }
         }
 
+        //  mutate CPG parameters
+        MutateCPGParameters();
+
 
         // disable connection?
         if (DISABLE_CONNECTIONS)
@@ -311,6 +270,99 @@ public class NEATGenome : BrainGenome
 
 
 
+    }
+
+    private void MutateCTNNParameters()
+    {
+        if (EVOLVE_TIME_CONSTANT)
+        {
+            float rnd = UnityEngine.Random.Range(0f, 1f);
+            if (rnd < CHANCE_TO_MUTATE_TIME_CONSTANT)
+            {
+                foreach (NEATNode node in this.nodes)
+                {
+                    rnd = UnityEngine.Random.Range(0f, 1f);
+                    if (rnd < 0.9)
+                    {
+                        node.time_constant += GetPerturbation();
+                    }
+                    else
+                    {
+                        node.time_constant += NEATConnection.GetRandomInitialWeight();
+                    }
+                    node.time_constant = math.abs(node.time_constant);
+                }
+            }
+
+        }
+
+        if (EVOLVE_GAIN)
+        {
+            float rnd = UnityEngine.Random.Range(0f, 1f);
+            if (rnd < CHANCE_TO_MUTATE_GAIN)
+            {
+                foreach (NEATNode node in this.nodes)
+                {
+                    rnd = UnityEngine.Random.Range(0f, 1f);
+                    if (rnd < 0.9)
+                    {
+                        node.gain += GetPerturbation();
+                    }
+                    else
+                    {
+                        node.gain += NEATConnection.GetRandomInitialWeight();
+                    }
+                    node.gain = math.abs(node.gain);
+                }
+            }
+
+        }
+    }
+
+    public void MutateCPGParameters()
+    {
+        //  mutate CPG
+        float rnd;
+        foreach (NEATNode node in this.nodes)
+        {
+            rnd = UnityEngine.Random.Range(0f, 1f);
+            if (rnd < 0.9)
+            {
+                node.r += GetPerturbation();
+            }
+            else
+            {
+                node.r += NEATConnection.GetRandomInitialWeight();
+            }
+
+            node.r = math.abs(node.r);
+            node.r = math.clamp(node.r, 0f, 1f);
+
+            rnd = UnityEngine.Random.Range(0f, 1f);
+            if (rnd < 0.9)
+            {
+                node.w += GetPerturbation();
+            }
+            else
+            {
+                node.w += NEATConnection.GetRandomInitialWeight();
+            }
+
+            node.w = math.abs(node.w);
+            node.w = math.clamp(node.w, 0.5f, 10f);
+
+            rnd = UnityEngine.Random.Range(0f, 1f);
+            if (rnd < 0.9)
+            {
+                node.p += GetPerturbation();
+            }
+            else
+            {
+                node.p += NEATConnection.GetRandomInitialWeight();
+            }
+            node.p = math.abs(node.p);
+            node.p = math.clamp(node.p, 0f, 2f*math.PI);
+        }
     }
 
     public NEATConnection AddNewRandomConnection()
