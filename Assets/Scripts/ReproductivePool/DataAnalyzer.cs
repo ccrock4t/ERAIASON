@@ -19,7 +19,8 @@ public class DataAnalyzer : MonoBehaviour
     DataToolSocketClient data_tool_socket_client;
 
     // handles
-    string data_filename = Path.Join(Path.Join(Application.dataPath, "ExperimentDataFiles"), Path.Join("AnimatArena", "arena_score_data.txt"));
+    static string data_folder = Path.Join(Path.Join(Application.dataPath, "ExperimentDataFiles"), "AnimatArena");
+    string data_filename = Path.Join(data_folder, "arena_score_data.txt");
     const int WRITE_DATA_TO_FILE_TIMER = 400; //  50 is once per second, 100 is once per 2 seconds, etc.
     int write_data_timer = 0;
     private Comparer<(float, AnimatGenome)> ascending_score_comparer;
@@ -36,10 +37,16 @@ public class DataAnalyzer : MonoBehaviour
             else return result;
         });
         this.write_data_timer = 0;
-        if (!GlobalConfig.RECORD_DATA) return;
-        WriteColumnHeader();
-        // connect to data tool
-        this.data_tool_socket_client = new();
+        if (GlobalConfig.RECORD_DATA_TO_DISK)
+        {
+            WriteColumnHeader();
+        }
+        if (GlobalConfig.RECORD_DATA_TO_WEB || GlobalConfig.RECORD_DATA_TO_DISK)
+        {
+            // connect to data tool
+            this.data_tool_socket_client = new();
+        }
+ 
 
 
     }
@@ -77,7 +84,7 @@ public class DataAnalyzer : MonoBehaviour
     private void SendDataToGUIAndWriteToFile()
     {
         Debug.Log("DATATOOL: Preparing data");
-        if (GlobalConfig.RECORD_DATA && data_file == null)
+        if (GlobalConfig.RECORD_DATA_TO_DISK && data_file == null)
         {
             Debug.LogError("No data file write stream.");
         }
@@ -107,7 +114,7 @@ public class DataAnalyzer : MonoBehaviour
         // now calculate Table data
 
         var elite_fitness_table = AnimatArena.GetInstance().objectiveFitnessTable.Clone();
-        var elite_novelty_table = GlobalConfig.USE_NOVELTY_SEARCH ? AnimatArena.GetInstance().noveltyTable.Clone() : null;
+        var elite_novelty_table = AnimatArena.GetInstance().noveltyTable.Clone();
         var continuous_fitness_table = AnimatArena.GetInstance().recentPopulationTable.Clone();
 
         if (data_update_task != null && !data_update_task.IsCompleted)
@@ -509,7 +516,8 @@ public class DataAnalyzer : MonoBehaviour
             //====
             Debug.Log("DATATOOL: Done preparing data");
 
-            if (GlobalConfig.RECORD_DATA) {
+            if (GlobalConfig.RECORD_DATA_TO_WEB)
+            {
                 try
                 {
                     this.data_tool_socket_client.SendReproductivePoolDatapoint(
@@ -522,9 +530,10 @@ public class DataAnalyzer : MonoBehaviour
                 {
                     Debug.LogError(ex);
                 }
+            }
 
-
-
+            if (GlobalConfig.RECORD_DATA_TO_DISK)
+            {
                 try
                 {
                     this.data_tool_socket_client.WriteToDisk(world_data,
@@ -551,6 +560,7 @@ public class DataAnalyzer : MonoBehaviour
 
     public void WriteColumnHeader()
     {
+        Directory.CreateDirectory(data_folder); // Does nothing if already exists
         if (File.Exists(data_filename))
         {
             File.Delete(data_filename);

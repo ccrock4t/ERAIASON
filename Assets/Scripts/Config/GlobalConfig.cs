@@ -149,7 +149,8 @@ public class GlobalConfig : MonoBehaviour
 
 
 
-    public const bool RECORD_DATA = false;
+    public const bool RECORD_DATA_TO_DISK = true;
+    public const bool RECORD_DATA_TO_WEB = false;
 
     // ============
 
