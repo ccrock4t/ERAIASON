@@ -14,13 +14,15 @@ public class NEATNode
     public float gain;
 
     //CPG
+    public bool use_cpg;
     public float r; // mix ratio
     public float w; // wave frequency
     public float p; // wave phase offset
 
     public float4 brainviewer_coords;
     public Neuron.ActivationFunction activation_function;
-    public static int NEXT_GLOBAL_HIDDENNODE_ID = -1; 
+    public static int NEXT_GLOBAL_HIDDENNODE_ID = -1;
+
 
     public NEATNode(NeuronID ID, 
         Neuron.ActivationFunction activation_function, 
@@ -36,6 +38,7 @@ public class NEATNode
         this.r = 1;
         this.w = 1;
         this.p = 1;
+        this.use_cpg = false;
 
         if(ID.neuron_role == Neuron.NeuronRole.Hidden && NEATGenome.EVOLVE_ACTIVATION_FUNCTIONS)
         {
@@ -62,6 +65,7 @@ public class NEATNode
         new_node.brainviewer_coords = this.brainviewer_coords;
         new_node.bias = this.bias;
         new_node.time_constant = this.time_constant;
+        new_node.use_cpg = this.use_cpg;
         new_node.r = this.r;
         new_node.w = this.w;
         new_node.p = this.p;

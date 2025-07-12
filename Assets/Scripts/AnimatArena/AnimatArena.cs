@@ -447,7 +447,7 @@ public class AnimatArena : MonoBehaviour
 
         float distance_score = math.min(1.0f, displacement / 20);
 
-        distance_score *= ratio_of_life_spent_looking_at_food;
+        distance_score *= (1f + ratio_of_life_spent_looking_at_food);
 
 
         //return times_reproduced

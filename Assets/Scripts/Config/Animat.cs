@@ -223,6 +223,7 @@ public class Animat : MonoBehaviour
                     neuron.gain = node.gain;
                     neuron.neuron_role = node.ID.neuron_role;
                     neuron.sigmoid_alpha = node.sigmoid_alpha;
+                    neuron.use_cpg = node.use_cpg;
                     neuron.r = node.r;
                     neuron.w = node.w;
                     neuron.p = node.p;

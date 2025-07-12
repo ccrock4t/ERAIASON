@@ -228,6 +228,7 @@ public abstract class Brain : Mind
         public float tau_time_constant;
 
         //CPG
+        public bool use_cpg;
         public float r; // mix ratio
         public float w; // wave frequency
         public float p; // wave phase offset

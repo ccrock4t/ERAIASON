@@ -326,6 +326,13 @@ public class NEATGenome : BrainGenome
         foreach (NEATNode node in this.nodes)
         {
             rnd = UnityEngine.Random.Range(0f, 1f);
+            if (rnd < 0.1)
+            {
+                node.use_cpg = !node.use_cpg;
+            }
+
+
+            rnd = UnityEngine.Random.Range(0f, 1f);
             if (rnd < 0.9)
             {
                 node.r += GetPerturbationFromRange(0f, 1f);

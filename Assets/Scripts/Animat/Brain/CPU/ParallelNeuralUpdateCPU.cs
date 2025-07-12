@@ -109,7 +109,15 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
 
         float activation = to_neuron.RunActivationFunction(sum);
         float cpg_activation = 0.5f * math.sin(to_neuron.w * time + to_neuron.p) + 0.5f;
-        to_neuron_new_activation = to_neuron.r * activation + (1f - to_neuron.r) * cpg_activation;
+        if (to_neuron.use_cpg)
+        {
+            to_neuron_new_activation = to_neuron.r * activation + (1f - to_neuron.r) * cpg_activation;
+        }
+        else
+        {
+            to_neuron_new_activation = activation;
+        }
+        
 
        // if (incoming_activated_neuron_count < 2) new_activation = 0; 
         to_neuron.activation = to_neuron_new_activation;
