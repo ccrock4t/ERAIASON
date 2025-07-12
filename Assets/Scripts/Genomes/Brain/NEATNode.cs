@@ -60,6 +60,9 @@ public class NEATNode
         new_node.brainviewer_coords = this.brainviewer_coords;
         new_node.bias = this.bias;
         new_node.time_constant = this.time_constant;
+        new_node.r = this.r;
+        new_node.w = this.w;
+        new_node.p = this.p;
         new_node.gain = this.gain;
         new_node.sigmoid_alpha = this.sigmoid_alpha;
         new_node.sigmoid_alpha2 = this.sigmoid_alpha2;
