@@ -95,7 +95,7 @@ public class GlobalConfig : MonoBehaviour
 
     // === Animat brain ===
     public static BrainProcessingMethod BRAIN_PROCESSING_METHOD = BrainProcessingMethod.NeuralNetworkCPU;
-    public static bool USE_HEBBIAN = false;
+    public static bool USE_HEBBIAN = true;
     public const NeuralLearningMethod HEBBIAN_METHOD = NeuralLearningMethod.HebbABCD;
     public static Brain.Neuron.NeuronClass NEURAL_NETWORK_METHOD = Brain.Neuron.NeuronClass.SumAndSquash;
 
