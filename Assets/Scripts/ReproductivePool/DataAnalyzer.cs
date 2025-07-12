@@ -19,7 +19,8 @@ public class DataAnalyzer : MonoBehaviour
     DataToolSocketClient data_tool_socket_client;
 
     // handles
-    string data_filename = Path.Join(Path.Join(Application.dataPath, "ExperimentDataFiles"), Path.Join("AnimatArena", "arena_score_data.txt"));
+    static string data_folder = Path.Join(Path.Join(Application.dataPath, "ExperimentDataFiles"), "AnimatArena");
+    string data_filename = Path.Join(data_folder, "arena_score_data.txt");
     const int WRITE_DATA_TO_FILE_TIMER = 400; //  50 is once per second, 100 is once per 2 seconds, etc.
     int write_data_timer = 0;
     private Comparer<(float, AnimatGenome)> ascending_score_comparer;
@@ -36,10 +37,16 @@ public class DataAnalyzer : MonoBehaviour
             else return result;
         });
         this.write_data_timer = 0;
-        if (!GlobalConfig.RECORD_DATA) return;
-        WriteColumnHeader();
-        // connect to data tool
-        this.data_tool_socket_client = new();
+        if (GlobalConfig.RECORD_DATA_TO_DISK)
+        {
+            WriteColumnHeader();
+        }
+        if (GlobalConfig.RECORD_DATA_TO_WEB || GlobalConfig.RECORD_DATA_TO_DISK)
+        {
+            // connect to data tool
+            this.data_tool_socket_client = new();
+        }
+ 
 
 
     }
@@ -77,7 +84,7 @@ public class DataAnalyzer : MonoBehaviour
     private void SendDataToGUIAndWriteToFile()
     {
         Debug.Log("DATATOOL: Preparing data");
-        if (GlobalConfig.RECORD_DATA && data_file == null)
+        if (GlobalConfig.RECORD_DATA_TO_DISK && data_file == null)
         {
             Debug.LogError("No data file write stream.");
         }
@@ -107,7 +114,7 @@ public class DataAnalyzer : MonoBehaviour
         // now calculate Table data
 
         var elite_fitness_table = AnimatArena.GetInstance().objectiveFitnessTable.Clone();
-        var elite_novelty_table = GlobalConfig.USE_NOVELTY_SEARCH ? AnimatArena.GetInstance().noveltyTable.Clone() : null;
+        var elite_novelty_table = AnimatArena.GetInstance().noveltyTable.Clone();
         var continuous_fitness_table = AnimatArena.GetInstance().recentPopulationTable.Clone();
 
         if (data_update_task != null && !data_update_task.IsCompleted)
@@ -365,41 +372,45 @@ public class DataAnalyzer : MonoBehaviour
                 }
 
                 int count = medians["fitness_score"].Count();
-                int hamming_distance_count = count * (count - 1) / 2;
+                if(count != 0)
+                {
+                    int hamming_distance_count = count * (count - 1) / 2;
 
-                int median_idx = count / 2;
-                median_reproductive_score = medians["fitness_score"].ElementAt(median_idx);
-                median_food_eaten = medians["food_eaten"].ElementAt(median_idx);
-                median_distance = medians["distance_travelled"].ElementAt(median_idx);
-                median_times_reproduced = medians["times_reproduced"].ElementAt(median_idx);
-                median_times_reproduced_asexually = medians["times_reproduced_asexually"].ElementAt(median_idx);
-                median_times_reproduced_sexually = medians["times_reproduced_sexually"].ElementAt(median_idx);
-                median_reproduction_chain = medians["reproduction_chain"].ElementAt(median_idx);
-                median_generation = medians["generation"].ElementAt(median_idx);
-                median_num_of_neurons = medians["num_of_neurons"].ElementAt(median_idx);
-                median_num_of_synapses = medians["num_of_synapses"].ElementAt(median_idx);
-                median_NARS_num_beliefs = medians["NARS_num_beliefs"].ElementAt(median_idx);
-                median_NARS_kValue = medians["NARS_kValue"].ElementAt(median_idx);
-                median_NARS_TValue = medians["NARS_TValue"].ElementAt(median_idx);
-                //special count, all unique genome pairs
-                median_hamming_distance = medians["hamming_distance"].ElementAt(hamming_distance_count/2);
+                    int median_idx = count / 2;
+                    median_reproductive_score = medians["fitness_score"].ElementAt(median_idx);
+                    median_food_eaten = medians["food_eaten"].ElementAt(median_idx);
+                    median_distance = medians["distance_travelled"].ElementAt(median_idx);
+                    median_times_reproduced = medians["times_reproduced"].ElementAt(median_idx);
+                    median_times_reproduced_asexually = medians["times_reproduced_asexually"].ElementAt(median_idx);
+                    median_times_reproduced_sexually = medians["times_reproduced_sexually"].ElementAt(median_idx);
+                    median_reproduction_chain = medians["reproduction_chain"].ElementAt(median_idx);
+                    median_generation = medians["generation"].ElementAt(median_idx);
+                    median_num_of_neurons = medians["num_of_neurons"].ElementAt(median_idx);
+                    median_num_of_synapses = medians["num_of_synapses"].ElementAt(median_idx);
+                    median_NARS_num_beliefs = medians["NARS_num_beliefs"].ElementAt(median_idx);
+                    median_NARS_kValue = medians["NARS_kValue"].ElementAt(median_idx);
+                    median_NARS_TValue = medians["NARS_TValue"].ElementAt(median_idx);
+                    //special count, all unique genome pairs
+                    median_hamming_distance = medians["hamming_distance"].ElementAt(hamming_distance_count / 2);
 
 
-                //mean
-                avg_reproductive_score = total_reproductive_score / count;
-                avg_food_eaten = total_food_eaten / count;
-                avg_distance = total_distance / count;
-                avg_times_reproduced = total_times_reproduced / count;
-                avg_times_reproduced_asexually = total_times_reproduced_asexually / count;
-                avg_times_reproduced_sexually = total_times_reproduced_sexually / count;
-                avg_reproduction_chain = total_reproduction_chain / count;
-                avg_generation = total_generation / count;
-                avg_num_of_neurons = total_num_of_neurons / count;
-                avg_num_of_synapses = total_num_of_synapses / count;
-                avg_hamming_distance /= hamming_distance_count;
-                avg_NARS_num_beliefs = total_NARS_num_beliefs / count;
-                avg_NARS_kValue = total_NARS_kValue / count;
-                avg_NARS_TValue = total_NARS_TValue / count;
+                    //mean
+                    avg_reproductive_score = total_reproductive_score / count;
+                    avg_food_eaten = total_food_eaten / count;
+                    avg_distance = total_distance / count;
+                    avg_times_reproduced = total_times_reproduced / count;
+                    avg_times_reproduced_asexually = total_times_reproduced_asexually / count;
+                    avg_times_reproduced_sexually = total_times_reproduced_sexually / count;
+                    avg_reproduction_chain = total_reproduction_chain / count;
+                    avg_generation = total_generation / count;
+                    avg_num_of_neurons = total_num_of_neurons / count;
+                    avg_num_of_synapses = total_num_of_synapses / count;
+                    avg_hamming_distance /= hamming_distance_count;
+                    avg_NARS_num_beliefs = total_NARS_num_beliefs / count;
+                    avg_NARS_kValue = total_NARS_kValue / count;
+                    avg_NARS_TValue = total_NARS_TValue / count;
+                }
+
 
 
 
@@ -479,6 +490,15 @@ public class DataAnalyzer : MonoBehaviour
                     { "min_NARS_kValue", min_NARS_kValue },
                     { "median_NARS_kValue", median_NARS_kValue },
                 };
+                if (count == 0)
+                {
+                    var keys = scores.Keys.ToList();
+
+                    foreach (var key in keys)
+                    {
+                        scores[key] = 0;
+                    }
+                }
 
                 animat_datapoints.Reverse(); //from ascending to descendidng
 
@@ -508,7 +528,8 @@ public class DataAnalyzer : MonoBehaviour
             //====
             Debug.Log("DATATOOL: Done preparing data");
 
-            if (GlobalConfig.RECORD_DATA) {
+            if (GlobalConfig.RECORD_DATA_TO_WEB)
+            {
                 try
                 {
                     this.data_tool_socket_client.SendReproductivePoolDatapoint(
@@ -521,9 +542,10 @@ public class DataAnalyzer : MonoBehaviour
                 {
                     Debug.LogError(ex);
                 }
+            }
 
-
-
+            if (GlobalConfig.RECORD_DATA_TO_DISK)
+            {
                 try
                 {
                     this.data_tool_socket_client.WriteToDisk(world_data,
@@ -550,6 +572,7 @@ public class DataAnalyzer : MonoBehaviour
 
     public void WriteColumnHeader()
     {
+        Directory.CreateDirectory(data_folder); // Does nothing if already exists
         if (File.Exists(data_filename))
         {
             File.Delete(data_filename);

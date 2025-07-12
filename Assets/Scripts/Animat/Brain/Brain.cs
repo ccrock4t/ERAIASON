@@ -185,7 +185,8 @@ public abstract class Brain : Mind
         public enum NeuronClass : int
         {
             SumAndSquash,
-            CTRNN
+            CTRNN,
+            CPG
         }
 
         public enum NeuronRole : int
@@ -226,6 +227,11 @@ public abstract class Brain : Mind
         public float gain;
         public float tau_time_constant;
 
+        //CPG
+        public float r; // mix ratio
+        public float w; // wave frequency
+        public float p; // wave phase offset
+
         // === misc parameters
         public float bias;  // bias
         public float sigmoid_alpha; // larger alpha = steeper slope, easier to activate --- smaller alpha = gradual slope, harder to activate.
@@ -241,6 +247,8 @@ public abstract class Brain : Mind
 
         public NeuronID ID;
         public int idx;
+
+       
 
         public static Neuron GetNewNeuron()
         {

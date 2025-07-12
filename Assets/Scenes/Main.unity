@@ -93,7 +93,7 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 112000000, guid: 310dfdd1da5bc0c4f8333c1e7eb1ed35, type: 2}
+  m_LightingDataAsset: {fileID: 112000000, guid: e8f75975322805f4ba0fe9a2ad6a8fb6, type: 2}
   m_LightingSettings: {fileID: 4890085278179872738, guid: 688d2af309b30574297cffdcc75cf3d7, type: 2}
 --- !u!196 &4
 NavMeshSettings:
@@ -12123,8 +12123,6 @@ MonoBehaviour:
   food_prefab: {fileID: 7528584234300908058, guid: bc490e603ccae654984c83acf87912db, type: 3}
   obstacle_prefab: {fileID: 2123106883716300277, guid: 36afafcbb44948a4fb5e44e5aa64c26a, type: 3}
   user_points_textUI: {fileID: 0}
-  duration: 1
-  xp_prefab: {fileID: 4963021642856417843, guid: 55a83adbaa513b34c91af9c7146fee86, type: 3}
 --- !u!114 &1754487708
 MonoBehaviour:
   m_ObjectHideFlags: 0

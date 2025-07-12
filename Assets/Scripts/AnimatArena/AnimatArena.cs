@@ -52,7 +52,7 @@ public class AnimatArena : MonoBehaviour
     // constants
 
     [System.NonSerialized]
-    public int MINIMUM_POPULATION_QUANTITY = 10;
+    public int MINIMUM_POPULATION_QUANTITY = 50;
     public const int MAXIMUM_POPULATION_QUANTITY = 100;
 
     const int FOOD_QUANTITY = 150;

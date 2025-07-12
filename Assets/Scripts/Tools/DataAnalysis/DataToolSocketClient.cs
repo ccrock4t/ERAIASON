@@ -153,69 +153,75 @@ public class DataToolSocketClient
     public Dictionary<string, StreamWriter> writers;
     public DataToolSocketClient()
     {
-        this.writers = new();
-        foreach (var data_name in data_to_save_to_file)
+        if (GlobalConfig.RECORD_DATA_TO_DISK)
         {
+            this.writers = new();
+            foreach (var data_name in data_to_save_to_file)
+            {
    
-            // Generate filename with timestamp
-            string folder = "Prelim2Data/";
-            folder += GlobalConfig.WORLD_TYPE.ToString() + "/";
-            folder += GlobalConfig.BODY_METHOD.ToString() + "/";
-            if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NARSCPU)
-            {
-                folder += "NARS/NoLearning/";
-            }
-            else if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NeuralNetworkCPU
-                || GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NeuralNetworkGPU)
-            {
-
-                folder += GlobalConfig.NEURAL_NETWORK_METHOD.ToString() + "/";
-                if (GlobalConfig.USE_HEBBIAN)
+                // Generate filename with timestamp
+                string folder = "DataTool/";
+                folder += GlobalConfig.WORLD_TYPE.ToString() + "/";
+                folder += GlobalConfig.BODY_METHOD.ToString() + "/";
+                if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NARSCPU)
                 {
-                    folder += GlobalConfig.HEBBIAN_METHOD.ToString() + "/";
+                    folder += "NARS/NoLearning/";
+                }
+                else if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NeuralNetworkCPU
+                    || GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NeuralNetworkGPU)
+                {
+
+                    folder += GlobalConfig.NEURAL_NETWORK_METHOD.ToString() + "/";
+                    if (GlobalConfig.USE_HEBBIAN)
+                    {
+                        folder += GlobalConfig.HEBBIAN_METHOD.ToString() + "/";
+                    }
+                    else
+                    {
+                        folder += "NoLearning/";
+                    }
+
+                }
+                else if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.Random)
+                {
+                    folder += "Random/";
+                }
+
+                folder += DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + "/";
+                Directory.CreateDirectory(folder);
+                string filename = folder;
+                filename += data_name;
+                filename += ".csv";
+                // Initialize StreamWriter
+                var writer = new StreamWriter(filename);
+
+                if(data_name != "BTCratio")
+                {
+                    var EliteFitnessTableColumns = "EliteFitness Max, EliteFitness Median, EliteFitness Mean, EliteFitness Min";
+                    var EliteNoveltyTableColumns = "EliteNovelty Max, EliteNovelty Median, EliteNovelty Mean, EliteNovelty Min";
+                    var ContinuousFitnessTableColumns = "ContinuousFitness Max, ContinuousFitness Median, ContinuousFitness Mean, ContinuousFitness Min";
+                    writer.WriteLine(EliteFitnessTableColumns
+                        + ", " + EliteNoveltyTableColumns
+                        + ", " + ContinuousFitnessTableColumns);
                 }
                 else
                 {
-                    folder += "NoLearning/";
+                    writer.WriteLine("Ratio");
                 }
-
-            }
-            else if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.Random)
-            {
-                folder += "Random/";
-            }
-
-            folder += DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + "/";
-            Directory.CreateDirectory(folder);
-            string filename = folder;
-            filename += data_name;
-            filename += ".csv";
-            // Initialize StreamWriter
-            var writer = new StreamWriter(filename);
-
-            if(data_name != "BTCratio")
-            {
-                var EliteFitnessTableColumns = "EliteFitness Max, EliteFitness Median, EliteFitness Mean, EliteFitness Min";
-                var EliteNoveltyTableColumns = "EliteNovelty Max, EliteNovelty Median, EliteNovelty Mean, EliteNovelty Min";
-                var ContinuousFitnessTableColumns = "ContinuousFitness Max, ContinuousFitness Median, ContinuousFitness Mean, ContinuousFitness Min";
-                writer.WriteLine(EliteFitnessTableColumns
-                    + ", " + EliteNoveltyTableColumns
-                    + ", " + ContinuousFitnessTableColumns);
-            }
-            else
-            {
-                writer.WriteLine("Ratio");
-            }
        
 
-            writers.Add(data_name, writer);
+                writers.Add(data_name, writer);
+            }
+
+     
         }
 
 
-
-
-
-        httpClient = new HttpClient();
+        if (GlobalConfig.RECORD_DATA_TO_WEB)
+        {
+            httpClient = new HttpClient();
+        }
+       
 
     }
 
@@ -371,10 +377,14 @@ public class DataToolSocketClient
                     + "," + objective_fitness_table["median_" + key] 
                     + "," + objective_fitness_table["avg_" + key] 
                     + "," + objective_fitness_table["min_" + key];
+
+             
                 line += "," + novelty_table["max_" + key]
-                     + "," + novelty_table["median_" + key]
-                     + "," + novelty_table["avg_" + key]
-                     + "," + novelty_table["min_" + key];
+                    + "," + novelty_table["median_" + key]
+                    + "," + novelty_table["avg_" + key]
+                    + "," + novelty_table["min_" + key];
+                
+
                 line += "," + recent_population_table["max_" + key]
                      + "," + recent_population_table["median_" + key]
                      + "," + recent_population_table["avg_" + key]
