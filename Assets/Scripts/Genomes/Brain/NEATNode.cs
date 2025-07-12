@@ -33,7 +33,9 @@ public class NEATNode
         this.time_constant = 1;
         this.gain = 1;
         this.sigmoid_alpha = 1;
-        this.sigmoid_alpha2 = 1;
+        this.r = 1;
+        this.w = 1;
+        this.p = 1;
 
         if(ID.neuron_role == Neuron.NeuronRole.Hidden && NEATGenome.EVOLVE_ACTIVATION_FUNCTIONS)
         {
