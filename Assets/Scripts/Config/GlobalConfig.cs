@@ -138,7 +138,7 @@ public class GlobalConfig : MonoBehaviour
 
     //EA settings
     public static bool USE_NOVELTY_SEARCH = true;
-    internal static bool show_lines;
+    public static bool show_lines = true;
 
     // === Saving and loading ===
     public const string save_file_path = "SaveFiles/";
@@ -155,7 +155,11 @@ public class GlobalConfig : MonoBehaviour
     // ============
 
 
-
+    [ContextMenu("Toggle vision rays")]
+    void ToggleVisionRays()
+    {
+        show_lines = !show_lines;
+    }
 
 
     private void Awake()
