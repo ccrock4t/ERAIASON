@@ -26,16 +26,16 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
     public NativeArray<Synapse> next_state_synapses; // 1-to-many mapping NeuronID --> synapse1, synapse2, synapse3, etc.
 
     const bool CONSTRAIN_WEIGHT = false;
-    //static float2 CONSTRAIN_WEIGHT_RANGE = (GlobalConfig.USE_HEBBIAN && GlobalConfig.HEBBIAN_METHOD == GlobalConfig.NeuralLearningMethod.HebbYaeger) ? new float2(0, 50) : new float2(-50, 50);
+    //static double2 CONSTRAIN_WEIGHT_RANGE = (GlobalConfig.USE_HEBBIAN && GlobalConfig.HEBBIAN_METHOD == GlobalConfig.NeuralLearningMethod.HebbYaeger) ? new double2(0, 50) : new double2(-50, 50);
 
     const bool CONSTRAIN_BIAS = false;
-    static float2 CONSTRAIN_BIAS_RANGE = new float2(-10, 10);
+    static double2 CONSTRAIN_BIAS_RANGE = new double2(-10, 10);
 
     public bool use_hebb;
     public GlobalConfig.NeuralLearningMethod hebb_rule;
-    public float brain_update_period;
+    public double brain_update_period;
 
-    public float time;
+    public double time;
 
     public void Execute(int i)
     {
@@ -73,7 +73,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         
         int start_idx = to_neuron.synapse_start_idx;
         int end_idx = (to_neuron.synapse_start_idx + to_neuron.synapse_count);
-        float sum = 0; // only bias motor and hidden units (todo - is this right? or include sensors?)
+        double sum = 0; // only bias motor and hidden units (todo - is this right? or include sensors?)
 
         for (int j = start_idx; j < end_idx; j++)
         {
@@ -82,19 +82,19 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
             int from_idx = connection.from_neuron_idx;
             Neuron from_neuron = current_state_neurons[from_idx];
 
-            float input = connection.weight * from_neuron.activation;
+            double input = connection.weight * from_neuron.activation;
  
             sum += input;
             
             to_neuron.real_num_of_synapses++;
         }
 
-        float to_neuron_new_activation;
+        double to_neuron_new_activation;
 
 
         if (to_neuron.neuron_class == Neuron.NeuronClass.CTRNN)
         {
-            float voltage_change = -to_neuron.voltage;
+            double voltage_change = -to_neuron.voltage;
             voltage_change += sum;
             var delta = (voltage_change * brain_update_period / to_neuron.tau_time_constant);
             to_neuron.voltage += delta;
@@ -107,19 +107,24 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
 
         if (to_neuron.neuron_class == Neuron.NeuronClass.CTRNN) sum *= to_neuron.gain;
 
-        float activation = to_neuron.RunActivationFunction(sum);
-        float cpg_activation = 0.5f * math.sin(to_neuron.w * time + to_neuron.p) + 0.5f;
-        if (to_neuron.use_cpg)
-        {
-            to_neuron_new_activation = to_neuron.r * activation + (1f - to_neuron.r) * cpg_activation;
-        }
-        else
-        {
-            to_neuron_new_activation = activation;
-        }
-        
+        double x_env = sum;  // Total weighted input — no extra connections
 
-       // if (incoming_activated_neuron_count < 2) new_activation = 0; 
+        // Modulate local oscillator params using learned base + mod sensitivity
+        double amp = to_neuron.r * to_neuron.RunActivationFunction(to_neuron.r_gain * x_env);   // adaptive amplitude
+        double w = to_neuron.w + to_neuron.w_gain * x_env;            // adaptive frequency
+        Vector2 w_range = NEATGenome.CPG.GetFrequencyRange();
+        w = math.clamp(w, w_range.x, w_range.y);
+        double p = to_neuron.p + to_neuron.p_gain * x_env;            // adaptive phase
+        Vector2 p_range = NEATGenome.CPG.GetPhaseOffsetRange();
+        p = math.clamp(p, p_range.x, p_range.y);
+        double oscillator = amp * math.sin(w * time + p);
+
+        // Inject into net input
+        double net_input = sum + oscillator;
+
+        // Apply activation function
+        double activation = to_neuron.RunActivationFunction(net_input);
+        to_neuron_new_activation = activation;
         to_neuron.activation = to_neuron_new_activation;
 
 
@@ -164,9 +169,9 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
 
 
     public Synapse HebbianUpdateSynapse(Synapse connection,
-        float sum,
+        double sum,
         NativeArray<Neuron> current_state_neurons,
-        float to_neuron_next_activation)
+        double to_neuron_next_activation)
     {
         if (connection.IsEnabled())
         {
@@ -175,13 +180,13 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
             Neuron to_neuron_current_state = current_state_neurons[to_idx];
             Neuron from_neuron_current_state = current_state_neurons[from_idx];
 
-            float presynaptic_firing = from_neuron_current_state.activation;
+            double presynaptic_firing = from_neuron_current_state.activation;
             
-            float delta_weight;
+            double delta_weight;
 
             if (hebb_rule == GlobalConfig.NeuralLearningMethod.HebbABCD)
             {
-                float postsynaptic_firing = to_neuron_current_state.activation;
+                double postsynaptic_firing = to_neuron_current_state.activation;
                 delta_weight = connection.coefficient_LR * (connection.coefficient_A * presynaptic_firing * postsynaptic_firing
                     + connection.coefficient_B * presynaptic_firing
                     + connection.coefficient_C * postsynaptic_firing
@@ -202,7 +207,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
             connection.weight += delta_weight;
             //if (GlobalConfig.HEBBIAN_METHOD == GlobalConfig.HebbianMethod.Yaeger) connection.weight *= connection.decay_rate;
 
-            /*     if (!float.IsFinite(connection.weight))
+            /*     if (!double.IsFinite(connection.weight))
                  {
                      connection.weight = 0;
                  }*/

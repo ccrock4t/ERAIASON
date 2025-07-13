@@ -121,7 +121,7 @@ public abstract class AnimatBody : MonoBehaviour
 
     public virtual void MotorEffect(Animat animat)
     {
-        float asexual_activation;
+        double asexual_activation;
 
         if (animat.mind is Brain brain)
         {
@@ -168,9 +168,9 @@ public abstract class AnimatBody : MonoBehaviour
 
     public void UpdateColor(Animat a)
     {
-        float eat_color;
-        float mate_color;
-        float fight_color;
+        double eat_color;
+        double mate_color;
+        double fight_color;
         if (a.mind is Brain brain)
         {
             int eat_motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
@@ -195,12 +195,12 @@ public abstract class AnimatBody : MonoBehaviour
         {
             return;
         }
-        
-        float r = fight_color;
-        float g = eat_color;
-        float b = mate_color;
 
-        Color new_color = new(r, g, b);
+        double r = fight_color;
+        double g = eat_color;
+        double b = mate_color;
+
+        Color new_color = new((float)r, (float)g, (float)b);
 
         new_color = Color.Lerp(new_color, Color.gray, 0.5f + 0.5f*(this.age / MAX_AGE));
 

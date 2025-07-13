@@ -91,28 +91,28 @@ public abstract class Brain : Mind
     public struct Synapse
     {
 
-        public float weight; // the activation value multiplier
+        public double weight; // the activation value multiplier
 
 
         // evolvable parameters
 
         // Hebbian ABCD
       
-        public float coefficient_LR;  // Learning rate
-        public float coefficient_A;  // correlated activation coefficient
-        public float coefficient_B;  // pre-synaptic activation coefficient
-        public float coefficient_C; // post-synaptic activation coefficient
-        public float coefficient_D; // a connection bias
+        public double coefficient_LR;  // Learning rate
+        public double coefficient_A;  // correlated activation coefficient
+        public double coefficient_B;  // pre-synaptic activation coefficient
+        public double coefficient_C; // post-synaptic activation coefficient
+        public double coefficient_D; // a connection bias
 
         // Yaeger
-        public float learning_rate_r_e_e;  // the learning rate
-        public float learning_rate_r_i_i;  // the learning rate
-        public float learning_rate_r_e_i;  // the learning rate
-        public float learning_rate_r_i_e;  // the learning rate
+        public double learning_rate_r_e_e;  // the learning rate
+        public double learning_rate_r_i_i;  // the learning rate
+        public double learning_rate_r_e_i;  // the learning rate
+        public double learning_rate_r_i_e;  // the learning rate
 
 
         //decay
-        public float decay_rate; 
+        public double decay_rate; 
 
         // info
         public int from_neuron_idx; // neuron index this connection is coming from
@@ -214,29 +214,32 @@ public abstract class Brain : Mind
         public NeuronRole neuron_role; // 0 no, 1 sensor, 2 motor
         public NeuronClass neuron_class;
 
-        public float learning_rate_r_bias;  // the learning rate
+        public double learning_rate_r_bias;  // the learning rate
         public int excitatory; 
 
         // === dynamic
 
         // perceptron
-        public float activation; //sigmoid output
+        public double activation; //sigmoid output
 
         // CTRNN
-        public float voltage;
-        public float gain;
-        public float tau_time_constant;
+        public double voltage;
+        public double gain;
+        public double tau_time_constant;
 
         //CPG
-        public bool use_cpg;
-        public float r; // mix ratio
-        public float w; // wave frequency
-        public float p; // wave phase offset
+        public double r; // mix ratio
+        public double w; // wave frequency
+        public double p; // wave phase offset
+
+        public double r_gain; // mix ratio
+        public double w_gain; // wave frequency
+        public double p_gain; // wave phase offset
 
         // === misc parameters
-        public float bias;  // bias
-        public float sigmoid_alpha; // larger alpha = steeper slope, easier to activate --- smaller alpha = gradual slope, harder to activate.
-        public float sigmoid_alpha2; // larger alpha = steeper slope, easier to activate --- smaller alpha = gradual slope, harder to activate.
+        public double bias;  // bias
+        public double sigmoid_alpha; // larger alpha = steeper slope, easier to activate --- smaller alpha = gradual slope, harder to activate.
+        public double sigmoid_alpha2; // larger alpha = steeper slope, easier to activate --- smaller alpha = gradual slope, harder to activate.
 
         // metadata
         public int synapse_start_idx;
@@ -288,9 +291,9 @@ public abstract class Brain : Mind
             return this.neuron_role == NeuronRole.Sensor;
         }
 
-        public float RunActivationFunction(float sum)
+        public double RunActivationFunction(double sum)
         {
-            float result;
+            double result;
             if (this.activation_function == Neuron.ActivationFunction.Linear)
             {
                 result = this.LinearSum(sum);
@@ -326,12 +329,12 @@ public abstract class Brain : Mind
             else
             {
                 Debug.LogError("error didn't recognize activation function");
-                return float.NaN;
+                return double.NaN;
             }
             return result;
         }
 
-        public float LinearSum(float sum)
+        public double LinearSum(double sum)
         {
             return this.sigmoid_alpha*sum;
         }
@@ -341,22 +344,22 @@ public abstract class Brain : Mind
         /// </summary>
         /// <param name="sum"></param>
         /// <returns></returns>
-        public float SigmoidSquash(float sum)
+        public double SigmoidSquash(double sum)
         {
             return 1.0f / (1.0f + math.exp(-sigmoid_alpha * sum));
         }
 
-        public float TanhSquash(float sum)
+        public double TanhSquash(double sum)
         {
             return math.tanh(sigmoid_alpha * sum);
         }
 
-        public float ReLU(float sum)
+        public double ReLU(double sum)
         {
             return math.max(0, sigmoid_alpha * sum);
         }
 
-        public float LeakyReLU(float sum)
+        public double LeakyReLU(double sum)
         {
             if(sum < 0)
             {
@@ -369,7 +372,7 @@ public abstract class Brain : Mind
             
         }
 
-        public float Step(float sum)
+        public double Step(double sum)
         {
             if (sum <= 0)
             {
@@ -382,14 +385,14 @@ public abstract class Brain : Mind
 
         }
 
-        public float Swish(float sum)
+        public double Swish(double sum)
         {
-            float sigmoid = 1.0f / (1.0f + math.exp(-this.sigmoid_alpha*sum));
+            double sigmoid = 1.0f / (1.0f + math.exp(-this.sigmoid_alpha*sum));
             return sum * sigmoid;
 
         }
 
-        public float ELU(float sum)
+        public double ELU(double sum)
         {
             if (sum > 0)
             {

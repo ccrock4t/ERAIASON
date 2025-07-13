@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
@@ -319,54 +319,99 @@ public class NEATGenome : BrainGenome
         }
     }
 
+
+    public static class CPG
+    {
+        public static Vector2 GetFrequencyRange()
+        {
+            return new(0.1f, 40f);
+        }
+
+        public static Vector2 GetPhaseOffsetRange()
+        {
+            return new(0f,  math.PI2);
+        }
+
+        public static Vector2 GetRfactorRange()
+        {
+            return new(0, 5);
+        }
+    }
+
     public void MutateCPGParameters()
     {
         //  mutate CPG
-        float rnd;
+     
         foreach (NEATNode node in this.nodes)
         {
-            rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < 0.1)
+            var r_range = CPG.GetRfactorRange();
+   
+            if (UnityEngine.Random.value < 0.9)
             {
-                node.use_cpg = !node.use_cpg;
-            }
-
-
-            rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < 0.9)
-            {
-                node.r += GetPerturbationFromRange(0f, 1f);
+                node.r += GetPerturbationFromRange(r_range.x, r_range.y);
+                node.r = math.clamp(node.r, r_range.x, r_range.y);
             }
             else
             {
-                node.r = UnityEngine.Random.Range(0f, 1f);
+                node.r = UnityEngine.Random.Range(r_range.x, r_range.y);
             }
 
-            node.r = math.clamp(node.r, 0f, 1f);
-
-            rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < 0.9)
+            
+            var w_range = CPG.GetFrequencyRange();
+     
+            if (UnityEngine.Random.value < 0.9)
             {
-                node.w += GetPerturbationFromRange(0.5f, 10f);
+                node.w += GetPerturbationFromRange(w_range.x, w_range.y);
+                node.w = math.clamp(node.w, w_range.x, w_range.y);
             }
             else
             {
-                node.w = UnityEngine.Random.Range(0.5f, 10f);
+                node.w = UnityEngine.Random.Range(w_range.x, w_range.y);
             }
 
-            node.w = math.clamp(node.w, 0.5f, 10f);
 
-            rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < 0.9)
+            var p_range = CPG.GetPhaseOffsetRange();
+
+            if (UnityEngine.Random.value < 0.9)
             {
-                node.p += GetPerturbationFromRange(0f, 2f * math.PI);
+                node.p += GetPerturbationFromRange(p_range.x, p_range.y);
+                node.p = math.clamp(node.p, p_range.x, p_range.y);
             }
             else
             {
-                node.p = UnityEngine.Random.Range(0, 2f * math.PI);
+                node.p = UnityEngine.Random.Range(p_range.x, p_range.y);
             }
-  
-            node.p = math.clamp(node.p, 0f, 2f*math.PI);
+
+
+            // --- r_gain (amplitude modulation)
+            
+            if (UnityEngine.Random.value < 0.9f)
+                node.r_gain += GetPerturbationFromRange(-1, 1);
+            else
+                node.r_gain = UnityEngine.Random.Range(-1, 1);
+            node.r_gain = math.clamp(node.r_gain, -1f, 1f);
+
+            // --- w_gain (frequency modulation)
+            if (UnityEngine.Random.value < 0.9f)
+                node.w_gain += GetPerturbationFromRange(-10f, 10f, 1f);
+            else
+                node.w_gain = UnityEngine.Random.Range(-10f, 10f);
+            node.w_gain = math.clamp(node.w_gain, -10f, 10f);
+
+            // --- p_gain (phase modulation)
+            if (UnityEngine.Random.value < 0.9f)
+                node.p_gain += GetPerturbationFromRange(-0.1f, 0.1f, 1f);
+            else
+                node.p_gain = UnityEngine.Random.Range(-math.PI / 2f, math.PI / 2f);
+            node.p_gain = math.clamp(node.p_gain, -math.PI / 2f, math.PI / 2f);
+
+
+            // --- theta
+            //if (UnityEngine.Random.value < 0.9f)
+            //    node.theta += GetPerturbationFromRange(-0.1f, 0.1f, 1f);
+            //else
+            //    node.theta = UnityEngine.Random.Range(-0.2f, 0.2f);
+            //node.theta = math.clamp(node.p_gain, -math.PI / 2f, math.PI / 2f);
         }
     }
 
@@ -416,10 +461,10 @@ public class NEATGenome : BrainGenome
     }
 
     static System.Random r = new();
-    public static float GetPerturbationFromRange(float min, float max, float fraction = 0.1f)
+    public static double GetPerturbationFromRange(double min, double max, double fraction = 0.1f)
     {
-        float range = max - min;
-        float stdDev = range * fraction;
+        double range = max - min;
+        double stdDev = range * fraction;
 
         // Generate standard normal sample using Box-Muller
         double u, v, S;
@@ -431,7 +476,7 @@ public class NEATGenome : BrainGenome
         } while (S >= 1.0 || S == 0);
 
         double fac = Math.Sqrt(-2.0 * Math.Log(S) / S);
-        float result = (float)(u * fac);
+        double result = u * fac;
 
         result *= stdDev; // scale
         return result;

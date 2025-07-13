@@ -23,11 +23,11 @@ public class BrainViewerNeuron : MonoBehaviour
    
         if(neuron.activation >= 0)
         {
-            color = new Color(0, neuron.activation, 0, 1);
+            color = new Color(0, (float)neuron.activation, 0, 1);
         }
         else
         {
-            color = new Color(-1*neuron.activation, 0, 0, 1);
+            color = new Color(-1* (float)neuron.activation, 0, 0, 1);
         }
             
 

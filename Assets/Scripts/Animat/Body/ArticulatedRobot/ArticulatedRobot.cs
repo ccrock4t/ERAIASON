@@ -29,7 +29,7 @@ public class ArticulatedRobot : AnimatBody
     // target modes
     public const float TARGET_MODE_FORCE_LIMIT = 750;
     public const float TARGET_MODE_STIFFNESS = 1000f;
-    public const float TARGET_MODE_DAMPING = 107.75f;
+    public const float TARGET_MODE_DAMPING = 50f;
     public const float TARGET_MODE_MAX_JOINT_VELOCITY = 10f; // rad/s
 
     // force mode
@@ -141,15 +141,15 @@ public class ArticulatedRobot : AnimatBody
                     int brain_idx = brain.nodeID_to_idx[neuronID];
 
                     Neuron motor_neuron = brain.GetNeuronCurrentState(brain_idx);
-                    float motor_activation = motor_neuron.activation;
+                    double motor_activation = motor_neuron.activation;
 
 
-                    if (!float.IsFinite(motor_activation))
+                    if (!double.IsFinite(motor_activation))
                     {
                         Debug.LogWarning("Activation " + motor_activation + " is not finite. Setting to zero. ");
                         motor_activation = 0;
                     }
-                    else if (float.IsNaN(motor_activation))
+                    else if (double.IsNaN(motor_activation))
                     {
                         Debug.LogWarning("Activation " + motor_activation + " is NaN. Setting to zero. ");
                         motor_activation = 0;
@@ -166,17 +166,17 @@ public class ArticulatedRobot : AnimatBody
 
                     if (i == 0)
                     {
-                        output.x = motor_activation;
+                        output.x = (float)motor_activation;
                     }
                     else if (i == 1)
                     {
 
-                        output.y = motor_activation;
+                        output.y = (float)motor_activation;
 
                     }
                     else if (i == 2)
                     {
-                        output.z = motor_activation;
+                        output.z = (float)motor_activation;
                     }
                     else
                     {

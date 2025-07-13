@@ -3,14 +3,14 @@ public class NEATConnection
     public int ID;
     public Brain.NeuronID fromID;
     public Brain.NeuronID toID;
-    public float weight;
+    public double weight;
     public bool enabled;
 
-    public float[] hebb_ABCDLR;
+    public double[] hebb_ABCDLR;
 
     public static int NEXT_GLOBAL_CONNECTION_ID = -1; //start late, to give room for the initial shared sensorymotor connections
 
-    public NEATConnection(float weight, 
+    public NEATConnection(double weight, 
         Brain.NeuronID fromID, 
         Brain.NeuronID toID, 
         int ID)
@@ -22,7 +22,7 @@ public class NEATConnection
         this.weight = weight;
         this.enabled = true;
 
-        this.hebb_ABCDLR = new float[5];
+        this.hebb_ABCDLR = new double[5];
         for(int i = 0; i < 5; i++)
         {
             this.hebb_ABCDLR[i] = GetRandomInitialWeight(); 
@@ -47,6 +47,6 @@ public class NEATConnection
 
     public static float GetRandomInitialWeight()
     {
-        return UnityEngine.Random.Range(-1f, 1f);
+        return UnityEngine.Random.Range(-5f, 5f);
     }
 }
