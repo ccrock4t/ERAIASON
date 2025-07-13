@@ -510,7 +510,6 @@ public class DataAnalyzer : MonoBehaviour
                 table_datapoints[i] = datapoint;
 
 
-
                 if (elite_table == elite_fitness_table)
                 {
                     elite_fitness_table_data = scores;
