@@ -423,34 +423,14 @@ public class AnimatArena : MonoBehaviour
 
     public float GetAnimatObjectiveFitnessScore(Animat animat)
     {
-        //float food_was_seen = animat.body.food_was_seen
         float displacement = animat.GetDisplacementFromBirthplace();
         float food_eaten = animat.body.number_of_food_eaten;
         float times_reproduced = animat.body.times_reproduced;
         float ratio_of_life_spent_looking_at_food = animat.body.frames_food_detected / animat.body.total_frames_alive; //[0,1]
-        //float positive_distance_from_food = GetDistanceFromFoodScore(animat);
-        //return math.pow(positive_distance_from_food, 3);
-        /*        float score = 1;
-
-                score *= (1 + food_eaten / AnimatBody.ENERGY_IN_A_FOOD);
-                // score *= (1 + animat.body.times_reproduced);
-                return score;*/
-
-
-
-
-        //if (GlobalConfig.BODY_METHOD == BodyMethod.ArticulatedRobot)
-        //{
-        //    distance /= 100f;
-        //}
-        // return (distance/10f) * (1+food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced); ;//
 
         float distance_score = math.min(1.0f, displacement / 20);
 
-        distance_score *= (1f + ratio_of_life_spent_looking_at_food);
-
-
-        //return times_reproduced
+        distance_score *= ratio_of_life_spent_looking_at_food;
 
 
         return distance_score  + ((food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced));

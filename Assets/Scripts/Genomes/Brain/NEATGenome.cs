@@ -16,7 +16,7 @@ public class NEATGenome : BrainGenome
     // user changeable parameters
     public static float CHANCE_TO_MUTATE_CONNECTION = 0.8f;
     public static float ADD_CONNECTION_MUTATION_RATE = 0.35f;
-    public static float ADD_NODE_MUTATION_RATE = 0.09f;
+    public static float ADD_NODE_MUTATION_RATE = 0.2f;
 
 
     //constant parameters
@@ -138,41 +138,40 @@ public class NEATGenome : BrainGenome
 
         // first, mutate synapse parameters
         rnd = UnityEngine.Random.Range(0f, 1f);
-        if (rnd < CHANCE_TO_MUTATE_CONNECTION)
+      
+        foreach (NEATConnection connection in this.connections)
         {
-            foreach (NEATConnection connection in this.connections)
+
+
+            rnd = UnityEngine.Random.Range(0f, 1f);
+            if (rnd < 0.9)
             {
-
-
-                rnd = UnityEngine.Random.Range(0f, 1f);
-                if (rnd < 0.9)
-                {
-                    connection.weight += GetPerturbationFromRange(-1f, 1f);
-                }
-                else
-                {
-                    connection.weight = NEATConnection.GetRandomInitialWeight();
-                }
-
-                //}
-
+                connection.weight += GetPerturbationFromRange(-1f, 1f);
+            }
+            else
+            {
+                connection.weight = NEATConnection.GetRandomInitialWeight();
             }
 
-            //  mutate bias (bias can be treated like a connection weight in some casesi )
-            foreach (NEATNode node in this.nodes)
-            {
-                rnd = UnityEngine.Random.Range(0f, 1f);
-                if (rnd < 0.9)
-                {
-                    node.bias += GetPerturbationFromRange(-1f, 1f);
-                }
-                else
-                {
-                    node.bias = NEATConnection.GetRandomInitialWeight();
-                }
-            }
+            //}
 
         }
+
+        //  mutate bias (bias can be treated like a connection weight in some casesi )
+        foreach (NEATNode node in this.nodes)
+        {
+            rnd = UnityEngine.Random.Range(0f, 1f);
+            if (rnd < 0.9)
+            {
+                node.bias += GetPerturbationFromRange(-1f, 1f);
+            }
+            else
+            {
+                node.bias = NEATConnection.GetRandomInitialWeight();
+            }
+        }
+
+        
 
      
         if (GlobalConfig.USE_HEBBIAN)
@@ -274,49 +273,53 @@ public class NEATGenome : BrainGenome
 
     private void MutateCTNNParameters()
     {
-        if (EVOLVE_TIME_CONSTANT)
+        if(GlobalConfig.NEURAL_NETWORK_METHOD == Brain.Neuron.NeuronClass.CTRNN)
         {
-            float rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < CHANCE_TO_MUTATE_TIME_CONSTANT)
+            if (EVOLVE_TIME_CONSTANT)
             {
-                foreach (NEATNode node in this.nodes)
+                float rnd = UnityEngine.Random.Range(0f, 1f);
+                if (rnd < CHANCE_TO_MUTATE_TIME_CONSTANT)
                 {
-                    rnd = UnityEngine.Random.Range(0f, 1f);
-                    if (rnd < 0.9)
+                    foreach (NEATNode node in this.nodes)
                     {
-                        node.time_constant += GetPerturbationFromRange(0f,1f);
+                        rnd = UnityEngine.Random.Range(0f, 1f);
+                        if (rnd < 0.9)
+                        {
+                            node.time_constant += GetPerturbationFromRange(0f, 1f);
+                        }
+                        else
+                        {
+                            node.time_constant = NEATConnection.GetRandomInitialWeight();
+                        }
+                        node.time_constant = math.abs(node.time_constant);
                     }
-                    else
-                    {
-                        node.time_constant = NEATConnection.GetRandomInitialWeight();
-                    }
-                    node.time_constant = math.abs(node.time_constant);
                 }
+
             }
 
-        }
-
-        if (EVOLVE_GAIN)
-        {
-            float rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < CHANCE_TO_MUTATE_GAIN)
+            if (EVOLVE_GAIN)
             {
-                foreach (NEATNode node in this.nodes)
+                float rnd = UnityEngine.Random.Range(0f, 1f);
+                if (rnd < CHANCE_TO_MUTATE_GAIN)
                 {
-                    rnd = UnityEngine.Random.Range(0f, 1f);
-                    if (rnd < 0.9)
+                    foreach (NEATNode node in this.nodes)
                     {
-                        node.gain += GetPerturbationFromRange(0f, 1f);
+                        rnd = UnityEngine.Random.Range(0f, 1f);
+                        if (rnd < 0.9)
+                        {
+                            node.gain += GetPerturbationFromRange(0f, 1f);
+                        }
+                        else
+                        {
+                            node.gain = NEATConnection.GetRandomInitialWeight();
+                        }
+                        node.gain = math.abs(node.gain);
                     }
-                    else
-                    {
-                        node.gain = NEATConnection.GetRandomInitialWeight();
-                    }
-                    node.gain = math.abs(node.gain);
                 }
-            }
 
+            }
         }
+
     }
 
 
@@ -335,6 +338,49 @@ public class NEATGenome : BrainGenome
         public static Vector2 GetRfactorRange()
         {
             return new(0, 5);
+        }
+
+        // Range for Hopf convergence rate mu (drives amplitude stability)
+        public static Vector2 GetMuRange()
+        {
+            // Lower bound > 0 to ensure consistent convergence
+            return new Vector2(0.1f, 10f);
+        }
+
+        // Range for how strongly the oscillator injects into net input
+        public static Vector2 GetOscInjectGainRange()
+        {
+            // Allows excitatory or inhibitory influence
+            return new Vector2(-5f, 5f);
+        }
+
+        // Range for input normalization factor max_input
+        public static Vector2 GetMaxInputRange()
+        {
+            // Avoid zero or extremely small values to prevent division by zero
+            return new Vector2(0.1f, 100f);
+        }
+
+        // Range for sensor-to-amplitude coupling K
+        public static Vector2 GetKRange()
+        {
+            // Supports both positive and negative coupling strengths
+            return new Vector2(-5f, 5f);
+        }
+
+        public static Vector2 GetPGainRange()
+        {
+            return new Vector2(-math.PI / 2f, math.PI / 2f);
+        }
+
+        public static Vector2 GetWGainRange()
+        {
+            return new Vector2(-10, 10);
+        }
+
+        internal static Vector2 GetRGainRange()
+        {
+            return new Vector2(0, 1);
         }
     }
 
@@ -384,34 +430,76 @@ public class NEATGenome : BrainGenome
 
 
             // --- r_gain (amplitude modulation)
-            
+            var rGainRange = CPG.GetRGainRange();
             if (UnityEngine.Random.value < 0.9f)
-                node.r_gain += GetPerturbationFromRange(-1, 1);
+            {
+                node.r_gain += GetPerturbationFromRange(rGainRange.x, rGainRange.y);
+                node.r_gain = math.clamp(node.r_gain, rGainRange.x, rGainRange.y);
+            }
             else
-                node.r_gain = UnityEngine.Random.Range(-1, 1);
-            node.r_gain = math.clamp(node.r_gain, -1f, 1f);
-
+            {
+                node.r_gain = UnityEngine.Random.Range(rGainRange.x, rGainRange.y);
+            }
+                
+         
             // --- w_gain (frequency modulation)
+            var wGainRange = CPG.GetWGainRange();
             if (UnityEngine.Random.value < 0.9f)
-                node.w_gain += GetPerturbationFromRange(-10f, 10f, 1f);
+            {
+                node.w_gain += GetPerturbationFromRange(wGainRange.x, wGainRange.y);
+                node.w_gain = math.clamp(node.w_gain, wGainRange.x, wGainRange.y);
+            }
             else
-                node.w_gain = UnityEngine.Random.Range(-10f, 10f);
-            node.w_gain = math.clamp(node.w_gain, -10f, 10f);
+            {
+                node.w_gain = UnityEngine.Random.Range(wGainRange.x, wGainRange.y);
+            }
+
 
             // --- p_gain (phase modulation)
+            var pGainRange = CPG.GetPGainRange();
             if (UnityEngine.Random.value < 0.9f)
-                node.p_gain += GetPerturbationFromRange(-0.1f, 0.1f, 1f);
+            {
+                node.p_gain += GetPerturbationFromRange(pGainRange.x, pGainRange.y);
+                node.p_gain = math.clamp(node.p_gain, pGainRange.x, pGainRange.y);
+            }
             else
-                node.p_gain = UnityEngine.Random.Range(-math.PI / 2f, math.PI / 2f);
-            node.p_gain = math.clamp(node.p_gain, -math.PI / 2f, math.PI / 2f);
+            {
+                node.p_gain = UnityEngine.Random.Range(pGainRange.x, pGainRange.y);
+            }
+        
 
 
-            // --- theta
-            //if (UnityEngine.Random.value < 0.9f)
-            //    node.theta += GetPerturbationFromRange(-0.1f, 0.1f, 1f);
-            //else
-            //    node.theta = UnityEngine.Random.Range(-0.2f, 0.2f);
-            //node.theta = math.clamp(node.p_gain, -math.PI / 2f, math.PI / 2f);
+            // --- mu (Hopf convergence rate)
+            var muRange = CPG.GetMuRange();
+            if (UnityEngine.Random.value < 0.9f)
+                node.mu += GetPerturbationFromRange(muRange.x, muRange.y);
+            else
+                node.mu = UnityEngine.Random.Range(muRange.x, muRange.y);
+            node.mu = math.clamp(node.mu, muRange.x, muRange.y);
+
+            // --- osc_inject_gain
+            var giRange = CPG.GetOscInjectGainRange();
+            if (UnityEngine.Random.value < 0.9f)
+                node.osc_inject_gain += GetPerturbationFromRange(giRange.x, giRange.y);
+            else
+                node.osc_inject_gain = UnityEngine.Random.Range(giRange.x, giRange.y);
+            node.osc_inject_gain = math.clamp(node.osc_inject_gain, giRange.x, giRange.y);
+
+            // --- max_input (normalizer)
+            var miRange = CPG.GetMaxInputRange();
+            if (UnityEngine.Random.value < 0.9f)
+                node.max_input += GetPerturbationFromRange(miRange.x, miRange.y);
+            else
+                node.max_input = UnityEngine.Random.Range(miRange.x, miRange.y);
+            node.max_input = math.clamp(node.max_input, miRange.x, miRange.y);
+
+            // --- K (sensor→amplitude coupling)
+            var kRange = CPG.GetKRange();
+            if (UnityEngine.Random.value < 0.9f)
+                node.K += GetPerturbationFromRange(kRange.x, kRange.y);
+            else
+                node.K = UnityEngine.Random.Range(kRange.x, kRange.y);
+            node.K = math.clamp(node.K, kRange.x, kRange.y);
         }
     }
 

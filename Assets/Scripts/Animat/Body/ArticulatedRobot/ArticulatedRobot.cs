@@ -29,7 +29,7 @@ public class ArticulatedRobot : AnimatBody
     // target modes
     public const float TARGET_MODE_FORCE_LIMIT = 750;
     public const float TARGET_MODE_STIFFNESS = 1000f;
-    public const float TARGET_MODE_DAMPING = 50f;
+    public const float TARGET_MODE_DAMPING = 100f;
     public const float TARGET_MODE_MAX_JOINT_VELOCITY = 10f; // rad/s
 
     // force mode

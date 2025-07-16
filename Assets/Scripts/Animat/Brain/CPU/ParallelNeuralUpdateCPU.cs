@@ -1,4 +1,4 @@
-using Unity.Burst;
+﻿using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -107,27 +107,51 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
 
         if (to_neuron.neuron_class == Neuron.NeuronClass.CTRNN) sum *= to_neuron.gain;
 
-        double x_env = sum;  // Total weighted input � no extra connections
+        // 1. Unpack state & parameters
+        double r = to_neuron.r;       // radius
+        double theta = to_neuron.p;       // phase
 
-        // Modulate local oscillator params using learned base + mod sensitivity
-        double amp = to_neuron.r * to_neuron.RunActivationFunction(to_neuron.r_gain * x_env);   // adaptive amplitude
-        double w = to_neuron.w + to_neuron.w_gain * x_env;            // adaptive frequency
-        Vector2 w_range = NEATGenome.CPG.GetFrequencyRange();
-        w = math.clamp(w, w_range.x, w_range.y);
-        double p = to_neuron.p + to_neuron.p_gain * x_env;            // adaptive phase
-        Vector2 p_range = NEATGenome.CPG.GetPhaseOffsetRange();
-        p = math.clamp(p, p_range.x, p_range.y);
-        double oscillator = amp * math.sin(w * time + p);
+        double mu = to_neuron.mu;         // amplitude convergence rate
+        double omega = to_neuron.w;          // base angular frequency
+        double K = to_neuron.K;          // sensor → amplitude coupling
+        double pGain = to_neuron.p_gain;     // sensor → phase coupling
+        double alpha = to_neuron.r_gain;     // static/osc mix (0→osc, 1→static)
+        double oscGain = to_neuron.osc_inject_gain;
+        double maxInp = to_neuron.max_input;
 
-        // Inject into net input
-        double net_input = sum + oscillator;
+        // 2. Normalize sensor drive
+        double u = math.clamp(sum / maxInp, -1.0, 1.0);
 
-        // Apply activation function
+        // 3. Compute derivatives at current state
+        double dr1 = mu * (1.0 - r * r) * r + K * u;
+        double dth1 = omega + pGain * u;
+
+        // 4. Semi‑implicit update for r
+        //    r_new = (r + dr1*dt) / (1 + mu*r*r*dt);
+        r = (r + dr1 * brain_update_period)
+            / (1.0 + mu * r * r * brain_update_period);
+
+        // 5. Explicit Euler for theta (with wrapping)
+        theta += dth1 * brain_update_period;
+        if (theta < 0.0) theta += math.PI2;
+        else if (theta >= math.PI2) theta -= math.PI2;
+
+        // 6. Compute oscillator output
+        double oscillator = r * math.sin(theta);
+
+        // 7. Mix static vs. oscillatory contributions
+        //    alpha=1 → pure static(sum), alpha=0 → pure osc
+        double net_input = alpha * sum
+                         + (1.0 - alpha) * (oscGain * oscillator);
+
+        // 8. Save state
+        to_neuron.r = r;
+        to_neuron.p = theta;
+
+        // 9. Activation
         double activation = to_neuron.RunActivationFunction(net_input);
         to_neuron_new_activation = activation;
-        to_neuron.activation = to_neuron_new_activation;
-
-
+        to_neuron.activation = activation;
 
         if (update_synapses)
         {

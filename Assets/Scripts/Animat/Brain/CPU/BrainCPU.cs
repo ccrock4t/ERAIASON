@@ -84,6 +84,19 @@ public class BrainCPU : Brain
         return this.current_state_neurons.Length;
     }
 
+    public override int CountNumberOfHiddenNeurons()
+    {
+        int cnt = 0;
+        for (int i = 0; i < this.current_state_neurons.Length; i++)
+        {
+            if (this.current_state_neurons[i].neuron_role == Neuron.NeuronRole.Hidden)
+            {
+                cnt++;
+            }
+        }
+        return cnt;
+    }
+
     public override void SaveToDisk()
     {
         string[] existing_saves = Directory.GetFiles(path: GlobalConfig.save_file_path, searchPattern: GlobalConfig.save_file_base_name + "*" + save_file_extension);

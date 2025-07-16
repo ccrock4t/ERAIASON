@@ -612,7 +612,7 @@ public class DataAnalyzer : MonoBehaviour
         float T_value = 0;
         if (animat.mind is Brain brain)
         {
-            num_neurons = brain.GetNumberOfNeurons();
+            num_neurons = brain.CountNumberOfHiddenNeurons();
             num_synapses = brain.GetNumberOfSynapses();
         }else if(animat.mind is NARS nar)
         {

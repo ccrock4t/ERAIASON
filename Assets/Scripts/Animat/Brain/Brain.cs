@@ -84,6 +84,7 @@ public abstract class Brain : Mind
 
     public abstract int GetNumberOfSynapses();
 
+    public abstract int CountNumberOfHiddenNeurons();
 
 
 
@@ -252,7 +253,10 @@ public abstract class Brain : Mind
         public NeuronID ID;
         public int idx;
 
-       
+        public double mu;
+        public double osc_inject_gain;
+        public double max_input;
+        public double K;
 
         public static Neuron GetNewNeuron()
         {
