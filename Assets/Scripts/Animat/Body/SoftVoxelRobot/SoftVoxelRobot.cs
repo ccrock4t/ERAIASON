@@ -115,14 +115,14 @@ public class SoftVoxelRobot : AnimatBody
 
 
                 Neuron[] motor_neurons = new Neuron[SoftVoxelRobot.NUM_OF_MOTOR_NEURONS];
-                float[] motor_activations = new float[motor_neurons.Length];
+                double[] motor_activations = new double[motor_neurons.Length];
                 for (int i = 0; i < motor_neurons.Length; i++)
                 {
                     int motor_neuron_idx = nodeID_to_idx[NEATGenome.GetTupleIDFromInt3(coords, i, Neuron.NeuronRole.Motor)];
                     motor_neurons[i] = brain.GetNeuronCurrentState(motor_neuron_idx);
                     if (motor_neurons[i].neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
                     motor_activations[i] = motor_neurons[i].activation;
-                    if (float.IsNaN(motor_activations[i]) || float.IsInfinity(motor_activations[i]))
+                    if (double.IsNaN(motor_activations[i]) || double.IsInfinity(motor_activations[i]))
                     {
                         Debug.LogWarning("Got NaN for motor activation");
                     }
@@ -145,14 +145,14 @@ public class SoftVoxelRobot : AnimatBody
                     if (motor_activations.Length > 1)
                     {
                         // theres multiple activations so they can go on different axes
-                        if (i == 0) soft_voxel_object.SetVoxelTemperatureXFromNeuronActivation(cvx_voxel.Item2, motor_activations[i]);
-                        if (i == 1) soft_voxel_object.SetVoxelTemperatureYFromNeuronActivation(cvx_voxel.Item2, motor_activations[i]);
-                        if (i == 2) soft_voxel_object.SetVoxelTemperatureZFromNeuronActivation(cvx_voxel.Item2, motor_activations[i]);
+                        if (i == 0) soft_voxel_object.SetVoxelTemperatureXFromNeuronActivation(cvx_voxel.Item2, (float)motor_activations[i]);
+                        if (i == 1) soft_voxel_object.SetVoxelTemperatureYFromNeuronActivation(cvx_voxel.Item2, (float)motor_activations[i]);
+                        if (i == 2) soft_voxel_object.SetVoxelTemperatureZFromNeuronActivation(cvx_voxel.Item2, (float)motor_activations[i]);
                     }
                     else
                     {
                         // theres only 1 activation so contract the whole voxel
-                        soft_voxel_object.SetVoxelTemperatureFromNeuronActivation(cvx_voxel.Item2, motor_activations[i]);
+                        soft_voxel_object.SetVoxelTemperatureFromNeuronActivation(cvx_voxel.Item2, (float)motor_activations[i]);
                     }
 
                     // subtract the energy used

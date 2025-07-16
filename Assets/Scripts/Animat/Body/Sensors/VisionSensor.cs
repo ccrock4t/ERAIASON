@@ -40,11 +40,11 @@ public class VisionSensor
         //
         // get animat motor activations
         //
-        float eat_motor_activation;
-        float fight_motor_activation;
-        float mate_motor_activation;
-        float pickup_voxel_motor_activation;
-        float place_voxel_motor_activation;
+        double eat_motor_activation;
+        double fight_motor_activation;
+        double mate_motor_activation;
+        double pickup_voxel_motor_activation;
+        double place_voxel_motor_activation;
 
         if (animat.mind is Brain)
         {
@@ -157,7 +157,7 @@ public class VisionSensor
         //
         //handle raycast results
         // 
-        ConcurrentQueue<(RaycastHit, int, float)> objects_to_update = new(); // raycast object, behavior index, activation
+        ConcurrentQueue<(RaycastHit, int, double)> objects_to_update = new(); // raycast object, behavior index, activation
 
         bool voxel_was_picked = false;
         float max_food_activation = 0;
@@ -265,7 +265,7 @@ public class VisionSensor
                     if (draw_sensor_raycasts)
                     {
                         var dir = ((RaycastHit)food_hit).transform.position - raycast_position;
-                        ray_preview_casts.Add(new RayPreviewCast(raycast_position, dir.normalized, dir.magnitude, new Color(0, eat_motor_activation, 0)));
+                        ray_preview_casts.Add(new RayPreviewCast(raycast_position, dir.normalized, dir.magnitude, new Color(0, (float)eat_motor_activation, 0)));
                     }
                     
                 }
@@ -439,7 +439,7 @@ public class VisionSensor
 
 
 
-        float food_was_eaten = 0;
+        double food_was_eaten = 0;
 
         Dictionary<object, bool> object_already_interacted = new();
         foreach (var hit_tuple in objects_to_update)
@@ -447,13 +447,13 @@ public class VisionSensor
 
             RaycastHit hit = hit_tuple.Item1;
             int behavior = hit_tuple.Item2;
-            float activation = hit_tuple.Item3;
+            double activation = hit_tuple.Item3;
             if (hit.transform.gameObject.layer == AnimatArena.FOOD_GAMEOBJECT_LAYER)
             {
                 // eating food
 
 
-                float amount_of_food_to_eat = math.abs(eat_motor_activation);
+                double amount_of_food_to_eat = math.abs(eat_motor_activation);
                 var food = hit.transform.gameObject.GetComponent<Food>();
 
          
@@ -467,8 +467,8 @@ public class VisionSensor
 
                     if (food.nutrition_remaining > amount_of_food_to_eat)
                     {
-                        food.RemoveNutrition(amount_of_food_to_eat);
-                        body.FoodEaten(amount_of_food_to_eat);
+                        food.RemoveNutrition((float)amount_of_food_to_eat);
+                        body.FoodEaten((float)amount_of_food_to_eat);
                     }
                     else
                     {
@@ -495,7 +495,7 @@ public class VisionSensor
                         object_already_interacted[other_animat] = true;
                         if (!other_animat.dead)
                         {
-                            float other_animat_mate_motor_activation;
+                            double other_animat_mate_motor_activation;
                             if(other_animat.mind is NARS)
                             {
                                 NARS other_NARS = (NARS)other_animat.mind;
@@ -533,7 +533,7 @@ public class VisionSensor
                     if (!object_already_interacted.ContainsKey(other_animat))
                     {
                         object_already_interacted[other_animat] = true;
-                        other_animat.ReduceHealth(math.abs(activation));
+                        other_animat.ReduceHealth((float)math.abs(activation));
                     }
                 }
             }
@@ -638,7 +638,7 @@ public class VisionSensor
         }
 
         // data stuff
-        body.food_eaten_since_last_novelty_datapoint += food_was_eaten;
+        body.food_eaten_since_last_novelty_datapoint += (float)food_was_eaten;
         body.food_was_seen = max_food_activation;
         animat.body.frames_food_detected += max_food_activation;
         animat.body.total_frames_alive++;

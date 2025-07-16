@@ -205,4 +205,8 @@ public class BrainGPU : Brain
         throw new System.NotImplementedException();
     }
 
+    public override int CountNumberOfHiddenNeurons()
+    {
+        throw new System.NotImplementedException();
+    }
 }

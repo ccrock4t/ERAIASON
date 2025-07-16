@@ -62,9 +62,9 @@ public class WheeledRobot : AnimatBody
     {
         base.MotorEffect(animat);
 
-        float move_activation = 0;
-        float rotate_activation = 0;
-        float jump_activation = 0;
+        double move_activation = 0;
+        double rotate_activation = 0;
+        double jump_activation = 0;
         if (animat.mind is Brain brain)
         {
             // move forward
@@ -128,13 +128,13 @@ public class WheeledRobot : AnimatBody
 
         // move
         Vector3 motion_vector = controller.transform.forward;
-        Vector3 new_position = controller.position + motion_vector * move_activation * movement_speed;
+        Vector3 new_position = controller.position + motion_vector * (float)move_activation * movement_speed;
 
         // jump
      
         if (this.object_touching_counter.num_objects_touching > 0)
         {
-            new_position.y += jump_activation * climb_speed;
+            new_position.y += (float)jump_activation * climb_speed;
         }
        
 
@@ -142,7 +142,7 @@ public class WheeledRobot : AnimatBody
         this.controller.MovePosition(new_position);
 
         // rotate
-        this.controller.MoveRotation(controller.rotation * Quaternion.Euler(Vector3.up * rotate_activation * rotate_speed));
+        this.controller.MoveRotation(controller.rotation * Quaternion.Euler(Vector3.up * (float)rotate_activation * rotate_speed));
 
    
     }

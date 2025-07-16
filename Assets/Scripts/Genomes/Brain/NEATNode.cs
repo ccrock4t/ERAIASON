@@ -4,14 +4,34 @@ using static Brain;
 public class NEATNode
 {
     public NeuronID ID;
-    public float bias;
-    public float sigmoid_alpha;
-    public float sigmoid_alpha2;
-    public float time_constant;
-    public float gain;
+    public double bias;
+    // sum and squash activation functions
+    public double sigmoid_alpha;
+    public double sigmoid_alpha2;
+
+    // CTRNN
+    public double time_constant;
+    public double gain;
+
+    //CPG
+    public double r; // mix ratio
+    public double w; // wave frequency
+    public double p; // wave phase offset
+    public double r_gain;
+    public double w_gain;
+    public double p_gain;
+    public double theta;
+    public double max_input;
+    public double osc_inject_gain;
+    public double mu;
+    public double K;
+
     public float4 brainviewer_coords;
     public Neuron.ActivationFunction activation_function;
-    public static int NEXT_GLOBAL_HIDDENNODE_ID = -1; 
+    public static int NEXT_GLOBAL_HIDDENNODE_ID = -1;
+
+
+
 
     public NEATNode(NeuronID ID, 
         Neuron.ActivationFunction activation_function, 
@@ -24,7 +44,12 @@ public class NEATNode
         this.time_constant = 1;
         this.gain = 1;
         this.sigmoid_alpha = 1;
-        this.sigmoid_alpha2 = 1;
+        this.r = 1;
+        this.w = 1;
+        this.p = 1;
+        this.r_gain = 1;
+        this.w_gain = 1;
+        this.p_gain = 1;
 
         if(ID.neuron_role == Neuron.NeuronRole.Hidden && NEATGenome.EVOLVE_ACTIVATION_FUNCTIONS)
         {
@@ -38,7 +63,7 @@ public class NEATNode
     
     }
 
-    public static float GetRandomTimeContant()
+    public static double GetRandomTimeContant()
     {
         return UnityEngine.Random.Range(-3f, 3f);
     }
@@ -51,6 +76,17 @@ public class NEATNode
         new_node.brainviewer_coords = this.brainviewer_coords;
         new_node.bias = this.bias;
         new_node.time_constant = this.time_constant;
+        new_node.r = this.r;
+        new_node.w = this.w;
+        new_node.p = this.p;
+        new_node.r_gain = this.r_gain;
+        new_node.w_gain = this.w_gain;
+        new_node.p_gain = this.p_gain;
+        new_node.mu = this.mu;
+        new_node.K = this.K;
+        new_node.max_input = this.max_input;
+        new_node.osc_inject_gain = this.osc_inject_gain;
+        new_node.theta = this.theta;
         new_node.gain = this.gain;
         new_node.sigmoid_alpha = this.sigmoid_alpha;
         new_node.sigmoid_alpha2 = this.sigmoid_alpha2;

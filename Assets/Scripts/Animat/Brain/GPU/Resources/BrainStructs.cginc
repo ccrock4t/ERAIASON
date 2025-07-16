@@ -41,7 +41,12 @@ struct Neuron
     float voltage;
     float gain;  
     float tau_time_constant;
-    
+
+    //CPG
+    float r;
+    float w;
+    float p;
+
      // === misc parameters
     float bias;
     float sigmoid_alpha;

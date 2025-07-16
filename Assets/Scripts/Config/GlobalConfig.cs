@@ -95,7 +95,7 @@ public class GlobalConfig : MonoBehaviour
 
     // === Animat brain ===
     public static BrainProcessingMethod BRAIN_PROCESSING_METHOD = BrainProcessingMethod.NeuralNetworkCPU;
-    public static bool USE_HEBBIAN = true;
+    public static bool USE_HEBBIAN = false;
     public const NeuralLearningMethod HEBBIAN_METHOD = NeuralLearningMethod.HebbABCD;
     public static Brain.Neuron.NeuronClass NEURAL_NETWORK_METHOD = Brain.Neuron.NeuronClass.SumAndSquash;
 
@@ -138,7 +138,7 @@ public class GlobalConfig : MonoBehaviour
 
     //EA settings
     public static bool USE_NOVELTY_SEARCH = false;
-    internal static bool show_lines;
+    public static bool show_lines = true;
 
     // === Saving and loading ===
     public const string save_file_path = "SaveFiles/";
@@ -149,12 +149,17 @@ public class GlobalConfig : MonoBehaviour
 
 
 
-    public const bool RECORD_DATA = false;
+    public const bool RECORD_DATA_TO_DISK = true;
+    public const bool RECORD_DATA_TO_WEB = true;
 
     // ============
 
 
-
+    [ContextMenu("Toggle vision rays")]
+    void ToggleVisionRays()
+    {
+        show_lines = !show_lines;
+    }
 
 
     private void Awake()
