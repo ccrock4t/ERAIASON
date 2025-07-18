@@ -688,6 +688,22 @@ public class Animat : MonoBehaviour
 
         //Vector2 D = this.GetCenterOfMass().xz - this.birthplace.xz;
     }
+
+    public Vector2 GetVectorFromBirthplace()
+    {
+        Vector2 position = this.GetCenterOfMass().xz;
+        Vector2 distance = (Vector2) (this.birthplace.xz) + position;
+
+        /*
+        if (distance > 10)
+        {
+            int test = 1;
+        }
+        */
+        return distance;
+
+        //Vector2 D = this.GetCenterOfMass().xz - this.birthplace.xz;
+    }
     public float GetDistanceTowardsClosestFood()
     {
         float distance = Vector3.Distance(closest_food.transform.position, this.GetCenterOfMass());

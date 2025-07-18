@@ -21,7 +21,7 @@ public class ArticulatedRobot : AnimatBody
 
 
     // === drive mode parameters ===
-    // F = stiffness * (currentPosition — target) — damping * (currentVelocity — targetVelocity)
+    // F = stiffness * (currentPosition ï¿½ target) ï¿½ damping * (currentVelocity ï¿½ targetVelocity)
 
     private const ArticulationDriveType ARTICULATION_DRIVING_METHOD = ArticulationDriveType.Target;
     const bool USE_FORCE_MODE = false;
@@ -115,7 +115,8 @@ public class ArticulatedRobot : AnimatBody
 
     public override Quaternion GetRotation()
     {
-        throw new System.NotImplementedException();
+        //throw new System.NotImplementedException();
+        return GetVisionSensorSegment().transform.rotation;//TODO: CHANGE THIS BACK TO NOT-IMPLEMENTED
     }
 
     public override void MotorEffect(Animat animat)

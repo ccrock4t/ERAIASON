@@ -433,9 +433,10 @@ public class AnimatArena : MonoBehaviour
         distance_score *= ratio_of_life_spent_looking_at_food;
 
 
-        return distance_score  + ((food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced));
-
-
+        float to_return =  distance_score  + ((food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced));
+        Vector2 currOrientation = (Vector2) (animat.body.GetRotation() * transform.right);
+        to_return *= Vector2.Dot(animat.GetVectorFromBirthplace(), currOrientation);
+        return to_return;
 
         if (food_eaten == 0)
         {
