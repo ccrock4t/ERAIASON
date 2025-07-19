@@ -714,6 +714,11 @@ public class Animat : MonoBehaviour
         //Vector2 D = this.GetCenterOfMass().xz - this.birthplace.xz;
     }
 
+    public Vector2 GetVectorTowardsClosestFood()
+    {
+        return (Vector2)closest_food.transform.position + (Vector2) this.GetCenterOfMass().xz;
+    }
+
     public float GetDisplacementAlongBirthplaceForwardVector()
     {
         Vector3 travelled_vector = this.GetCenterOfMass() - this.birthplace;

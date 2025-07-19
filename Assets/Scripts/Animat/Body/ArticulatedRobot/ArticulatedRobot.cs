@@ -144,7 +144,10 @@ public class ArticulatedRobot : AnimatBody
                     Neuron motor_neuron = brain.GetNeuronCurrentState(brain_idx);
                     double motor_activation = motor_neuron.activation;
 
-
+                    //TODO: EXPERIMENTAL
+                    //Vector2 currOrientation = (Vector2) (animat.body.GetRotation() * transform.right);
+                    //motor_activation *= Vector2.Dot(animat.GetVectorTowardsClosestFood(), currOrientation);
+                    Debug.LogWarning("hi");
                     if (!double.IsFinite(motor_activation))
                     {
                         Debug.LogWarning("Activation " + motor_activation + " is not finite. Setting to zero. ");

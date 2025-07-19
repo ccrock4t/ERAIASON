@@ -436,6 +436,11 @@ public class AnimatArena : MonoBehaviour
         float to_return =  distance_score  + ((food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced));
         Vector2 currOrientation = (Vector2) (animat.body.GetRotation() * transform.right);
         to_return *= Vector2.Dot(animat.GetVectorFromBirthplace(), currOrientation);
+        //to_return *= animat.GetDistanceTowardsClosestFood();
+        to_return *= Vector2.Dot(animat.GetVectorTowardsClosestFood(), currOrientation);
+        //TODO: EXPERIMENTAL
+        to_return *= Mathf.Max(0.2f, Mathf.Cos(animat.body.GetRotation().eulerAngles.x));
+        to_return *= Mathf.Max(0.2f, Mathf.Cos(animat.body.GetRotation().eulerAngles.y));
         return to_return;
 
         if (food_eaten == 0)
