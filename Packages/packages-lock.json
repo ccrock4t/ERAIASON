@@ -53,8 +53,8 @@
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.unity.services.analytics": "1.0.4",
-        "com.unity.ugui": "1.0.0"
+        "com.unity.ugui": "1.0.0",
+        "com.unity.services.analytics": "1.0.4"
       },
       "url": "https://packages.unity.com"
     },
@@ -179,10 +179,14 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.memoryprofiler": {
-      "version": "1.1.1",
+      "version": "1.1.6",
       "depth": 0,
       "source": "registry",
       "dependencies": {
+        "com.unity.burst": "1.8.0",
+        "com.unity.collections": "1.2.3",
+        "com.unity.mathematics": "1.2.1",
+        "com.unity.profiling.core": "1.0.0",
         "com.unity.editorcoroutines": "1.0.0"
       },
       "url": "https://packages.unity.com"
@@ -296,9 +300,9 @@
       "depth": 1,
       "source": "registry",
       "dependencies": {
-        "com.unity.modules.unitywebrequest": "1.0.0",
+        "com.unity.modules.androidjni": "1.0.0",
         "com.unity.nuget.newtonsoft-json": "3.2.1",
-        "com.unity.modules.androidjni": "1.0.0"
+        "com.unity.modules.unitywebrequest": "1.0.0"
       },
       "url": "https://packages.unity.com"
     },

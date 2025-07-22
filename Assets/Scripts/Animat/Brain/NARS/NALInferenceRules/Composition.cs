@@ -88,7 +88,7 @@ public class CompositionRules
             // todo better simplifying of syntactically complex results
             if (j1_statement.get_subject_term() is CompoundTerm || j2_statement.get_subject_term() is CompoundTerm) return null;
 
-            compound_term = new CompoundTerm(new List<Term> { j1_statement.get_subject_term(), j2_statement.get_subject_term() }, connector);  // (T1 | T2)
+            compound_term = new CompoundTerm(new Term[] { j1_statement.get_subject_term(), j2_statement.get_subject_term() }, connector);  // (T1 | T2)
             result_statement = new StatementTerm(compound_term, j1_statement.get_predicate_term(), copula);  // ((T1 | T2) --> M)
 
             if (!(j1 is Question)) result_truth_function = this.nars.inferenceEngine.truthValueFunctions.F_Intersection;
@@ -107,7 +107,7 @@ public class CompositionRules
                 return null;
             }
 
-            compound_term = new CompoundTerm(new List<Term> { j1_statement.get_predicate_term(), j2_statement.get_predicate_term() }, connector);  // (T1 | T2)
+            compound_term = new CompoundTerm(new Term[] { j1_statement.get_predicate_term(), j2_statement.get_predicate_term() }, connector);  // (T1 | T2)
 
             result_statement = new StatementTerm(j1_statement.get_subject_term(), compound_term, copula);  // (M --> (T1 | T2))
 
@@ -192,7 +192,7 @@ public class CompositionRules
             // todo: better simplifying of syntactically complex results
             if (j1_statement.get_subject_term() is CompoundTerm || j2_statement.get_subject_term() is CompoundTerm) return null;
 
-            compound_term = new CompoundTerm(new List<Term> { j1_statement.get_subject_term(), j2_statement.get_subject_term() }, connector);  // (T1 & T2)
+            compound_term = new CompoundTerm(new Term[] { j1_statement.get_subject_term(), j2_statement.get_subject_term() }, connector);  // (T1 & T2)
             result_statement = new StatementTerm(compound_term, j1_statement.get_predicate_term(), copula);  // ((T1 & T2) --> M)
 
             if (!(j1 is Question)) result_truth_function = this.nars.inferenceEngine.truthValueFunctions.F_Union;
@@ -208,7 +208,7 @@ public class CompositionRules
             // todo{ better simplifying of syntactically complex results
             if (j1_statement.get_predicate_term() is CompoundTerm || j2_statement.get_predicate_term() is CompoundTerm) return null;
 
-            compound_term = new CompoundTerm(new List<Term> { j1_statement.get_predicate_term(), j2_statement.get_predicate_term() }, connector);  // (T1 & T2)
+            compound_term = new CompoundTerm(new Term[] { j1_statement.get_predicate_term(), j2_statement.get_predicate_term() }, connector);  // (T1 & T2)
             result_statement = new StatementTerm(j1_statement.get_subject_term(), compound_term, copula);  // (M --> (T1 & T2))
 
             if (!(j1 is Question)) result_truth_function = this.nars.inferenceEngine.truthValueFunctions.F_Intersection;
@@ -252,7 +252,7 @@ public class CompositionRules
         // todo{ better simplifying of syntactically complex results
         if (j1_statement.get_subject_term() is CompoundTerm || j2_statement.get_subject_term() is CompoundTerm) return null;
 
-        CompoundTerm compound_term = new CompoundTerm(new List<Term> { j1_statement.get_subject_term(), j2_statement.get_subject_term() }, TermConnector.IntensionalDifference);  // (T1 ~ T2)
+        CompoundTerm compound_term = new CompoundTerm(new Term[] { j1_statement.get_subject_term(), j2_statement.get_subject_term() }, TermConnector.IntensionalDifference);  // (T1 ~ T2)
         StatementTerm result_statement = new StatementTerm(compound_term, j1_statement.get_predicate_term(), Copula.Inheritance);  // ((T1 ~ T2) --> M)
         return this.nars.helperFunctions.create_resultant_sentence_two_premise(j1, j2, result_statement, this.nars.inferenceEngine.truthValueFunctions.F_Difference);
     }
@@ -285,7 +285,7 @@ public class CompositionRules
         // todo: better simplifying of syntactically complex results
         if (j1_statement.get_predicate_term() is CompoundTerm || j2_statement.get_predicate_term() is CompoundTerm) return null;
 
-        CompoundTerm compound_term = new CompoundTerm(new List<Term> { j1_statement.get_predicate_term(), j2_statement.get_predicate_term() }, TermConnector.ExtensionalDifference);
+        CompoundTerm compound_term = new CompoundTerm(new Term[] { j1_statement.get_predicate_term(), j2_statement.get_predicate_term() }, TermConnector.ExtensionalDifference);
         StatementTerm result_statement = new StatementTerm(j1_statement.get_subject_term(), compound_term, Copula.Inheritance);  // (M --> (T1 - T2))
 
         return this.nars.helperFunctions.create_resultant_sentence_two_premise(j1, j2, result_statement, this.nars.inferenceEngine.truthValueFunctions.F_Difference);

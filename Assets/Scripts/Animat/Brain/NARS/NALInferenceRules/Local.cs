@@ -51,7 +51,7 @@ public class LocalRules
 
 
             CompoundTerm j2_compound = (CompoundTerm)j2.get_statement_term();
-            for (int i = 0; i < j1_compound.intervals.Count; i++)
+            for (int i = 0; i < j1_compound.intervals.Length; i++)
             {
              
                 int j1_interval = j1_compound.intervals[i];

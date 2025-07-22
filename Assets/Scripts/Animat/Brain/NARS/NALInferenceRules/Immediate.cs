@@ -33,7 +33,7 @@ public class ImmediateRules
 
              Returns:
         */
-        CompoundTerm result_statement = new CompoundTerm(new List<Term>() { j.statement }, TermConnector.Negation);
+        CompoundTerm result_statement = new CompoundTerm(new Term[] { j.statement }, TermConnector.Negation);
         return this.nars.helperFunctions.create_resultant_sentence_one_premise(j, result_statement, this.nars.inferenceEngine.truthValueFunctions.F_Negation);
     }
 
@@ -84,8 +84,8 @@ public class ImmediateRules
         Asserts.assert_sentence_forward_implication(j);
         // Statement
         StatementTerm j_statement = (StatementTerm)j.get_statement_term();
-        CompoundTerm negated_predicate_term = new CompoundTerm(new List<Term>{ j_statement.get_predicate_term() }, TermConnector.Negation);
-        CompoundTerm negated_subject_term = new CompoundTerm(new List<Term> { j_statement.get_subject_term() }, TermConnector.Negation);
+        CompoundTerm negated_predicate_term = new CompoundTerm(new Term[]{ j_statement.get_predicate_term() }, TermConnector.Negation);
+        CompoundTerm negated_subject_term = new CompoundTerm(new Term[] { j_statement.get_subject_term() }, TermConnector.Negation);
 
         StatementTerm result_statement = new StatementTerm(negated_predicate_term,
                                             negated_subject_term,
@@ -111,7 +111,7 @@ public class ImmediateRules
         Asserts.assert_sentence_inheritance(j);
         // Statement
         StatementTerm j_statement = (StatementTerm)j.get_statement_term();
-        List<Term> statement_subterms = ((CompoundTerm)j_statement.get_subject_term()).subterms;
+        var statement_subterms = ((CompoundTerm)j_statement.get_subject_term()).subterms;
         Term R = j_statement.get_predicate_term();
         return Image(j, statement_subterms, R, TermConnector.ExtensionalImage);
     }
@@ -133,20 +133,20 @@ public class ImmediateRules
         List<Sentence> results = new List<Sentence>();
         // Statement
         StatementTerm j_statement = (StatementTerm)j.get_statement_term();
-        List<Term> statement_subterms = ((CompoundTerm)j_statement.get_predicate_term()).subterms;
+        Term[] statement_subterms = ((CompoundTerm)j_statement.get_predicate_term()).subterms;
         Term R = j_statement.get_subject_term();
         return Image(j, statement_subterms, R, TermConnector.IntensionalImage);
     }
 
-    public List<Sentence> Image(Sentence j, List<Term> statement_subterms, Term R, TermConnector connector)
+    public List<Sentence> Image(Sentence j, Term[] statement_subterms, Term R, TermConnector connector)
     {
         List<Sentence> results = new List<Sentence>();
-        for (int i1 = 0; i1 < statement_subterms.Count; i1++)
+        for (int i1 = 0; i1 < statement_subterms.Length; i1++)
         {
             Term subterm = statement_subterms[i1];
 
             List<Term> image_subterms = new List<Term> { R };
-            for (int i2 = 0; i2 < statement_subterms.Count; i2++)
+            for (int i2 = 0; i2 < statement_subterms.Length; i2++)
             {
                 if (i1 != i2)
                 {
@@ -158,7 +158,7 @@ public class ImmediateRules
                 }
             }
 
-            CompoundTerm image_term = new CompoundTerm(image_subterms, TermConnector.ExtensionalImage);
+            CompoundTerm image_term = new CompoundTerm(image_subterms.ToArray(), TermConnector.ExtensionalImage);
             StatementTerm result_statement = new StatementTerm(subterm, image_term, Copula.Inheritance);
 
             Sentence result = this.nars.helperFunctions.create_resultant_sentence_one_premise(j, result_statement, null);

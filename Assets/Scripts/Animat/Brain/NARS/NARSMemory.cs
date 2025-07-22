@@ -69,7 +69,7 @@ public class Memory
         if (term is CompoundTerm)
         {
             //todo allow array elements
-            for (int i = 0; i < ((CompoundTerm)term).subterms.Count; i++)
+            for (int i = 0; i < ((CompoundTerm)term).subterms.Length; i++)
             {
                 Term subterm = ((CompoundTerm)term).subterms[i];
                 // get/create subterm concepts

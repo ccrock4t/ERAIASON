@@ -50,7 +50,6 @@ public abstract class Sentence
 
     public override string ToString()
     {
-        
         return this.statement.ToString() 
             + PunctuationMethods.get_string_from_punctuation(this.punctuation) 
             + " " + this.evidential_value.ToString();
@@ -244,14 +243,12 @@ public class Goal : Sentence
         return nars.inferenceEngine.get_desirability(this);
     }
 
-    // since confidence = 0 produces desiraility of 0.5,
-    // the motor activation has to be scaled such that <= 0.5 is zero,
-    // and [0.5,1.0] is normalized to [0,1]
+    // desirability is from [0,1]]
     public float get_motor_activation(NARS nars)
     {
         float desirability = nars.inferenceEngine.get_desirability(this);
 
-        return (desirability - 0.5f) * 2f;
+        return desirability;// (desirability - 0.5f) * 2f;
     }
 }
 

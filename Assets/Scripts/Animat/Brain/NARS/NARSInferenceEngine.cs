@@ -317,21 +317,21 @@ public class NARSInferenceEngine
 
                         if (TermConnectorMethods.is_conjunction(j1_subject_term.connector))
                         {
-                            j1_subject_statement_terms = ((CompoundTerm)j1_subject_term).subterms;
+                            j1_subject_statement_terms = ((CompoundTerm)j1_subject_term).subterms.ToList();
                         }
                         else
                         {
-                            j1_subject_statement_terms = new List<Term>();
+                            j1_subject_statement_terms = new();
                             j1_subject_statement_terms.Add(j1_subject_term);
                         }
 
                         if (TermConnectorMethods.is_conjunction(j2_subject_term.connector))
                         {
-                            j2_subject_statement_terms = ((CompoundTerm)j2_subject_term).subterms;
+                            j2_subject_statement_terms = ((CompoundTerm)j2_subject_term).subterms.ToList();
                         }
                         else
                         {
-                            j2_subject_statement_terms = new List<Term>();
+                            j2_subject_statement_terms = new();
                             j2_subject_statement_terms.Add(j2_subject_term);
                         }
 

@@ -63,7 +63,7 @@ public class TemporalRules
         //     result_statement = CompoundTerm([j2_statement_term, j1_statement_term],
         //                                                       TermConnector.SequentialConjunction,
         //                                                      intervals=[HelperFunctions.convert_to_interval(abs(j2.stamp.occurrence_time - j1.stamp.occurrence_time))])
-        CompoundTerm result_statement = new CompoundTerm(new List<Term> { j1_statement_term, j2_statement_term }, TermConnector.Conjunction);
+        CompoundTerm result_statement = new CompoundTerm(new Term[] { j1_statement_term, j2_statement_term }, TermConnector.Conjunction);
         return this.nars.helperFunctions.create_resultant_sentence_two_premise(j1, j2, result_statement, this.nars.inferenceEngine.truthValueFunctions.F_Intersection);
     }
 

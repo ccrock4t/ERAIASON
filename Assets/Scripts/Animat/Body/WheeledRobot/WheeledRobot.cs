@@ -103,7 +103,6 @@ public class WheeledRobot : AnimatBody
         }
         else if (animat.mind is NARS nar)
         {
-
             // move
             move_activation = nar.GetGoalActivation(NARSGenome.move_op);
 

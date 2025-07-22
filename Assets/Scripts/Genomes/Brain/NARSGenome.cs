@@ -76,19 +76,45 @@ public class NARSGenome : BrainGenome
 
     public const int num_of_personality_parameters = 2;
 
-    WheeledRobotBodyGenome body_genome;
+    BodyGenome body_genome;
 
     const int MAX_INITIAL_BELIEFS = 10;
 
-    public NARSGenome(WheeledRobotBodyGenome body_genome,
-        List<EvolvableSentence> beliefs_to_clone = null,
-        List<EvolvableSentence> goals_to_clone = null,
-        PersonalityParameters? personality_to_clone = null
-        )
+    void InitializeForWheeledRobotBody(List<EvolvableSentence> beliefs_to_clone = null,
+        List<EvolvableSentence> goals_to_clone = null)
     {
 
+        if (SENSORY_TERM_SET == null)
+        {
+            SENSORY_TERM_SET = new StatementTerm[]
+            {
+                food_far,
+                food_near,
+                food_unseen,
+                animat_far,
+                animat_near,
+                animat_unseen,
+                energy_full,
+                self_mated,
+            };
 
-        if(SENSORY_TERM_SET == null)
+            MOTOR_TERM_SET = new StatementTerm[]
+            {
+                move_op,
+                rotate_op,
+                eat_op,
+                mate_op,
+                asexual_op,
+                fight_op
+            };
+        }
+    }
+
+    void InitializeForSoftVoxelRobotBody(List<EvolvableSentence> beliefs_to_clone = null,
+        List<EvolvableSentence> goals_to_clone = null)
+    {
+
+        if (SENSORY_TERM_SET == null)
         {
             SENSORY_TERM_SET = new StatementTerm[]
             {
@@ -113,25 +139,46 @@ public class NARSGenome : BrainGenome
             };
         }
 
-        this.body_genome = body_genome;
 
-        beliefs = new();
+    }
+
+    public NARSGenome(BodyGenome body_genome,
+        List<EvolvableSentence> beliefs_to_clone = null,
+        List<EvolvableSentence> goals_to_clone = null,
+        PersonalityParameters? personality_to_clone = null
+    )
+    {
+        this.body_genome = body_genome;
+        if (body_genome is WheeledRobotBodyGenome)
+        {
+            InitializeForWheeledRobotBody();
+        }else if (body_genome is SoftVoxelRobotBodyGenome)
+        {
+            InitializeForSoftVoxelRobotBody();
+        }
+        else
+        {
+            Debug.LogError("not supported");
+            return;
+        }
+
+            beliefs = new();
         if (beliefs_to_clone == null)
         {
-           
+
             int rnd_amt = UnityEngine.Random.Range(1, MAX_INITIAL_BELIEFS);
-            for(int i=0; i < rnd_amt; i++)
+            for (int i = 0; i < rnd_amt; i++)
             {
                 AddNewRandomBelief();
             }
         }
         else
         {
-            foreach(var belief in beliefs_to_clone)
+            foreach (var belief in beliefs_to_clone)
             {
                 AddNewBelief(belief);
             }
-         
+
         }
 
         if (goals_to_clone == null)
@@ -148,15 +195,13 @@ public class NARSGenome : BrainGenome
         if (personality_to_clone != null)
         {
             personality_parameters = (PersonalityParameters)personality_to_clone;
-           
+
         }
         else
         {
             personality_parameters.k = 1; // k
             personality_parameters.T = 0.51f; // T  
         }
-
-
 
     }
 

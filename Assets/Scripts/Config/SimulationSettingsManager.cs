@@ -60,7 +60,15 @@ public class SimulationSettings
 
         if(this.brainProcessingMethod == BrainProcessingMethod.NARSCPU)
         {
-            GlobalConfig.BODY_METHOD = BodyMethod.WheeledRobot;
+            if(bodyMethod == BodyMethod.ArticulatedRobot)
+            {
+                GlobalConfig.BODY_METHOD = BodyMethod.WheeledRobot;
+            }
+            else
+            {
+                GlobalConfig.BODY_METHOD = this.bodyMethod;
+            }
+            
         }
         else
         {

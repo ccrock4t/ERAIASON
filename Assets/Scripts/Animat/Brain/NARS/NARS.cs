@@ -858,13 +858,13 @@ public class NARS : Mind
         }
         else if (operation_statement is CompoundTerm)
         {
-            List<Term> subterms = ((CompoundTerm)operation_statement).subterms;
+            var subterms = ((CompoundTerm)operation_statement).subterms;
             // higher-order operation like A &/ B or A &| B
-            int atomic_ops_left_to_execute = subterms.Count;
+            int atomic_ops_left_to_execute = subterms.Length;
             this.current_operation_goal_sequence = operation_goal;
 
             int working_cycles = 0;
-            int num_of_ops = subterms.Count;
+            int num_of_ops = subterms.Length;
             Term subterm;
             for (int i = 0; i < num_of_ops; i++)
             {

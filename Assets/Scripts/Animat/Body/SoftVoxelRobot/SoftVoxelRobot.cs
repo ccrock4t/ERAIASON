@@ -114,8 +114,8 @@ public class SoftVoxelRobot : AnimatBody
                 RobotVoxel robot_voxel = cvx_voxel.Item3;
 
 
-                Neuron[] motor_neurons = new Neuron[SoftVoxelRobot.NUM_OF_MOTOR_NEURONS];
-                float[] motor_activations = new float[motor_neurons.Length];
+                Span<Neuron> motor_neurons = stackalloc Neuron[SoftVoxelRobot.NUM_OF_MOTOR_NEURONS];
+                Span<float> motor_activations = stackalloc float[motor_neurons.Length];
                 for (int i = 0; i < motor_neurons.Length; i++)
                 {
                     int motor_neuron_idx = nodeID_to_idx[NEATGenome.GetTupleIDFromInt3(coords, i, Neuron.NeuronRole.Motor)];
@@ -134,8 +134,6 @@ public class SoftVoxelRobot : AnimatBody
                     // cap motor activation in [-1,1]
                     motor_activations[i] = math.min(motor_activations[i], 1);
                     motor_activations[i] = math.max(motor_activations[i], -1);
-
-
                 }
 
 
@@ -163,12 +161,26 @@ public class SoftVoxelRobot : AnimatBody
             });
 
   
-            this.DoVoxelyzeTimestep();
+         
         }
         else if (animat.mind is NARS nar)
         {
-        }
+            // move
+            float move_activation = nar.GetGoalActivation(NARSGenome.move_op);
 
+            // rotate
+            float rotate_activation = nar.GetGoalActivation(NARSGenome.rotate_op);
+
+            var cvx_voxel = soft_voxel_object.motor_voxels[0];
+        
+            soft_voxel_object.SetVoxelTemperatureFromNeuronActivation(cvx_voxel.Item2, move_activation);
+
+            var cvx_voxel2 = soft_voxel_object.motor_voxels[1];
+
+            soft_voxel_object.SetVoxelTemperatureFromNeuronActivation(cvx_voxel2.Item2, rotate_activation);
+
+        }
+        this.DoVoxelyzeTimestep();
         /*        if (this.energy_remaining > ENERGY_IN_A_FOOD)
                 {
                     SoftVoxelRobotBodyGenome cloned_genome = ((SoftVoxelRobotBodyGenome)this.genome).Clone();

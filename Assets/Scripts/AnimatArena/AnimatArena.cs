@@ -740,7 +740,19 @@ public class AnimatArena : MonoBehaviour
 
         if(GlobalConfig.BRAIN_PROCESSING_METHOD == BrainProcessingMethod.NARSCPU)
         {
-            brain_genome = new NARSGenome((WheeledRobotBodyGenome)body_genome);
+            if(body_genome is WheeledRobotBodyGenome)
+            {
+                brain_genome = new NARSGenome((WheeledRobotBodyGenome)body_genome);
+            }else if(body_genome is SoftVoxelRobotBodyGenome)
+            {
+                brain_genome = new NARSGenome((SoftVoxelRobotBodyGenome)body_genome);
+            }
+            else
+            {
+                Debug.LogError("body type not supported");
+                return;
+            }
+          
         }
         else
         {
