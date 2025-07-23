@@ -442,6 +442,7 @@ public class AnimatArena : MonoBehaviour
         float rot_x = Mathf.Min(0.866f, Mathf.Cos(animat.body.GetRotation().eulerAngles.x));
         float rot_y = Mathf.Min(0.866f, Mathf.Cos(animat.body.GetRotation().eulerAngles.y));
         to_return *= Mathf.Sqrt(rot_x * rot_x + rot_y * rot_y);
+        to_return /= animat.GetDistanceTowardsClosestFood();
         return to_return;
 
         if (food_eaten == 0)

@@ -20,11 +20,24 @@ public class NEATGenome : BrainGenome
 
 
     //constant parameters
-    const float CHANCE_TO_MUTATE_HEBB = 0.8f;
-    const float CHANCE_TO_MUTATE_SIGMOID_ALPHA = 0.8f;
-    public const float CHANCE_TO_MUTATE_TIME_CONSTANT = 0.8f;
-    public const float CHANCE_TO_MUTATE_GAIN = 0.8f;
-    const float CHANCE_TO_MUTATE_ACTIVATION_FUNCTIONS = 0.02f;
+
+    //https://arxiv.org/pdf/1703.03334
+    //Assumes B = 1
+    public float genRandomRate()
+    {
+        float x = UnityEngine.Random.Range(0.0f, 1.0f);
+        //https://mathoverflow.net/questions/279575/the-inverse-of-the-digamma-function
+        x -= 0.57721f;
+        float x_min = (1.0f / Mathf.Log(1.0f + Mathf.Exp(-1.0f * x)));
+        float x_max = Mathf.Exp(x) + 0.5f;
+        return 0.5f * (x_min + x_max);
+
+    }
+    float CHANCE_TO_MUTATE_HEBB = 0.01f;
+    float CHANCE_TO_MUTATE_SIGMOID_ALPHA = 0.01f;
+    public float CHANCE_TO_MUTATE_TIME_CONSTANT = 0.01f;
+    public float CHANCE_TO_MUTATE_GAIN = 0.01f;
+    float CHANCE_TO_MUTATE_ACTIVATION_FUNCTIONS = 0.01f;
 
     // const float CHANCE_TO_MUTATE_EACH_NODE = 0.8f;
 
@@ -105,11 +118,18 @@ public class NEATGenome : BrainGenome
         this.nodeID_to_idx = new();
         this.connectionID_to_idx = new();
         this.enabled_connection_idxs = new RandomHashSet(true);
+        
+        CHANCE_TO_MUTATE_ACTIVATION_FUNCTIONS = genRandomRate();
+        CHANCE_TO_MUTATE_CONNECTION = genRandomRate();
+        CHANCE_TO_MUTATE_GAIN = genRandomRate();
+        CHANCE_TO_MUTATE_HEBB = genRandomRate();
+        CHANCE_TO_MUTATE_SIGMOID_ALPHA = genRandomRate();
+        CHANCE_TO_MUTATE_TIME_CONSTANT = genRandomRate();
     }
 
     public static NeuronID GetTupleIDFromInt3(int3 coords, int neuronID, Brain.Neuron.NeuronRole neuron_role)
     {
-        if(coords.x < 0 || coords.y < 0 || coords.z < 0)
+        if (coords.x < 0 || coords.y < 0 || coords.z < 0)
         {
             Debug.LogError("Dont use negative coordinates, they are reserved for other IDs");
         }
@@ -138,7 +158,7 @@ public class NEATGenome : BrainGenome
 
         // first, mutate synapse parameters
         rnd = UnityEngine.Random.Range(0f, 1f);
-      
+
         foreach (NEATConnection connection in this.connections)
         {
 
@@ -171,9 +191,9 @@ public class NEATGenome : BrainGenome
             }
         }
 
-        
 
-     
+
+
         if (GlobalConfig.USE_HEBBIAN)
         {
             rnd = UnityEngine.Random.Range(0f, 1f);
@@ -216,7 +236,7 @@ public class NEATGenome : BrainGenome
                     if (node.sigmoid_alpha2 <= 0) node.sigmoid_alpha = 0.00001f;
                 }
             }
-        
+
         }
 
 
@@ -273,7 +293,7 @@ public class NEATGenome : BrainGenome
 
     private void MutateCTNNParameters()
     {
-        if(GlobalConfig.NEURAL_NETWORK_METHOD == Brain.Neuron.NeuronClass.CTRNN)
+        if (GlobalConfig.NEURAL_NETWORK_METHOD == Brain.Neuron.NeuronClass.CTRNN)
         {
             if (EVOLVE_TIME_CONSTANT)
             {
@@ -332,7 +352,7 @@ public class NEATGenome : BrainGenome
 
         public static Vector2 GetPhaseOffsetRange()
         {
-            return new(0f,  math.PI2);
+            return new(0f, math.PI2);
         }
 
         public static Vector2 GetRfactorRange()
@@ -387,11 +407,11 @@ public class NEATGenome : BrainGenome
     public void MutateCPGParameters()
     {
         //  mutate CPG
-     
+
         foreach (NEATNode node in this.nodes)
         {
             var r_range = CPG.GetRfactorRange();
-   
+
             if (UnityEngine.Random.value < 0.9)
             {
                 node.r += GetPerturbationFromRange(r_range.x, r_range.y);
@@ -402,9 +422,9 @@ public class NEATGenome : BrainGenome
                 node.r = UnityEngine.Random.Range(r_range.x, r_range.y);
             }
 
-            
+
             var w_range = CPG.GetFrequencyRange();
-     
+
             if (UnityEngine.Random.value < 0.9)
             {
                 node.w += GetPerturbationFromRange(w_range.x, w_range.y);
@@ -440,8 +460,8 @@ public class NEATGenome : BrainGenome
             {
                 node.r_gain = UnityEngine.Random.Range(rGainRange.x, rGainRange.y);
             }
-                
-         
+
+
             // --- w_gain (frequency modulation)
             var wGainRange = CPG.GetWGainRange();
             if (UnityEngine.Random.value < 0.9f)
@@ -466,7 +486,7 @@ public class NEATGenome : BrainGenome
             {
                 node.p_gain = UnityEngine.Random.Range(pGainRange.x, pGainRange.y);
             }
-        
+
 
 
             // --- mu (Hopf convergence rate)
@@ -800,7 +820,7 @@ public class NEATGenome : BrainGenome
         }
         for (int i = 0; i < genome1.connections.Count; i++)
         {
-       
+
             var connection = genome1.connections[i];
             if (genome2.connectionID_to_idx.ContainsKey(connection.ID))
             {
