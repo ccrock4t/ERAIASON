@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 using static DataToolSocketClient;
 
@@ -81,6 +82,46 @@ public class DataAnalyzer : MonoBehaviour
         RecentPopulation
     }
 
+    // Add this to a class field or tracking system:
+    private static int populationSum = 0;
+    private static int populationSamples = 0;
+    private static int birthsThisWindow = 0;
+
+    // Call this *every frame* or at frequent intervals to track averages
+    public static void TrackPopulationSnapshot()
+    {
+        int currentPopulation = AnimatArena.GetInstance().current_generation.Count;
+        populationSum += currentPopulation;
+        populationSamples++;
+    }
+
+    // Call this every time a new animat is born
+    public static void RegisterBirth()
+    {
+        birthsThisWindow++;
+    }
+
+    // Call this every 15 seconds
+    public static float ComputeStandardizedBirthRate()
+    {
+        // Prevent divide by zero
+        if (populationSamples == 0) return 0;
+
+        float averagePopulation = (float)populationSum / populationSamples;
+        float intervalSeconds = 15f;
+
+        float standardizedBirthRate = (birthsThisWindow / averagePopulation) * (1000f / intervalSeconds);
+
+        // Store or print your result
+
+        // Reset for next window
+        populationSum = 0;
+        populationSamples = 0;
+        birthsThisWindow = 0;
+
+        return standardizedBirthRate;
+    }
+
     private void SendDataToGUIAndWriteToFile()
     {
         Debug.Log("DATATOOL: Preparing data");
@@ -92,30 +133,18 @@ public class DataAnalyzer : MonoBehaviour
         ReproductivePoolDatapoint[] table_datapoints = new ReproductivePoolDatapoint[3];
 
 
-
-
-
-
         // calculate world data
         DataToolSocketClient.WorldDatapoint world_data = new();
 
         var arena = AnimatArena.GetInstance();
-        int born_count = 0;
-        for (int i = 0; i < arena.current_generation.Count; i++)
-        {
-            var animat = arena.current_generation[i];
-            if (animat.was_born)
-            {
-                born_count++;
-            }
-        }
-        world_data.born_to_created_ratio = (float)born_count / arena.MINIMUM_POPULATION_QUANTITY;
+
+        world_data.born_to_created_ratio = ComputeStandardizedBirthRate();
 
         // now calculate Table data
 
-        var elite_fitness_table = AnimatArena.GetInstance().objectiveFitnessTable.Clone();
-        var elite_novelty_table = AnimatArena.GetInstance().noveltyTable.Clone();
-        var continuous_fitness_table = AnimatArena.GetInstance().recentPopulationTable.Clone();
+        var elite_fitness_table = arena.objectiveFitnessTable.Clone();
+        var elite_novelty_table = arena.noveltyTable.Clone();
+        var continuous_fitness_table = arena.recentPopulationTable.Clone();
 
         if (data_update_task != null && !data_update_task.IsCompleted)
         {

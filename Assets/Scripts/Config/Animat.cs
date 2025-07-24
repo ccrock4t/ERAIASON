@@ -470,6 +470,7 @@ public class Animat : MonoBehaviour
         position.y = 0;
         Animat offspring = AnimatArena.GetInstance().SpawnGenomeInPosition(offspring_genome, position);
         offspring.was_born = true;
+        DataAnalyzer.RegisterBirth();
         this.body.energy -= AnimatBody.OFFSPRING_COST;
         this.body.times_reproduced++;
         this.body.times_reproduced_asexually++;
@@ -507,7 +508,7 @@ public class Animat : MonoBehaviour
             offspring = AnimatArena.GetInstance().SpawnGenomeInPosition(offspring2, position);
         }
         offspring.was_born = true;
-
+        DataAnalyzer.RegisterBirth();
 
 
         mate1.body.energy -= AnimatBody.OFFSPRING_COST / 2;

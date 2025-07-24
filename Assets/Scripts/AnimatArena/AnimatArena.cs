@@ -343,6 +343,7 @@ public class AnimatArena : MonoBehaviour
 
     public void FixedUpdate()
     {
+        DataAnalyzer.TrackPopulationSnapshot();
         if (this.current_generation.Count < MINIMUM_POPULATION_QUANTITY)
         {
             //Parallel.For(0, MINIMUM_POPULATION_QUANTITY - this.current_generation.Count, i =>
