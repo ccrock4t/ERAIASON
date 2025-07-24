@@ -149,7 +149,7 @@ public class GlobalConfig : MonoBehaviour
 
 
 
-    public const bool RECORD_DATA = false;
+    public const bool RECORD_DATA = true;
 
     // ============
 

@@ -678,6 +678,10 @@ public class Animat : MonoBehaviour
 
         //Vector2 D = this.GetCenterOfMass().xz - this.birthplace.xz;
     }
+    public Vector2 GetVectorFromBirthplace()
+    {
+        return (Vector2) this.GetCenterOfMass().xz + (Vector2) this.birthplace.xz;
+    }
     public float GetDistanceTowardsClosestFood()
     {
         float distance = Vector3.Distance(closest_food.transform.position, this.GetCenterOfMass());
@@ -686,6 +690,11 @@ public class Animat : MonoBehaviour
         return difference;
 
         //Vector2 D = this.GetCenterOfMass().xz - this.birthplace.xz;
+    }
+
+    public Vector2 GetVectorTowardsClosestFood()
+    {
+        return (Vector2) closest_food.transform.position + (Vector2) this.GetCenterOfMass().xz;
     }
 
     public float GetDisplacementAlongBirthplaceForwardVector()

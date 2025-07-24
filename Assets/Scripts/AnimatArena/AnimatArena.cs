@@ -52,7 +52,7 @@ public class AnimatArena : MonoBehaviour
     // constants
 
     [System.NonSerialized]
-    public int MINIMUM_POPULATION_QUANTITY = 10;
+    public int MINIMUM_POPULATION_QUANTITY = 50;
     public const int MAXIMUM_POPULATION_QUANTITY = 100;
 
     const int FOOD_QUANTITY = 150;
@@ -428,66 +428,11 @@ public class AnimatArena : MonoBehaviour
         float food_eaten = animat.body.number_of_food_eaten;
         float times_reproduced = animat.body.times_reproduced;
         float ratio_of_life_spent_looking_at_food = animat.body.frames_food_detected / animat.body.total_frames_alive; //[0,1]
-        //float positive_distance_from_food = GetDistanceFromFoodScore(animat);
-        //return math.pow(positive_distance_from_food, 3);
-        /*        float score = 1;
 
-                score *= (1 + food_eaten / AnimatBody.ENERGY_IN_A_FOOD);
-                // score *= (1 + animat.body.times_reproduced);
-                return score;*/
+        float to_return = displacement * Vector2.Dot(animat.GetVectorFromBirthplace(), animat.GetVectorTowardsClosestFood());
+        to_return *= food_eaten / AnimatBody.ENERGY_IN_A_FOOD * (1 + times_reproduced);
+        return to_return;
 
-
-
-
-        //if (GlobalConfig.BODY_METHOD == BodyMethod.ArticulatedRobot)
-        //{
-        //    distance /= 100f;
-        //}
-        // return (distance/10f) * (1+food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced); ;//
-
-        float distance_score = math.min(1.0f, displacement / 20);
-
-        distance_score *= ratio_of_life_spent_looking_at_food;
-
-
-        //return times_reproduced
-
-
-        return distance_score  + ((food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced));
-
-
-
-        if (food_eaten == 0)
-        {
-            return distance_score;
-
-        }
-        else if (food_eaten > 0)
-        {
-            //float score;
-            //if (times_reproduced == 0)
-            //{
-            //    score = (food_eaten / AnimatBody.ENERGY_IN_A_FOOD);//  * ratio_of_life_spent_looking_at_food;
-            //}
-            //else
-            //{
-            //    score = (food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1+times_reproduced);
-            //}
-
-
-            return (food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced);
-        }
-        else
-        {
-            Debug.LogError("negative food");
-            return 0;
-        }
-        /*            float score = 1;
-                     score *= math.min(1, distance / 10);
-                     //score *= (animat.body.food_approach_score);
-                     score += (food_eaten / AnimatBody.ENERGY_IN_A_FOOD);
-                     return score;*/
-        //return novelty * positive_distance_from_food;
     }
 
     public void KillAnimat(int i, bool ignore_for_reproduction)
