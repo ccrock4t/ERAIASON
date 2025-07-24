@@ -53,8 +53,8 @@ public class DataAnalyzer : MonoBehaviour
 
     void FixedUpdate()
     {
-
-        if(write_data_timer < WRITE_DATA_TO_FILE_TIMER)
+        if (!GlobalConfig.RECORD_DATA_TO_WEB && !GlobalConfig.RECORD_DATA_TO_DISK) return;
+        if (write_data_timer < WRITE_DATA_TO_FILE_TIMER)
         {
             write_data_timer++;
         }
@@ -354,7 +354,7 @@ public class DataAnalyzer : MonoBehaviour
                         float hamming_distance = 0;
                         if (genome1 != genome2)
                         {
-                            hamming_distance = genome1.CalculateHammingDistance(genome2);
+                            hamming_distance = 0;// genome1.CalculateHammingDistance(genome2);
                         }
                         avg_hamming_distance += hamming_distance;
                         max_hamming_distance = math.max(max_hamming_distance, hamming_distance);
@@ -523,7 +523,7 @@ public class DataAnalyzer : MonoBehaviour
                 {
                     continuous_fitness_table_data = scores;
                 }
-            }//);
+            }
 
 
             //====
@@ -613,8 +613,9 @@ public class DataAnalyzer : MonoBehaviour
         if (animat.mind is Brain brain)
         {
             num_neurons = brain.CountNumberOfHiddenNeurons();
-            num_synapses = brain.GetNumberOfSynapses();
-        }else if(animat.mind is NARS nar)
+            num_synapses = ((NEATGenome)animat.genome.brain_genome).enabled_connection_idxs.Count;
+        }
+        else if(animat.mind is NARS nar)
         {
             NARSGenome nars_genome = ((NARSGenome)animat.genome.brain_genome);
             num_beliefs_in_genome = nars_genome.beliefs.Count;

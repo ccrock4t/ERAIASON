@@ -257,6 +257,8 @@ public abstract class Brain : Mind
         public double osc_inject_gain;
         public double max_input;
         public double K;
+        internal double theta;
+        internal double phase_offset;
 
         public static Neuron GetNewNeuron()
         {

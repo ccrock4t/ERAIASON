@@ -418,12 +418,14 @@ public class VisionSensor
                 sensor_neuron.activation = obstacle_activation;
                 brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
 
-           
-                sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFrom2Ints(InitialNEATGenomes.RAYCAST_VISION_SENSOR_INTERACTABLE_VOXEL, r, Neuron.NeuronRole.Sensor)];
-                sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
-                if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
-                sensor_neuron.activation = pickable_voxel_activation;
-                brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
+                if (GlobalConfig.WORLD_TYPE == GlobalConfig.WorldType.VoxelWorld)
+                {
+                    sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFrom2Ints(InitialNEATGenomes.RAYCAST_VISION_SENSOR_INTERACTABLE_VOXEL, r, Neuron.NeuronRole.Sensor)];
+                    sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
+                    if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
+                    sensor_neuron.activation = pickable_voxel_activation;
+                    brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
+                }
                 
             }
             else
@@ -646,41 +648,55 @@ public class VisionSensor
         ray_preview.UpdateRays(ray_preview_casts);
     }
 
-    public static void SetupRaycasts(Vector3 up,
-        Vector3 raycast_direction, 
+    public static void SetupRaycasts(
+        Vector3 up,
+        Vector3 raycast_direction,
         Vector3 raycast_position,
         QueryParameters query_params,
         NativeArray<RaycastCommand> raycast_commands)
     {
         int idx = 0;
-        // create raycast command
-        float degrees_offset = 2;
 
-        float origin_offset = 0.1f;
+        float horizontalFOV = 5f; // total width of view in degrees
+        float verticalFOV = 5f;   // total height of view in degrees
 
-   
-        Vector3 right = Vector3.Cross(raycast_direction, up).normalized;
+        int xCount = eye_dimensions.x;
+        int yCount = eye_dimensions.y;
 
-        for (int x = -(eye_dimensions.x / 2); x <= (eye_dimensions.x / 2); x++)
+        // Build local basis
+        Vector3 forward = raycast_direction.normalized;
+        Vector3 right = Vector3.Cross(up.normalized, forward).normalized;
+        Vector3 adjusted_up = Vector3.Cross(forward, right).normalized;
+
+        for (int y = 0; y < yCount; y++)
         {
-            for (int y = -(eye_dimensions.y / 2); y <= (eye_dimensions.y / 2); y++)
+            float yPercent = (y / (float)(yCount - 1)) - 0.5f; // from -0.5 to 0.5
+            float verticalAngle = yPercent * verticalFOV;
+
+            for (int x = 0; x < xCount; x++)
             {
-                Vector3 rotation_axis = new Vector3(0.5f * x, 0.5f * y, 0);
-                var rotated_axis = Vector3.Cross(raycast_direction.normalized, Quaternion.identity * rotation_axis);
-                var rotated_direction = Quaternion.AngleAxis(degrees_offset, rotated_axis) * raycast_direction.normalized;
+                float xPercent = (x / (float)(xCount - 1)) - 0.5f; // from -0.5 to 0.5
+                float horizontalAngle = xPercent * horizontalFOV;
+
+                // First rotate around local X (right), then Y (up)
+                Quaternion rot = Quaternion.AngleAxis(-verticalAngle, right) *
+                                 Quaternion.AngleAxis(horizontalAngle, adjusted_up);
+
+                Vector3 rotated_direction = rot * forward;
+
+                // Slightly offset origin for better spacing (optional)
                 Vector3 origin = raycast_position
-                    + y * origin_offset * up
-                    + x * origin_offset * right;
-                raycast_commands[idx] = new RaycastCommand(origin, rotated_direction, query_params, MAX_VISION_DISTANCE);
-                idx++;
+                    + xPercent * 0.1f * right
+                    + yPercent * 0.1f * adjusted_up;
+
+                raycast_commands[idx++] = new RaycastCommand(origin, rotated_direction, query_params, MAX_VISION_DISTANCE);
             }
         }
 
-        if(idx != raycast_commands.Length)
+        if (idx != raycast_commands.Length)
         {
-            Debug.LogError("error not enough raycasts");
+            Debug.LogError("Mismatch in raycast count");
         }
-
     }
 
     Vector3Int GetNextVoxel(Vector3 ray_position, Vector3 ray_direction)

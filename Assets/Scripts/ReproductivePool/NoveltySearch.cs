@@ -50,25 +50,17 @@ public abstract class NoveltySearch
         {
             Color gpu_datapoint = new();
             gpu_datapoint.r = x;// a.body.food_was_seen;
-            gpu_datapoint.g = food_eaten_since_last_datapoint;
+            // gpu_datapoint.g = food_eaten_since_last_datapoint;
+            gpu_datapoint.g = a.body.food_was_seen;
             gpu_datapoint.b = z;
 
-            //gpu_datapoint.g = a.body.food_was_seen;
+          
             a.behavior_characterization_list_GPU.Add(gpu_datapoint);
         }
 
         a.body.food_eaten_since_last_novelty_datapoint = 0;
 
         float delta = 0;
-        if (a.closest_food != null)
-        {
-            delta = a.GetDistanceTowardsClosestFood();
-            a.last_datapoint_distance_to_food = Vector3.Distance(current_position, a.closest_food.transform.position);
-        }
-        else
-        {
-            (a.closest_food, a.last_datapoint_distance_to_food) = AnimatArena.GetInstance().GetClosestFoodAndDistance(current_position);
-        }
 
         a.got_closer_to_food += delta;
     }

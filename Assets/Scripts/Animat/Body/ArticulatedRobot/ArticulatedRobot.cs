@@ -21,14 +21,14 @@ public class ArticulatedRobot : AnimatBody
 
 
     // === drive mode parameters ===
-    // F = stiffness * (currentPosition ï¿½ target) ï¿½ damping * (currentVelocity ï¿½ targetVelocity)
+    // F = stiffness * (currentPosition — target) — damping * (currentVelocity — targetVelocity)
 
     private const ArticulationDriveType ARTICULATION_DRIVING_METHOD = ArticulationDriveType.Target;
     const bool USE_FORCE_MODE = false;
 
     // target modes
     public const float TARGET_MODE_FORCE_LIMIT = 750;
-    public const float TARGET_MODE_STIFFNESS = 1000f;
+    public const float TARGET_MODE_STIFFNESS = 1500f;
     public const float TARGET_MODE_DAMPING = 100f;
     public const float TARGET_MODE_MAX_JOINT_VELOCITY = 10f; // rad/s
 
@@ -46,6 +46,7 @@ public class ArticulatedRobot : AnimatBody
 
 
     GameObject root_gameobject;
+    GameObject root_segment;
     static GameObject articulated_body_segment_prefab;
     ArticulatedRobotBodyGenome body_genome;
 
@@ -69,7 +70,7 @@ public class ArticulatedRobot : AnimatBody
         this.body_genome = body_genome;
         this.CreateGenomeAndInstantiateBody(body_genome);
         this.root_ab = this.root_gameobject.GetComponent<ArticulationBody>();
-   
+        this.root_segment = this.body_segments[0].transform.Find("Segment").gameObject;
 
         // ignore self collisions
         Collider[] colliders = GetComponentsInChildren<Collider>();
@@ -88,7 +89,7 @@ public class ArticulatedRobot : AnimatBody
 
     public GameObject GetVisionSensorSegment()
     {
-        return root_gameobject;
+        return root_segment;
     }
 
     public override bool Crashed()
@@ -115,8 +116,7 @@ public class ArticulatedRobot : AnimatBody
 
     public override Quaternion GetRotation()
     {
-        //throw new System.NotImplementedException();
-        return GetVisionSensorSegment().transform.rotation;//TODO: CHANGE THIS BACK TO NOT-IMPLEMENTED
+        throw new System.NotImplementedException();
     }
 
     public override void MotorEffect(Animat animat)
@@ -144,10 +144,7 @@ public class ArticulatedRobot : AnimatBody
                     Neuron motor_neuron = brain.GetNeuronCurrentState(brain_idx);
                     double motor_activation = motor_neuron.activation;
 
-                    //TODO: EXPERIMENTAL
-                    //Vector2 currOrientation = (Vector2) (animat.body.GetRotation() * transform.right);
-                    //motor_activation *= Vector2.Dot(animat.GetVectorTowardsClosestFood(), currOrientation);
-                    //Debug.LogWarning("hi");
+
                     if (!double.IsFinite(motor_activation))
                     {
                         Debug.LogWarning("Activation " + motor_activation + " is not finite. Setting to zero. ");

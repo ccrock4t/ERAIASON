@@ -111,7 +111,7 @@ public class Animat : MonoBehaviour
         else if (GlobalConfig.BRAIN_GENOME_METHOD == BrainGenomeMethod.NEAT)
         {
             num_of_neurons = ((NEATGenome)this.genome.brain_genome).nodes.Count;
-            num_of_synapses = ((NEATGenome)this.genome.brain_genome).connections.Count;
+            num_of_synapses = ((NEATGenome)this.genome.brain_genome).enabled_connection_idxs.Count;
         }
         else
         {
@@ -162,8 +162,14 @@ public class Animat : MonoBehaviour
 
                 // connections. First group them together
                 Dictionary<NeuronID, List<NEATConnection>> nodeID_to_connections = new();
-                foreach (NEATConnection connection in brain_genome.connections)
+                foreach (int connection_idx in brain_genome.enabled_connection_idxs)
                 {
+                    var connection = brain_genome.connections[connection_idx];
+                    if (!connection.enabled)
+                    {
+                        UnityEngine.Debug.LogError("Error: disabled connection is in enabled connections list");
+                        return;
+                    }
                     if (!nodeID_to_connections.ContainsKey(connection.toID))
                     {
                         nodeID_to_connections[connection.toID] = new();
@@ -180,7 +186,12 @@ public class Animat : MonoBehaviour
                     nodeID_to_synapse_startIdx[nodeID] = i;
                     foreach (NEATConnection connection in node_connections.Value)
                     {
-                        Synapse synapse = Synapse.GetDefault();
+						if (!connection.enabled)
+						{
+							UnityEngine.Debug.LogError("Error: disabled connection is in enabled connections list");
+							return;
+						}
+						Synapse synapse = Synapse.GetDefault();
                         synapse.from_neuron_idx = nodeID_to_idx[connection.fromID];
                         synapse.to_neuron_idx = nodeID_to_idx[connection.toID];
 
@@ -225,9 +236,9 @@ public class Animat : MonoBehaviour
                     neuron.sigmoid_alpha = node.sigmoid_alpha;
                     neuron.r = node.r;
                     neuron.w = node.w;
-                    neuron.p = node.p;
+                    neuron.theta = node.theta;
+                    neuron.phase_offset = node.phase_offset;
                     neuron.r_gain = node.r_gain;
-                    neuron.w_gain = node.w_gain;
                     neuron.p_gain = node.p_gain;
                     neuron.mu = node.mu;
                     neuron.osc_inject_gain = node.osc_inject_gain;
@@ -415,7 +426,9 @@ public class Animat : MonoBehaviour
             this.birthplace = GetCenterOfMass();
             this.birthplace_forward_vector = Vector3.forward;
             float min_dist = float.MaxValue;
-            (closest_food, last_datapoint_distance_to_food) = AnimatArena.GetInstance().GetClosestFoodAndDistance(this.GetCenterOfMass());
+            //(closest_food, last_datapoint_distance_to_food) = AnimatArena.GetInstance().GetClosestFoodAndDistance(this.GetCenterOfMass());
+           // this.original_distance_to_closest_food = last_datapoint_distance_to_food;
+            //this.closest_food_gameobject = closest_food;
             this.birthed = true;
         }
 
@@ -485,7 +498,7 @@ public class Animat : MonoBehaviour
         Vector3 position = (mate1.GetCenterOfMass() + mate2.GetCenterOfMass()) / 2;
         position.y = 0;
         Animat offspring;
-        if (UnityEngine.Random.Range(0, 2) == 0)
+        if (NEATConnection.ThreadSafeSystemRandomRange(0, 2) == 0)
         {
             offspring = AnimatArena.GetInstance().SpawnGenomeInPosition(offspring1, position);
         }
@@ -704,6 +717,17 @@ public class Animat : MonoBehaviour
 
         //Vector2 D = this.GetCenterOfMass().xz - this.birthplace.xz;
     }
+
+    float original_distance_to_closest_food;
+    public GameObject closest_food_gameobject;
+    public float CalculateCloserToFoodFitness()
+    {
+        float currentDistance = Vector3.Distance(closest_food.transform.position, this.GetCenterOfMass());
+        float fitness = original_distance_to_closest_food - currentDistance; // Positive if it got closer
+        return math.max(0,fitness)/ original_distance_to_closest_food;
+    }
+
+
     public float GetDistanceTowardsClosestFood()
     {
         float distance = Vector3.Distance(closest_food.transform.position, this.GetCenterOfMass());

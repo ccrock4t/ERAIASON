@@ -10,10 +10,11 @@ public class InitialNEATGenomes : MonoBehaviour
     const bool ADD_RANDOM_STARTING_CONNECTIONS = true;
     const bool ADD_RANDOM_STARTING_NODES = true;
     const bool FULLY_CONNECT_WITH_HIDDEN_LAYER = false;
-    const int NUM_OF_RANDOM_STARTING_CONNECTIONS = 5;
-    const int NUM_OF_RANDOM_STARTING_NODES = 2;
+    const int NUM_OF_RANDOM_STARTING_CONNECTIONS = 10;
+    const int NUM_OF_RANDOM_STARTING_NODES = 5;
+    const int NUM_OF_UNIVERSAL_HIDDEN_NEURONS = 40;
     const bool DROPOUT = true;
-    const float DROPOUT_RATE = 0.5f;
+    const float DROPOUT_RATE = 0.8f;
 
     public const Neuron.ActivationFunction neuron_activation_function = ActivationFunction.Sigmoid;
 
@@ -100,11 +101,12 @@ public class InitialNEATGenomes : MonoBehaviour
 
         AddUniversalSensorNeurons(genome);
         AddUniversalMotorNeurons(genome);
-        ConnectVisionSensorsToMotors(genome);
+        //ConnectVisionSensorsToMotors(genome);
+        FullyConnectNoHiddenLayer(genome);
 
         genome.sensorymotor_end_idx = genome.nodes.Count;
 
-       // AddUniversalHiddenNeurons(genome);
+        //AddUniversalHiddenNeurons(genome);
 
 
 
@@ -130,7 +132,7 @@ public class InitialNEATGenomes : MonoBehaviour
                     fromID: sensor_node.ID,
                      toID: hidden_node.ID,
                     ID: ID);
-                    if (UnityEngine.Random.Range(0, 4) != 0) sr_connection.enabled = false;
+                    if (NEATConnection.ThreadSafeSystemRandomRange(0, 4) != 0) sr_connection.enabled = false;
                     genome.AddConnection(sr_connection);
                 }
             }
@@ -144,7 +146,7 @@ public class InitialNEATGenomes : MonoBehaviour
                     fromID: hidden_node.ID,
                     toID: motor_node.ID,
                     ID: ID);
-                    if (UnityEngine.Random.Range(0, 4) != 0) sr_connection.enabled = false;
+                    if (NEATConnection.ThreadSafeSystemRandomRange(0, 4) != 0) sr_connection.enabled = false;
                     genome.AddConnection(sr_connection);
                     
                 }
@@ -156,7 +158,7 @@ public class InitialNEATGenomes : MonoBehaviour
 
         if (ADD_RANDOM_STARTING_CONNECTIONS)
         {
-            int num_connections = UnityEngine.Random.Range(0, NUM_OF_RANDOM_STARTING_CONNECTIONS);
+            int num_connections = NEATConnection.ThreadSafeSystemRandomRange(0, NUM_OF_RANDOM_STARTING_CONNECTIONS);
             for (int j = 0; j < num_connections; j++)
             {
 
@@ -167,7 +169,7 @@ public class InitialNEATGenomes : MonoBehaviour
 
         if (ADD_RANDOM_STARTING_NODES)
         {
-            int num_nodes = UnityEngine.Random.Range(0, NUM_OF_RANDOM_STARTING_NODES);
+            int num_nodes = NEATConnection.ThreadSafeSystemRandomRange(0, NUM_OF_RANDOM_STARTING_NODES);
             for (int j = 0; j < num_nodes; j++)
             {
                 NEATNode node = genome.AddNewHiddenNodeAtRandomConnection();
@@ -239,21 +241,21 @@ public class InitialNEATGenomes : MonoBehaviour
                 NEATNode motor_node = new(ID: NEATGenome.GetTupleIDFrom2Ints(i, k, Brain.Neuron.NeuronRole.Motor), neuron_activation_function);
                 genome.AddNode(motor_node);
 
-                ////add connections and hidden layer
-                for (int j = 0; j < ArticulatedRobot.NUM_OF_SENSOR_NEURONS_PER_SEGMENT; j++)
-                {
-                    var sense_node_ID = NEATGenome.GetTupleIDFrom2Ints(i, j, Brain.Neuron.NeuronRole.Sensor);
+                //////add connections and hidden layer
+                //for (int j = 0; j < ArticulatedRobot.NUM_OF_SENSOR_NEURONS_PER_SEGMENT; j++)
+                //{
+                //    var sense_node_ID = NEATGenome.GetTupleIDFrom2Ints(i, j, Brain.Neuron.NeuronRole.Sensor);
 
-                    var sense_node = genome.GetNode(sense_node_ID);
+                //    var sense_node = genome.GetNode(sense_node_ID);
 
 
-                    NEATConnection sr_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
-                       fromID: sense_node_ID,
-                       toID: motor_node.ID,
-                       ID: genome.connections.Count);
-                    if (DROPOUT && UnityEngine.Random.value < DROPOUT_RATE) sr_connection.enabled = false;
-                    genome.AddConnection(sr_connection);
-                }
+                //    NEATConnection sr_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
+                //       fromID: sense_node_ID,
+                //       toID: motor_node.ID,
+                //       ID: genome.connections.Count);
+                //    if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) sr_connection.enabled = false;
+                //    genome.AddConnection(sr_connection);
+                //}
 
             }
         }
@@ -321,6 +323,23 @@ public class InitialNEATGenomes : MonoBehaviour
         return genome;
     }
 
+    public static void FullyConnectNoHiddenLayer(NEATGenome genome)
+    {
+        foreach (var sensor_node in genome.sensor_nodes)
+        {
+            foreach (var motor_node in genome.motor_nodes)
+            {
+                NEATConnection sr_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
+                fromID: sensor_node.ID,
+                 toID: motor_node.ID,
+                ID: genome.connections.Count);
+                if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) sr_connection.enabled = false;
+                genome.AddConnection(sr_connection);
+            }
+        }
+
+    }
+
     public static void ConnectVisionSensorsToMotors(NEATGenome genome)
     {
         // connect all the vision sensory neurons for a given raycast to a hidden neuron
@@ -336,7 +355,7 @@ public class InitialNEATGenomes : MonoBehaviour
                     fromID: vision_neuron.ID,
                     toID: motor_node.ID,
                     ID: genome.connections.Count);
-                    if (DROPOUT && UnityEngine.Random.value < DROPOUT_RATE) vision_to_motor_connection.enabled = false;
+                    if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) vision_to_motor_connection.enabled = false;
                     genome.AddConnection(vision_to_motor_connection);
                 }
             }
@@ -349,70 +368,40 @@ public class InitialNEATGenomes : MonoBehaviour
 
     public static void AddUniversalHiddenNeurons(NEATGenome genome)
     {
-        // get all vision sensors and connect them to hidden neurons
-        NEATNode node;
 
 
-        // connect all the vision sensory neurons for a given raycast to a hidden neuron
-        for (int i = 0; i < VisionSensor.NUM_OF_RAYCASTS; i++)
+        for (int i = 0; i < NUM_OF_UNIVERSAL_HIDDEN_NEURONS; i++)
         {
             NeuronID hidden_node_ID = NEATGenome.GetTupleIDFromInt(genome.nodes.Count, NeuronRole.Hidden);
             NEATNode hidden_node = genome.AddDisconnectedHiddenNode(hidden_node_ID);
-            float4 average_coords = float4.zero;
-            foreach (int neuronID in vision_neurons_IDs)
-            {
-                var vision_neuron_ID = NEATGenome.GetTupleIDFrom2Ints(neuronID, i, Brain.Neuron.NeuronRole.Sensor);
-                var vision_neuron = genome.GetNode(vision_neuron_ID);
-                NEATConnection new_connection = new(weight: NEATConnection.GetRandomInitialWeight(), fromID: vision_neuron_ID, toID: hidden_node_ID, ID: genome.connections.Count);
-                genome.AddConnection(new_connection);
-                average_coords += vision_neuron.brainviewer_coords;
-            }
-            average_coords /= vision_neurons_IDs.Length;
-            hidden_node.brainviewer_coords = average_coords;
-        }
 
-        // connect all the vision sensory neurons for a given type of raycast to a hidden neuron
-        foreach (int neuronID in vision_neurons_IDs)
-        {
-            NeuronID hidden_node_ID = NEATGenome.GetTupleIDFromInt(genome.nodes.Count, NeuronRole.Hidden);
-            NEATNode hidden_node = genome.AddDisconnectedHiddenNode(hidden_node_ID);
-            float4 average_coords = float4.zero;
-            for (int i = 0; i < VisionSensor.NUM_OF_RAYCASTS; i++)
-            {
-                var vision_neuron_ID = NEATGenome.GetTupleIDFrom2Ints(neuronID, i, Brain.Neuron.NeuronRole.Sensor);
-                var vision_neuron = genome.GetNode(vision_neuron_ID);
-                NEATConnection new_connection = new(weight: NEATConnection.GetRandomInitialWeight(), fromID: vision_neuron_ID, toID: hidden_node_ID, ID: genome.connections.Count);
-                genome.AddConnection(new_connection);
-                average_coords += vision_neuron.brainviewer_coords;
-            }
-            average_coords /= VisionSensor.NUM_OF_RAYCASTS;
-            hidden_node.brainviewer_coords = average_coords;
-        }
-
-
-        List<NEATNode> misc_hidden_nodes = new();
-        for (int i = 0; i < misc_sensory_neuron_IDs.Length; i++)
-        {
-            NeuronID hidden_node_ID = NEATGenome.GetTupleIDFromInt(genome.nodes.Count, NeuronRole.Hidden);
-            NEATNode hidden_node = genome.AddDisconnectedHiddenNode(hidden_node_ID);
-            misc_hidden_nodes.Add(hidden_node);
             hidden_node.brainviewer_coords = float4.zero;
-        }
-
-        foreach (int neuronID in misc_sensory_neuron_IDs)
-        {
-            var misc_sensory_ID = NEATGenome.GetTupleIDFromInt(neuronID, Brain.Neuron.NeuronRole.Sensor);
-            var misc_sensory_node = genome.GetNode(misc_sensory_ID);
-            float4 average_coords = float4.zero;
-            float i = 0;
-            foreach(NEATNode hidden_node in misc_hidden_nodes) 
+            foreach (var sensor_node in genome.sensor_nodes)
             {
-                NEATConnection new_connection = new(weight: NEATConnection.GetRandomInitialWeight(), fromID: misc_sensory_ID, toID: hidden_node.ID, ID: genome.connections.Count);
+                NEATConnection new_connection = new(
+                    weight: NEATConnection.GetRandomInitialWeight(),
+                    fromID: sensor_node.ID,
+                    toID: hidden_node.ID,
+                    ID: genome.connections.Count
+                );
+                if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) new_connection.enabled = false;
                 genome.AddConnection(new_connection);
-                hidden_node.brainviewer_coords += (misc_sensory_node.brainviewer_coords+ new float4(0f,0f,0f,i)) / misc_sensory_neuron_IDs.Length;
-                i++;
+            }
+
+            foreach (var motor_node in genome.motor_nodes)
+            {
+                NEATConnection new_connection = new(
+                    weight: NEATConnection.GetRandomInitialWeight(),
+                    fromID: hidden_node.ID,
+                    toID: motor_node.ID,
+                    ID: genome.connections.Count
+                );
+                if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) new_connection.enabled = false;
+                genome.AddConnection(new_connection);
             }
         }
+
+  
     }
 
     // add universal sensor neurons (for all robots)
@@ -428,14 +417,18 @@ public class InitialNEATGenomes : MonoBehaviour
                 node = new(ID, neuron_activation_function);
                 genome.AddNode(node);
             }
-         
-            // for voxel world, add motors
-            foreach (int neuronID in vision_neurons_IDs_voxel_world)
+
+            if (GlobalConfig.RUN_WORLD_AUTOMATA)
             {
-                var ID = NEATGenome.GetTupleIDFrom2Ints(neuronID, i, Brain.Neuron.NeuronRole.Sensor);
-                node = new(ID, neuron_activation_function);
-                genome.AddNode(node);
+                // for voxel world, add motors
+                foreach (int neuronID in vision_neurons_IDs_voxel_world)
+                {
+                    var ID = NEATGenome.GetTupleIDFrom2Ints(neuronID, i, Brain.Neuron.NeuronRole.Sensor);
+                    node = new(ID, neuron_activation_function);
+                    genome.AddNode(node);
+                }
             }
+
             
         }
 
@@ -446,12 +439,15 @@ public class InitialNEATGenomes : MonoBehaviour
             genome.AddNode(node);
         }
 
-        // for voxel world, add motors
-        foreach (int neuronID in misc_sensory_neuron_IDs_voxel_world)
+        if (GlobalConfig.RUN_WORLD_AUTOMATA)
         {
-            var ID = NEATGenome.GetTupleIDFromInt(neuronID, Brain.Neuron.NeuronRole.Sensor);
-            node = new(ID, neuron_activation_function);
-            genome.AddNode(node);
+            // for voxel world
+            foreach (int neuronID in misc_sensory_neuron_IDs_voxel_world)
+            {
+                var ID = NEATGenome.GetTupleIDFromInt(neuronID, Brain.Neuron.NeuronRole.Sensor);
+                node = new(ID, neuron_activation_function);
+                genome.AddNode(node);
+            }
         }
         
     }

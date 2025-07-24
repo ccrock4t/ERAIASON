@@ -107,46 +107,67 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
 
         if (to_neuron.neuron_class == Neuron.NeuronClass.CTRNN) sum *= to_neuron.gain;
 
-        // 1. Unpack state & parameters
-        double r = to_neuron.r;       // radius
-        double theta = to_neuron.p;       // phase
+        double net_input = sum;
+        if (to_neuron.neuron_role == Neuron.NeuronRole.Hidden)
+        {
+            // 1. Unpack state & parameters
+            double r = to_neuron.r;
+            double theta = to_neuron.theta;
+            double mu = to_neuron.mu;
+            double omega = to_neuron.w;
+            double K = to_neuron.K;
+            double pGain = to_neuron.p_gain;
+            double blend_alpha = to_neuron.r_gain;
+            double oscGain = to_neuron.osc_inject_gain;
+            double maxInp = to_neuron.max_input;
+            double phaseOffset = to_neuron.phase_offset;
 
-        double mu = to_neuron.mu;         // amplitude convergence rate
-        double omega = to_neuron.w;          // base angular frequency
-        double K = to_neuron.K;          // sensor → amplitude coupling
-        double pGain = to_neuron.p_gain;     // sensor → phase coupling
-        double alpha = to_neuron.r_gain;     // static/osc mix (0→osc, 1→static)
-        double oscGain = to_neuron.osc_inject_gain;
-        double maxInp = to_neuron.max_input;
+            // 2. Normalize sensor drive once (or move inside loop if 'sum' changes)
+            double safeMaxInp = math.max(1e-6, maxInp);
+            double u = math.clamp(sum / safeMaxInp, -1.0, 1.0);
 
-        // 2. Normalize sensor drive
-        double u = math.clamp(sum / maxInp, -1.0, 1.0);
 
-        // 3. Compute derivatives at current state
-        double dr1 = mu * (1.0 - r * r) * r + K * u;
-        double dth1 = omega + pGain * u;
+            // 3. Determine micro‑step size
+            const double maxDt = 0.02;  // 20 ms “safe” sub‐step
+            int nSteps = math.max(1, (int)math.ceil(brain_update_period / maxDt));
+            double dt = brain_update_period / nSteps;
 
-        // 4. Semi‑implicit update for r
-        //    r_new = (r + dr1*dt) / (1 + mu*r*r*dt);
-        r = (r + dr1 * brain_update_period)
-            / (1.0 + mu * r * r * brain_update_period);
+            for (int substep = 0; substep < nSteps; substep++)
+            {
+                // 1. Compute derivatives at current state
+                double dr1 = mu * (1.0 - r * r) * r + K * u;
+                double dth1 = omega + pGain * u;
 
-        // 5. Explicit Euler for theta (with wrapping)
-        theta += dth1 * brain_update_period;
-        if (theta < 0.0) theta += math.PI2;
-        else if (theta >= math.PI2) theta -= math.PI2;
+                // 2. Estimate midpoint state (RK2)
+                double rMid = r + dr1 * dt * 0.5;
+                double thetaMid = theta + dth1 * dt * 0.5;
 
-        // 6. Compute oscillator output
-        double oscillator = r * math.sin(theta);
+                // 3. Compute derivatives at midpoint
+                double dr2 = mu * (1.0 - rMid * rMid) * rMid + K * u;
+                double dth2 = omega + pGain * u;
 
-        // 7. Mix static vs. oscillatory contributions
-        //    alpha=1 → pure static(sum), alpha=0 → pure osc
-        double net_input = alpha * sum
-                         + (1.0 - alpha) * (oscGain * oscillator);
+                // 4. Update r and theta with RK2 step
+                r += dr2 * dt;
+                r = math.max(0.0, r); // clamp non-negative as before
 
-        // 8. Save state
-        to_neuron.r = r;
-        to_neuron.p = theta;
+                theta += dth2 * dt;
+
+                // 5. Wrap theta to [0, 2π)
+                theta = math.fmod(theta, math.PI * 2);
+                if (theta < 0.0) theta += math.PI * 2;
+
+                // (Optional) If u changes during substeps, recalc here before next iteration
+            }
+
+            // 5. Compute oscillator output & mix
+            double oscillator = r * math.sin(theta + phaseOffset);
+            net_input = blend_alpha * sum
+                              + (1.0 - blend_alpha) * (oscGain * oscillator);
+
+            // 6. Save state
+            to_neuron.r = r;
+            to_neuron.theta = theta;
+        }
 
         // 9. Activation
         double activation = to_neuron.RunActivationFunction(net_input);

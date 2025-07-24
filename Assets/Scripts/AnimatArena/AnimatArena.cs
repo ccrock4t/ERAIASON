@@ -1,16 +1,18 @@
 
+using System;
 using System.Collections.Generic;
-using UnityEngine;
-using Debug = UnityEngine.Debug;
-using static GlobalConfig;
-using Unity.Mathematics;
+using System.Threading.Tasks;
+using TMPro;
+using Unity.Entities.UniversalDelegates;
 using Unity.Jobs.LowLevel.Unsafe;
-using Vector3 = UnityEngine.Vector3;
-using Quaternion = UnityEngine.Quaternion;
+using Unity.Mathematics;
+using UnityEngine;
+using static GlobalConfig;
 using static NoveltySearch;
 using static WorldAutomaton.Elemental;
-using TMPro;
-using System;
+using Debug = UnityEngine.Debug;
+using Quaternion = UnityEngine.Quaternion;
+using Vector3 = UnityEngine.Vector3;
 
 
 public class AnimatArena : MonoBehaviour
@@ -143,7 +145,12 @@ public class AnimatArena : MonoBehaviour
             }
         }
 
-        SpawnTestGenomeAnimat();
+        var offsprings = GetTestGenomeAnimat();
+
+        foreach (var offspring in offsprings)
+        {
+            SpawnGenomeInRandomSpot(offspring);
+        }
 
         //initialize UI
 
@@ -187,9 +194,9 @@ public class AnimatArena : MonoBehaviour
 
         do
         {
-            position = new Vector3(UnityEngine.Random.Range(10, WORLD_DIMENSIONS.x - 10) + 0.5f,
+            position = new Vector3(NEATConnection.ThreadSafeSystemRandomRange(10, WORLD_DIMENSIONS.x - 10) + 0.5f,
                 0,
-                UnityEngine.Random.Range(10, WORLD_DIMENSIONS.x - 10) + 0.5f
+                NEATConnection.ThreadSafeSystemRandomRange(10, WORLD_DIMENSIONS.x - 10) + 0.5f
             );
             bool good_position = true;
             float minimum_distance = float.MaxValue;
@@ -261,9 +268,9 @@ public class AnimatArena : MonoBehaviour
         int attempts = 0;
         do
         {
-            position = new Vector3(UnityEngine.Random.Range(10, WORLD_DIMENSIONS.x - 10) + 0.5f,
+            position = new Vector3(NEATConnection.ThreadSafeSystemRandomRange(10, WORLD_DIMENSIONS.x - 10) + 0.5f,
                 0,
-                UnityEngine.Random.Range(10, WORLD_DIMENSIONS.x - 10) + 0.5f
+                NEATConnection.ThreadSafeSystemRandomRange(10, WORLD_DIMENSIONS.x - 10) + 0.5f
             );
 
 
@@ -338,7 +345,11 @@ public class AnimatArena : MonoBehaviour
     {
         if (this.current_generation.Count < MINIMUM_POPULATION_QUANTITY)
         {
-            GenerateNewAnimat();
+            //Parallel.For(0, MINIMUM_POPULATION_QUANTITY - this.current_generation.Count, i =>
+            //{ 
+                GenerateNewAnimat();
+            //});
+            
         }
 
 
@@ -370,7 +381,7 @@ public class AnimatArena : MonoBehaviour
 
 
                 KillAnimat(animat_idx, ignore_for_reproduction);
-
+                animat_idx--;
             }
             else
             {
@@ -410,7 +421,6 @@ public class AnimatArena : MonoBehaviour
 
             }
 
-            if (this.current_generation.Count < MINIMUM_POPULATION_QUANTITY) GenerateNewAnimat();
         }
 
         if (food_blocks.Count < FOOD_QUANTITY)
@@ -419,63 +429,40 @@ public class AnimatArena : MonoBehaviour
         }
     }
 
+    public (GameObject, float) GetClosestFoodAndDistance(Vector3 position)
+    {
+        float min_dist = float.MaxValue;
+        GameObject closest_food = null;
+        foreach (var food in AnimatArena.GetInstance().food_blocks)
+        {
+            float distance = Vector3.Distance(food.transform.position, position);
 
+            if (distance < min_dist)
+            {
+                min_dist = distance;
+                closest_food = food;
+            }
+        }
+        return (closest_food, min_dist);
+    }
 
     public float GetAnimatObjectiveFitnessScore(Animat animat)
     {
+        //float food_was_seen = animat.body.food_was_seen
         float displacement = animat.GetDisplacementFromBirthplace();
+      
         float food_eaten = animat.body.number_of_food_eaten;
         float times_reproduced = animat.body.times_reproduced;
         float ratio_of_life_spent_looking_at_food = animat.body.frames_food_detected / animat.body.total_frames_alive; //[0,1]
 
         float distance_score = math.min(1.0f, displacement / 20);
+        if (displacement < 2.0f) distance_score = 0; // discourage non-movers
 
-        distance_score *= ratio_of_life_spent_looking_at_food;
+        float final_distance_score = ratio_of_life_spent_looking_at_food * distance_score;
+        float final_food_score = ratio_of_life_spent_looking_at_food * (food_eaten / AnimatBody.ENERGY_IN_A_FOOD);
+        float final_reproductive_score = (1 + times_reproduced)* (1 + food_eaten / AnimatBody.ENERGY_IN_A_FOOD);
+        return (final_distance_score + final_food_score) * final_reproductive_score;
 
-
-        float to_return =  distance_score  + ((food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced));
-        Vector2 currOrientation = (Vector2) (animat.body.GetRotation() * transform.right);
-        to_return *= Vector2.Dot(animat.GetVectorFromBirthplace(), currOrientation);
-        //to_return *= animat.GetDistanceTowardsClosestFood();
-        to_return *= Vector2.Dot(animat.GetVectorTowardsClosestFood(), currOrientation);
-        //TODO: EXPERIMENTAL
-        float rot_x = Mathf.Min(0.866f, Mathf.Cos(animat.body.GetRotation().eulerAngles.x));
-        float rot_y = Mathf.Min(0.866f, Mathf.Cos(animat.body.GetRotation().eulerAngles.y));
-        to_return *= Mathf.Sqrt(rot_x * rot_x + rot_y * rot_y);
-        to_return /= animat.GetDistanceTowardsClosestFood();
-        return to_return;
-
-        if (food_eaten == 0)
-        {
-            return distance_score;
-
-        }
-        else if (food_eaten > 0)
-        {
-            //float score;
-            //if (times_reproduced == 0)
-            //{
-            //    score = (food_eaten / AnimatBody.ENERGY_IN_A_FOOD);//  * ratio_of_life_spent_looking_at_food;
-            //}
-            //else
-            //{
-            //    score = (food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1+times_reproduced);
-            //}
-
-
-            return (food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced);
-        }
-        else
-        {
-            Debug.LogError("negative food");
-            return 0;
-        }
-        /*            float score = 1;
-                     score *= math.min(1, distance / 10);
-                     //score *= (animat.body.food_approach_score);
-                     score += (food_eaten / AnimatBody.ENERGY_IN_A_FOOD);
-                     return score;*/
-        //return novelty * positive_distance_from_food;
     }
 
     public void KillAnimat(int i, bool ignore_for_reproduction)
@@ -567,7 +554,7 @@ public class AnimatArena : MonoBehaviour
 
             if (voxels_remaining > 0)
             {
-                if(UnityEngine.Random.Range(0, 2) == 0)
+                if(NEATConnection.ThreadSafeSystemRandomRange(0, 2) == 0)
                 {
                     voxel_position.x++;
                 }
@@ -619,19 +606,29 @@ public class AnimatArena : MonoBehaviour
             return;
         }
 
-        int rnd = UnityEngine.Random.Range(0, 20);
+        AnimatGenome[] offsprings;
+
+        int rnd = NEATConnection.ThreadSafeSystemRandomRange(0, 20);
 
         if (rnd == 0 || this.objectiveFitnessTable.Count() == 0)
         {
-            SpawnTestGenomeAnimat(); // generate brand new animat
+            offsprings = GetTestGenomeAnimat(); // generate brand new animat
         }
         else if (rnd >= 1 && rnd < 10) // 1-10
         {
-            SpawnExplicitFitnessAnimat(false); // asexual
+            offsprings = GetExplicitFitnessAnimat(false); // asexual
         }
-        else if (rnd >= 10) // 10-219
+        else //if (rnd >= 10) // 10-219
         {
-            SpawnExplicitFitnessAnimat(true); // sexual
+            offsprings = GetExplicitFitnessAnimat(true); // sexual
+        }
+
+        foreach (var offspring in offsprings)
+        {
+            //MainThreadDispatcher.RunOnMainThread(() =>
+           // {
+                SpawnGenomeInRandomSpot(offspring);
+           // });
         }
     }
 
@@ -640,11 +637,11 @@ public class AnimatArena : MonoBehaviour
         int rnd;
         if (USE_NOVELTY_SEARCH)
         {
-            rnd = UnityEngine.Random.Range(0, 3);
+            rnd = NEATConnection.ThreadSafeSystemRandomRange(0, 3);
         }
         else
         {
-            rnd = UnityEngine.Random.Range(0, 2);
+            rnd = NEATConnection.ThreadSafeSystemRandomRange(0, 2);
         }
 
         if (rnd == 0)
@@ -669,13 +666,15 @@ public class AnimatArena : MonoBehaviour
 
 
 
-    void SpawnExplicitFitnessAnimat(bool sexual)
+    AnimatGenome[] GetExplicitFitnessAnimat(bool sexual)
     {
         var table1 = this.GetRandomTable();
         (AnimatGenome parent1, int parent1_idx) = table1.PeekProbabilistic();
 
+        AnimatGenome[] results;
         if (sexual)
         {
+            results = new AnimatGenome[2];
             // sexual
             var table2 = this.GetRandomTable();
             int ignore_idx = -1;
@@ -698,30 +697,29 @@ public class AnimatArena : MonoBehaviour
             else
             {
                 Debug.LogError("error not implemented");
-                return;
+                return null;
             }
             offspring1_genome.momName = parent1.uniqueName;
             offspring1_genome.dadName = parent2.uniqueName;
             offspring2_genome.momName = parent1.uniqueName;
             offspring2_genome.dadName = parent2.uniqueName;
-
-            SpawnGenomeInRandomSpot(offspring1_genome);
-            SpawnGenomeInRandomSpot(offspring2_genome);
-
+            results[0] = offspring1_genome;
+            results[1] = offspring2_genome;
         }
         else
         {
+            results = new AnimatGenome[1];
             // asexual
             AnimatGenome cloned_genome = parent1.Clone();
             cloned_genome.momName = parent1.uniqueName;
 
             cloned_genome.brain_genome.Mutate();
-            SpawnGenomeInRandomSpot(cloned_genome);
+            results[0] = cloned_genome;
         }
-
+        return results;
     }
 
-    void SpawnTestGenomeAnimat()
+    AnimatGenome[] GetTestGenomeAnimat()
     {
         BodyGenome body_genome = BodyGenome.CreateTestGenome();
         BrainGenome brain_genome;
@@ -740,7 +738,8 @@ public class AnimatArena : MonoBehaviour
            body_genome,
            0);
 
-        SpawnGenomeInRandomSpot(genome);
+        return new AnimatGenome[] { genome };
+
     }
 
 
@@ -765,22 +764,6 @@ public class AnimatArena : MonoBehaviour
         return animat;
     }
 
-    public (GameObject, float) GetClosestFoodAndDistance(Vector3 position)
-    {
-        float min_dist = float.MaxValue;
-        GameObject closest_food = null;
-        foreach (var food in AnimatArena.GetInstance().food_blocks)
-        {
-            float distance = Vector3.Distance(food.transform.position, position);
-
-            if (distance < min_dist)
-            {
-                min_dist = distance;
-                closest_food = food;
-            }
-        }
-        return (closest_food, min_dist);
-    }
 
     private void OnApplicationQuit()
     {

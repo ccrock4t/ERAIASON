@@ -20,17 +20,17 @@ public class NEATNode
     public double r_gain;
     public double w_gain;
     public double p_gain;
-    public double theta;
-    public double max_input;
-    public double osc_inject_gain;
     public double mu;
     public double K;
+    public double max_input;
+    public double osc_inject_gain;
+    public double theta;
+    internal double phase_offset;
+
 
     public float4 brainviewer_coords;
     public Neuron.ActivationFunction activation_function;
     public static int NEXT_GLOBAL_HIDDENNODE_ID = -1;
-
-
 
 
     public NEATNode(NeuronID ID, 
@@ -75,7 +75,15 @@ public class NEATNode
 
         new_node.brainviewer_coords = this.brainviewer_coords;
         new_node.bias = this.bias;
+        new_node.sigmoid_alpha = this.sigmoid_alpha;
+        new_node.sigmoid_alpha2 = this.sigmoid_alpha2;
+        new_node.activation_function = this.activation_function;
+
+        // ctrnn
         new_node.time_constant = this.time_constant;
+        new_node.gain = this.gain;
+
+        //cphg
         new_node.r = this.r;
         new_node.w = this.w;
         new_node.p = this.p;
@@ -87,10 +95,7 @@ public class NEATNode
         new_node.max_input = this.max_input;
         new_node.osc_inject_gain = this.osc_inject_gain;
         new_node.theta = this.theta;
-        new_node.gain = this.gain;
-        new_node.sigmoid_alpha = this.sigmoid_alpha;
-        new_node.sigmoid_alpha2 = this.sigmoid_alpha2;
-        new_node.activation_function = this.activation_function;
+        new_node.phase_offset = this.phase_offset;
 
         // update this whenever a new field is added
         return new_node; // shallow copy of the object, its ok because tthe fields are primitives

@@ -84,13 +84,16 @@ public abstract class AnimatBody : MonoBehaviour
             brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
             animat.was_hit = 0;
             
-          
-            // internally held voxels
-            sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.INTERNAL_VOXEL_HELD, Neuron.NeuronRole.Sensor)];
-            sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
-            if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
-            sensor_neuron.activation = number_of_voxels_held / MAX_VOXELS_HELD;
-            brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
+            if(GlobalConfig.WORLD_TYPE  == GlobalConfig.WorldType.VoxelWorld)
+            {
+                // internally held voxels
+                sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.INTERNAL_VOXEL_HELD, Neuron.NeuronRole.Sensor)];
+                sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
+                if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
+                sensor_neuron.activation = number_of_voxels_held / MAX_VOXELS_HELD;
+                brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
+            }
+
             
   
         }

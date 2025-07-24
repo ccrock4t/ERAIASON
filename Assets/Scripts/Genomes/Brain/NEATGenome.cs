@@ -1,7 +1,13 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using static Brain;
 
@@ -15,29 +21,14 @@ public class NEATGenome : BrainGenome
 
     // user changeable parameters
     public static float CHANCE_TO_MUTATE_CONNECTION = 0.8f;
-    public static float ADD_CONNECTION_MUTATION_RATE = 0.35f;
-    public static float ADD_NODE_MUTATION_RATE = 0.2f;
+    public static float ADD_CONNECTION_MUTATION_RATE = 0.2f;
+    public static float ADD_NODE_MUTATION_RATE = 0.06f;
 
 
     //constant parameters
 
-    //https://arxiv.org/pdf/1703.03334
-    //Assumes B = 1
-    public float genRandomRate()
-    {
-        float x = UnityEngine.Random.Range(0.0f, 1.0f);
-        //https://mathoverflow.net/questions/279575/the-inverse-of-the-digamma-function
-        x -= 0.57721f;
-        float x_min = (1.0f / Mathf.Log(1.0f + Mathf.Exp(-1.0f * x)));
-        float x_max = Mathf.Exp(x) + 0.5f;
-        return 0.5f * (x_min + x_max);
 
-    }
-    float CHANCE_TO_MUTATE_HEBB = 0.01f;
-    float CHANCE_TO_MUTATE_SIGMOID_ALPHA = 0.01f;
-    public float CHANCE_TO_MUTATE_TIME_CONSTANT = 0.01f;
-    public float CHANCE_TO_MUTATE_GAIN = 0.01f;
-    float CHANCE_TO_MUTATE_ACTIVATION_FUNCTIONS = 0.01f;
+    const float CHANCE_TO_MUTATE_ACTIVATION_FUNCTIONS = 0.02f;
 
     // const float CHANCE_TO_MUTATE_EACH_NODE = 0.8f;
 
@@ -58,50 +49,84 @@ public class NEATGenome : BrainGenome
     public List<NEATNode> hidden_nodes;
     public List<NEATConnection> connections;
 
-    public struct RandomHashSet
+    public class RandomHashSet<T>
     {
+        // Private fields to prevent direct manipulation from outside
+        private readonly List<T> _items;
+        private readonly Dictionary<T, int> _itemToIndex;
+        private readonly System.Random _random = new();
 
-        List<int> set;
-        Dictionary<int, int> element_to_idx;
-        public RandomHashSet(bool dummy)
+        public RandomHashSet()
         {
-            this.set = new();
-            this.element_to_idx = new();
+            _items = new List<T>();
+            _itemToIndex = new Dictionary<T, int>();
         }
 
-        public void Add(int i)
+        // Expose count as a property
+        public int Count => _items.Count;
+
+        // Returns true if the item was added, false if it already existed
+        public bool Add(T item)
         {
-            set.Add(i);
-            this.element_to_idx.Add(i, set.Count - 1);
+            if (_itemToIndex.ContainsKey(item))
+            {
+                return false; // Item already exists
+            }
+
+            _items.Add(item);
+            _itemToIndex.Add(item, _items.Count - 1);
+            return true;
         }
 
-        public void Remove(int i)
+        // The correct O(1) remove implementation
+        // Returns true if the item was found and removed, otherwise false
+        public bool Remove(T item)
         {
-            int idx = this.element_to_idx[i];
-            set.RemoveAt(idx);
-            this.element_to_idx.Remove(i);
+            if (!_itemToIndex.TryGetValue(item, out int indexToRemove))
+            {
+                return false; // Item not in the set
+            }
+
+            // Get the last item in the list
+            int lastIndex = _items.Count - 1;
+            T lastItem = _items[lastIndex];
+
+            // Move the last item to the position of the item being removed
+            _items[indexToRemove] = lastItem;
+            _itemToIndex[lastItem] = indexToRemove; // Update the moved item's index
+
+            // Remove the item from the end of the list and the dictionary
+            _items.RemoveAt(lastIndex);
+            _itemToIndex.Remove(item);
+
+            return true;
         }
 
-        public int RemoveRandomElement()
+        // Removes and returns a random element
+        public T RemoveRandomElement()
         {
-            int last_index = this.set.Count - 1;
-            int rnd = UnityEngine.Random.Range(0, this.set.Count);
-            int random_element = this.set[rnd];
-            int last_element = this.set[last_index];
-            this.element_to_idx.Remove(random_element);
-            this.element_to_idx[last_element] = rnd;
-            this.set[rnd] = last_element;
-            this.set.RemoveAt(last_index);
-            return random_element;
+            if (Count == 0)
+            {
+                throw new InvalidOperationException("Cannot remove from an empty set.");
+            }
+
+            // This re-uses the same logic as the standard Remove method
+            int randomIndex = _random.Next(0, Count);
+            T randomItem = _items[randomIndex];
+
+            // This is now safe and correct because Remove(T) handles all cases
+            Remove(randomItem);
+
+            return randomItem;
         }
 
-        public int Count()
+        public IEnumerator<T> GetEnumerator()
         {
-            return this.set.Count();
+            return _items.GetEnumerator();
         }
     }
 
-    public RandomHashSet enabled_connection_idxs;
+    public RandomHashSet<int> enabled_connection_idxs;
 
     public int sensorymotor_end_idx;
 
@@ -117,19 +142,12 @@ public class NEATGenome : BrainGenome
         this.connections = new();
         this.nodeID_to_idx = new();
         this.connectionID_to_idx = new();
-        this.enabled_connection_idxs = new RandomHashSet(true);
-        
-        CHANCE_TO_MUTATE_ACTIVATION_FUNCTIONS = genRandomRate();
-        CHANCE_TO_MUTATE_CONNECTION = genRandomRate();
-        CHANCE_TO_MUTATE_GAIN = genRandomRate();
-        CHANCE_TO_MUTATE_HEBB = genRandomRate();
-        CHANCE_TO_MUTATE_SIGMOID_ALPHA = genRandomRate();
-        CHANCE_TO_MUTATE_TIME_CONSTANT = genRandomRate();
+        this.enabled_connection_idxs = new RandomHashSet<int>();
     }
 
     public static NeuronID GetTupleIDFromInt3(int3 coords, int neuronID, Brain.Neuron.NeuronRole neuron_role)
     {
-        if (coords.x < 0 || coords.y < 0 || coords.z < 0)
+        if(coords.x < 0 || coords.y < 0 || coords.z < 0)
         {
             Debug.LogError("Dont use negative coordinates, they are reserved for other IDs");
         }
@@ -153,18 +171,22 @@ public class NEATGenome : BrainGenome
 
     public override void Mutate()
     {
-        bool should_mutate;
-        float rnd;
+        // --- Pre-computation Step ---
+        bool shouldMutateHebbian = GlobalConfig.USE_HEBBIAN;
 
-        // first, mutate synapse parameters
-        rnd = UnityEngine.Random.Range(0f, 1f);
+        bool is_CTRNN = GlobalConfig.NEURAL_NETWORK_METHOD == Brain.Neuron.NeuronClass.CTRNN;
+        bool shouldMutateTimeConstant = is_CTRNN && EVOLVE_TIME_CONSTANT;
+        bool shouldMutateGain = is_CTRNN && EVOLVE_GAIN;
 
+        bool shouldMutateSigmoidAlpha = EVOLVE_SIGMOID_SLOPE;
+
+        // --- 1. Single Loop for All Connection Mutations ---
+        // This loop handles all modifications to the 'connections' collection.
+        int connection_idx = 0;
         foreach (NEATConnection connection in this.connections)
         {
-
-
-            rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < 0.9)
+            // a) Mutate standard connection weight (this was the first loop).
+            if (NEATConnection.GetRandomFloat() < 0.9f)
             {
                 connection.weight += GetPerturbationFromRange(-1f, 1f);
             }
@@ -173,15 +195,61 @@ public class NEATGenome : BrainGenome
                 connection.weight = NEATConnection.GetRandomInitialWeight();
             }
 
-            //}
+            // b) Mutate Hebbian learning parameters if the pre-computed check passed.
+            if (shouldMutateHebbian)
+            {
+                // Assuming hebb_ABCDLR is an array or list of size 5.
+                for (int i = 0; i < connection.hebb_ABCDLR.Length; i++)
+                {
+                    if (NEATConnection.GetRandomFloat() < 0.9f)
+                    {
+                        connection.hebb_ABCDLR[i] += GetPerturbationFromRange(-1f, 1f);
+                    }
+                    else
+                    {
+                        connection.hebb_ABCDLR[i] = NEATConnection.GetRandomInitialWeight();
+                    }
+                }
+            }
 
+
+            // flip enabled
+            if (connection.enabled)
+            {
+                if (NEATConnection.GetRandomFloat() < 0.01f)
+                {
+                    connection.enabled = false;
+                    this.enabled_connection_idxs.Remove(connection_idx);
+                }
+            }
+            else
+            {
+                if (NEATConnection.GetRandomFloat() < 0.002f)
+                {
+                    connection.enabled = true;
+                    this.enabled_connection_idxs.Add(connection_idx);
+                }
+            }
+
+            connection_idx++;
         }
 
-        //  mutate bias (bias can be treated like a connection weight in some casesi )
+        // --- 2. Single Loop for All Node Mutations ---
+        // This loop handles all modifications to the 'nodes' collection.
+        var r_range = CPG.GetRRange();
+        var w_range = CPG.GetWRange();
+        var thetaRange = CPG.GetThetaRange();
+        var rGainRange = CPG.GetRGainRange();
+        var pGainRange = CPG.GetPGainRange();
+        var muRange = CPG.GetMuRange();
+        var kRange = CPG.GetKRange();
+        var miRange = CPG.GetMaxInputRange();
+        var giRange = CPG.GetOscInjectGainRange();  
+        var phaseOffsetRange = CPG.GetPhaseOffsetRange();
         foreach (NEATNode node in this.nodes)
         {
-            rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < 0.9)
+            // a) Mutate bias.
+            if (NEATConnection.GetRandomFloat() < 0.9f)
             {
                 node.bias += GetPerturbationFromRange(-1f, 1f);
             }
@@ -189,65 +257,67 @@ public class NEATGenome : BrainGenome
             {
                 node.bias = NEATConnection.GetRandomInitialWeight();
             }
-        }
 
-
-
-
-        if (GlobalConfig.USE_HEBBIAN)
-        {
-            rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < CHANCE_TO_MUTATE_HEBB)
+            // b) Mutate CTRNN time constant 
+            if (shouldMutateTimeConstant)
             {
-                foreach (NEATConnection connection in this.connections)
+                if (NEATConnection.GetRandomFloat() < 0.9f)
                 {
-                    for (int b = 0; b < 5; b++)
-                    {
-                        rnd = UnityEngine.Random.Range(0f, 1f);
-                        if (rnd < 0.9)
-                        {
-                            connection.hebb_ABCDLR[b] += GetPerturbationFromRange(-1f, 1f);
-                        }
-                        else
-                        {
-                            connection.hebb_ABCDLR[b] = NEATConnection.GetRandomInitialWeight();
-                        }
-                    }
-
+                    node.time_constant += GetPerturbationFromRange(0f, 1f);
                 }
-
-            }
-        }
-
-
-        MutateCTNNParameters();
-
-
-        if (EVOLVE_SIGMOID_SLOPE)
-        {
-            rnd = UnityEngine.Random.Range(0f, 1f);
-            if (rnd < CHANCE_TO_MUTATE_SIGMOID_ALPHA)
-            {
-                foreach (NEATNode node in this.nodes)
+                else
                 {
-                    node.sigmoid_alpha += GetPerturbationFromRange(0f, 1f);
-                    if (node.sigmoid_alpha <= 0) node.sigmoid_alpha = 0.00001f;
-                    node.sigmoid_alpha2 += GetPerturbationFromRange(0f, 1f);
-                    if (node.sigmoid_alpha2 <= 0) node.sigmoid_alpha = 0.00001f;
+                    node.time_constant = NEATConnection.GetRandomInitialWeight();
                 }
+                node.time_constant = math.abs(node.time_constant);
             }
 
+            // c) Mutate CTRNN gain 
+            if (shouldMutateGain)
+            {
+                if (NEATConnection.GetRandomFloat() < 0.9f)
+                {
+                    node.gain += GetPerturbationFromRange(0f, 1f);
+                }
+                else
+                {
+                    node.gain = NEATConnection.GetRandomInitialWeight();
+                }
+                node.gain = math.abs(node.gain);
+            }
+
+            // d) Mutate sigmoid slope parameters 
+            if (shouldMutateSigmoidAlpha)
+            {
+                node.sigmoid_alpha += GetPerturbationFromRange(0f, 1f);
+                if (node.sigmoid_alpha <= 0) node.sigmoid_alpha = 0.00001f;
+
+                node.sigmoid_alpha2 += GetPerturbationFromRange(0f, 1f);
+                // Potential typo fix: The original code set 'sigmoid_alpha' here, not 'sigmoid_alpha2'.
+                if (node.sigmoid_alpha2 <= 0) node.sigmoid_alpha2 = 0.00001f;
+            }
+
+            // e) Mutate all CPG (Central Pattern Generator) parameters.
+
+            MutateParameter(ref node.r, r_range);
+            MutateParameter(ref node.w, w_range);
+            MutateParameter(ref node.theta, thetaRange);
+            MutateParameter(ref node.r_gain, rGainRange);
+            MutateParameter(ref node.p_gain, pGainRange);
+            MutateParameter(ref node.mu, muRange);
+            MutateParameter(ref node.K, kRange);
+            MutateParameter(ref node.max_input, miRange);
+            MutateParameter(ref node.osc_inject_gain, giRange);
+            MutateParameter(ref node.phase_offset, phaseOffsetRange);
         }
 
-
-
-
+        float rnd;
         if (EVOLVE_ACTIVATION_FUNCTIONS)
         {
             foreach (NEATNode node in this.nodes)
             {
                 if (node.ID.neuron_role != Neuron.NeuronRole.Hidden) continue;
-                rnd = UnityEngine.Random.Range(0f, 1f);
+                rnd = NEATConnection.GetRandomFloat();
                 if (rnd < CHANCE_TO_MUTATE_ACTIVATION_FUNCTIONS)
                 {
                     node.activation_function = Brain.Neuron.GetRandomActivationFunction();
@@ -256,14 +326,11 @@ public class NEATGenome : BrainGenome
             }
         }
 
-        //  mutate CPG parameters
-        MutateCPGParameters();
-
 
         // disable connection?
         if (DISABLE_CONNECTIONS)
         {
-            rnd = UnityEngine.Random.Range(0f, 1f);
+            rnd = NEATConnection.GetRandomFloat();
             if (rnd < DISABLE_CONNECTION_MUTATION_RATE * RATE_MULTIPLIER)
             {
                 DisableRandomConnection();
@@ -272,7 +339,7 @@ public class NEATGenome : BrainGenome
 
 
         // add connection?
-        rnd = UnityEngine.Random.Range(0f, 1f);
+        rnd = NEATConnection.GetRandomFloat();
         if (rnd < ADD_CONNECTION_MUTATION_RATE * RATE_MULTIPLIER)
         {
             AddNewRandomConnection();
@@ -280,7 +347,7 @@ public class NEATGenome : BrainGenome
 
 
         // add node?
-        rnd = UnityEngine.Random.Range(0f, 1f);
+        rnd = NEATConnection.GetRandomFloat();
         if (rnd < ADD_NODE_MUTATION_RATE * RATE_MULTIPLIER)
         {
             AddNewHiddenNodeAtRandomConnection();
@@ -291,237 +358,40 @@ public class NEATGenome : BrainGenome
 
     }
 
+    void MutateParameter(ref double param, Vector2 range)
+    {
+        if (NEATConnection.GetRandomFloat() < 0.9f)
+        {
+            param += GetPerturbationFromRange(range.x, range.y);
+        }
+        else
+        {
+            param = NEATConnection.ThreadSafeSystemRandomRange(range.x, range.y);
+        }
+        param = math.clamp(param, range.x, range.y);
+    }
+
     private void MutateCTNNParameters()
     {
-        if (GlobalConfig.NEURAL_NETWORK_METHOD == Brain.Neuron.NeuronClass.CTRNN)
-        {
-            if (EVOLVE_TIME_CONSTANT)
-            {
-                float rnd = UnityEngine.Random.Range(0f, 1f);
-                if (rnd < CHANCE_TO_MUTATE_TIME_CONSTANT)
-                {
-                    foreach (NEATNode node in this.nodes)
-                    {
-                        rnd = UnityEngine.Random.Range(0f, 1f);
-                        if (rnd < 0.9)
-                        {
-                            node.time_constant += GetPerturbationFromRange(0f, 1f);
-                        }
-                        else
-                        {
-                            node.time_constant = NEATConnection.GetRandomInitialWeight();
-                        }
-                        node.time_constant = math.abs(node.time_constant);
-                    }
-                }
 
-            }
-
-            if (EVOLVE_GAIN)
-            {
-                float rnd = UnityEngine.Random.Range(0f, 1f);
-                if (rnd < CHANCE_TO_MUTATE_GAIN)
-                {
-                    foreach (NEATNode node in this.nodes)
-                    {
-                        rnd = UnityEngine.Random.Range(0f, 1f);
-                        if (rnd < 0.9)
-                        {
-                            node.gain += GetPerturbationFromRange(0f, 1f);
-                        }
-                        else
-                        {
-                            node.gain = NEATConnection.GetRandomInitialWeight();
-                        }
-                        node.gain = math.abs(node.gain);
-                    }
-                }
-
-            }
-        }
 
     }
 
 
     public static class CPG
     {
-        public static Vector2 GetFrequencyRange()
-        {
-            return new(0.1f, 40f);
-        }
-
-        public static Vector2 GetPhaseOffsetRange()
-        {
-            return new(0f, math.PI2);
-        }
-
-        public static Vector2 GetRfactorRange()
-        {
-            return new(0, 5);
-        }
-
-        // Range for Hopf convergence rate mu (drives amplitude stability)
-        public static Vector2 GetMuRange()
-        {
-            // Lower bound > 0 to ensure consistent convergence
-            return new Vector2(0.1f, 10f);
-        }
-
-        // Range for how strongly the oscillator injects into net input
-        public static Vector2 GetOscInjectGainRange()
-        {
-            // Allows excitatory or inhibitory influence
-            return new Vector2(-5f, 5f);
-        }
-
-        // Range for input normalization factor max_input
-        public static Vector2 GetMaxInputRange()
-        {
-            // Avoid zero or extremely small values to prevent division by zero
-            return new Vector2(0.1f, 100f);
-        }
-
-        // Range for sensor-to-amplitude coupling K
-        public static Vector2 GetKRange()
-        {
-            // Supports both positive and negative coupling strengths
-            return new Vector2(-5f, 5f);
-        }
-
-        public static Vector2 GetPGainRange()
-        {
-            return new Vector2(-math.PI / 2f, math.PI / 2f);
-        }
-
-        public static Vector2 GetWGainRange()
-        {
-            return new Vector2(-10, 10);
-        }
-
-        internal static Vector2 GetRGainRange()
-        {
-            return new Vector2(0, 1);
-        }
+        public static Vector2 GetWRange() => new(0.1f, 40f);
+        public static Vector2 GetThetaRange() => new(0f, math.PI2);
+        public static Vector2 GetPhaseOffsetRange() => new(0f, math.PI2);
+        public static Vector2 GetRRange() => new(0.1f, 2f);
+        public static Vector2 GetMuRange() => new(0.1f, 10f);
+        public static Vector2 GetOscInjectGainRange() => new(-5f, 5f);
+        public static Vector2 GetMaxInputRange() => new(0.1f, 20f);
+        public static Vector2 GetKRange() => new(-5f, 5f);
+        public static Vector2 GetPGainRange() => new(-math.PI / 2f, math.PI / 2f);
+        public static Vector2 GetRGainRange() => new(0f, 1f);
     }
 
-    public void MutateCPGParameters()
-    {
-        //  mutate CPG
-
-        foreach (NEATNode node in this.nodes)
-        {
-            var r_range = CPG.GetRfactorRange();
-
-            if (UnityEngine.Random.value < 0.9)
-            {
-                node.r += GetPerturbationFromRange(r_range.x, r_range.y);
-                node.r = math.clamp(node.r, r_range.x, r_range.y);
-            }
-            else
-            {
-                node.r = UnityEngine.Random.Range(r_range.x, r_range.y);
-            }
-
-
-            var w_range = CPG.GetFrequencyRange();
-
-            if (UnityEngine.Random.value < 0.9)
-            {
-                node.w += GetPerturbationFromRange(w_range.x, w_range.y);
-                node.w = math.clamp(node.w, w_range.x, w_range.y);
-            }
-            else
-            {
-                node.w = UnityEngine.Random.Range(w_range.x, w_range.y);
-            }
-
-
-            var p_range = CPG.GetPhaseOffsetRange();
-
-            if (UnityEngine.Random.value < 0.9)
-            {
-                node.p += GetPerturbationFromRange(p_range.x, p_range.y);
-                node.p = math.clamp(node.p, p_range.x, p_range.y);
-            }
-            else
-            {
-                node.p = UnityEngine.Random.Range(p_range.x, p_range.y);
-            }
-
-
-            // --- r_gain (amplitude modulation)
-            var rGainRange = CPG.GetRGainRange();
-            if (UnityEngine.Random.value < 0.9f)
-            {
-                node.r_gain += GetPerturbationFromRange(rGainRange.x, rGainRange.y);
-                node.r_gain = math.clamp(node.r_gain, rGainRange.x, rGainRange.y);
-            }
-            else
-            {
-                node.r_gain = UnityEngine.Random.Range(rGainRange.x, rGainRange.y);
-            }
-
-
-            // --- w_gain (frequency modulation)
-            var wGainRange = CPG.GetWGainRange();
-            if (UnityEngine.Random.value < 0.9f)
-            {
-                node.w_gain += GetPerturbationFromRange(wGainRange.x, wGainRange.y);
-                node.w_gain = math.clamp(node.w_gain, wGainRange.x, wGainRange.y);
-            }
-            else
-            {
-                node.w_gain = UnityEngine.Random.Range(wGainRange.x, wGainRange.y);
-            }
-
-
-            // --- p_gain (phase modulation)
-            var pGainRange = CPG.GetPGainRange();
-            if (UnityEngine.Random.value < 0.9f)
-            {
-                node.p_gain += GetPerturbationFromRange(pGainRange.x, pGainRange.y);
-                node.p_gain = math.clamp(node.p_gain, pGainRange.x, pGainRange.y);
-            }
-            else
-            {
-                node.p_gain = UnityEngine.Random.Range(pGainRange.x, pGainRange.y);
-            }
-
-
-
-            // --- mu (Hopf convergence rate)
-            var muRange = CPG.GetMuRange();
-            if (UnityEngine.Random.value < 0.9f)
-                node.mu += GetPerturbationFromRange(muRange.x, muRange.y);
-            else
-                node.mu = UnityEngine.Random.Range(muRange.x, muRange.y);
-            node.mu = math.clamp(node.mu, muRange.x, muRange.y);
-
-            // --- osc_inject_gain
-            var giRange = CPG.GetOscInjectGainRange();
-            if (UnityEngine.Random.value < 0.9f)
-                node.osc_inject_gain += GetPerturbationFromRange(giRange.x, giRange.y);
-            else
-                node.osc_inject_gain = UnityEngine.Random.Range(giRange.x, giRange.y);
-            node.osc_inject_gain = math.clamp(node.osc_inject_gain, giRange.x, giRange.y);
-
-            // --- max_input (normalizer)
-            var miRange = CPG.GetMaxInputRange();
-            if (UnityEngine.Random.value < 0.9f)
-                node.max_input += GetPerturbationFromRange(miRange.x, miRange.y);
-            else
-                node.max_input = UnityEngine.Random.Range(miRange.x, miRange.y);
-            node.max_input = math.clamp(node.max_input, miRange.x, miRange.y);
-
-            // --- K (sensor→amplitude coupling)
-            var kRange = CPG.GetKRange();
-            if (UnityEngine.Random.value < 0.9f)
-                node.K += GetPerturbationFromRange(kRange.x, kRange.y);
-            else
-                node.K = UnityEngine.Random.Range(kRange.x, kRange.y);
-            node.K = math.clamp(node.K, kRange.x, kRange.y);
-        }
-    }
 
     public NEATConnection AddNewRandomConnection()
     {
@@ -536,16 +406,16 @@ public class NEATGenome : BrainGenome
 
         if (ALLOW_OUTBOUND_MOTOR_CONNECTIONS)
         {
-            from_idx = UnityEngine.Random.Range(0, this.nodes.Count);
+            from_idx = NEATConnection.ThreadSafeSystemRandomRange(0, this.nodes.Count);
             from_neuron = this.nodes[from_idx];
         }
         else
         {
-            from_idx = UnityEngine.Random.Range(0, this.sensor_and_hidden_nodes.Count);
+            from_idx = NEATConnection.ThreadSafeSystemRandomRange(0, this.sensor_and_hidden_nodes.Count);
             from_neuron = this.sensor_and_hidden_nodes[from_idx];
         }
 
-        to_idx = UnityEngine.Random.Range(0, this.motor_and_hidden_nodes.Count);
+        to_idx = NEATConnection.ThreadSafeSystemRandomRange(0, this.motor_and_hidden_nodes.Count);
         to_neuron = this.motor_and_hidden_nodes[to_idx];
 
         float rnd_weight = NEATConnection.GetRandomInitialWeight();
@@ -557,7 +427,7 @@ public class NEATGenome : BrainGenome
     private void DisableRandomConnection()
     {
         // insert the node at a random connection
-        if (this.enabled_connection_idxs.Count() == 0)
+        if (this.enabled_connection_idxs.Count == 0)
         {
             Debug.LogWarning("no enabled connections");
             return;
@@ -567,6 +437,7 @@ public class NEATGenome : BrainGenome
         NEATConnection random_connection = this.connections[random_connection_idx];
         random_connection.enabled = false;
     }
+
 
     static System.Random r = new();
     public static double GetPerturbationFromRange(double min, double max, double fraction = 0.1f)
@@ -593,7 +464,7 @@ public class NEATGenome : BrainGenome
     public NEATNode AddNewHiddenNodeAtRandomConnection()
     {
         // insert the node at a random connection
-        if (this.enabled_connection_idxs.Count() == 0)
+        if (this.enabled_connection_idxs.Count == 0)
         {
             Debug.LogWarning("no enabled connections");
             return null;
@@ -679,99 +550,114 @@ public class NEATGenome : BrainGenome
         NEATGenome parent1 = this;
         NEATGenome parent2 = (NEATGenome)parent2super;
 
-        foreach (NEATGenome offspring in new NEATGenome[] { offspring1, offspring2 })
-        {
-            foreach (NEATNode parent1_node in parent1.nodes)
-            {
-                offspring.AddNode(parent1_node.Clone());
-            }
-        }
+        bool parent1_selected_for_disjoint = NEATConnection.GetRandomFloat() < 0.5f;
 
         foreach (NEATGenome offspring in new NEATGenome[] { offspring1, offspring2 })
         {
-            foreach (NEATNode parent2_node in parent2.nodes)
-            {
-                if (offspring.nodeID_to_idx.ContainsKey(parent2_node.ID))
-                {
-                    // node already came from parent 1 (same ID), now decide what to do with parent 2 node
-                    float rnd = UnityEngine.Random.value;
-                    if (rnd < 0.5f)
-                    {
-                        // use parent 2 node instead
-                        int idx = offspring.nodeID_to_idx[parent2_node.ID];
-                        offspring.nodes[idx] = parent2_node.Clone();
-                    }
-                    else
-                    {
-                        // keep parent 1 node
-                    }
-                }
-                else
-                {
-                    // node is unique to parent2, so add it
-                    offspring.AddNode(parent2_node.Clone());
-                }
-            }
-        }
 
-
-        //
-        // now do connections
-        //
-
-        foreach (NEATGenome offspring in new NEATGenome[] { offspring1, offspring2 })
-        {
+            //
+            // now do connections
+            //
             foreach (NEATConnection parent1_connection in parent1.connections)
             {
-                offspring.AddConnection(parent1_connection.Clone());
-            }
-        }
-
-        foreach (NEATGenome offspring in new NEATGenome[] { offspring1, offspring2 })
-        {
-            foreach (NEATConnection parent2_connection in parent2.connections)
-            {
-                if (offspring.connectionID_to_idx.ContainsKey(parent2_connection.ID))
+                NEATConnection connection_to_clone = null;
+                NEATConnection parent2_connection = null;
+                if (parent2.connectionID_to_idx.ContainsKey(parent1_connection.ID))
                 {
-                    // it already came from parent 1 (same ID), now decide what to do with parent 2
-                    float rnd = UnityEngine.Random.value;
+              
+                    parent2_connection = parent2.connections[parent2.connectionID_to_idx[parent1_connection.ID]];
+                    // it is present in both parents, so it must be added
+                    float rnd = NEATConnection.GetRandomFloat();
                     if (rnd < 0.5f)
                     {
-                        // use parent 2 instead
-                        int idx = offspring.connectionID_to_idx[parent2_connection.ID];
-                        offspring.connections[idx] = parent2_connection.Clone();
+                        // use parent 2  
+                        connection_to_clone = parent2_connection;
+                       
                     }
                     else
                     {
-                        // keep parent 1 node
+                        // use parent 1 
+                        connection_to_clone = parent1_connection;
                     }
+ 
                 }
                 else
                 {
-                    // it is unique to parent2, so add it
-                    offspring.AddConnection(parent2_connection.Clone());
-                    offspring.connectionID_to_idx[parent2_connection.ID] = offspring.connections.Count - 1;
-
+                    // connection is unique to parent1, so 50% chance to add it
+                   
+                    if (NEATConnection.GetRandomFloat() < 0.5f)//parent1_selected_for_disjoint)
+                    {
+                        connection_to_clone = parent1_connection;
+                    }
                 }
 
+                if(connection_to_clone == null) continue;
 
-            }
-        }
-
-
-        foreach (NEATGenome offspring in new NEATGenome[] { offspring1, offspring2 })
-        {
-            for (int i = 0; i < offspring.connections.Count; i++)
-            {
-                if (!offspring.connections[i].enabled)
+                NEATGenome parent_giving_connection;
+                if (connection_to_clone == parent1_connection)
                 {
-                    bool was_enabled = offspring.connections[i].enabled;
-                    offspring.connections[i].enabled = UnityEngine.Random.value < 0.75f ? false : true;
-                    if (was_enabled && !offspring.connections[i].enabled) offspring.enabled_connection_idxs.Remove(i);
+                    parent_giving_connection = parent1;
+                }
+                else
+                {
+                    parent_giving_connection = parent2;
+                }
+                var fromNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.fromID];
+                var toNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.toID];
+                var fromNode = parent_giving_connection.nodes[fromNodeIdx];
+                var toNode = parent_giving_connection.nodes[toNodeIdx];
+                if (!offspring.nodeID_to_idx.ContainsKey(fromNode.ID)) offspring.AddNode(fromNode.Clone());
+                if (!offspring.nodeID_to_idx.ContainsKey(toNode.ID)) offspring.AddNode(toNode.Clone());
+                offspring.AddConnection(connection_to_clone.Clone());
+            
+                if (parent2_connection == null) continue;
+                if (parent1_connection.enabled != parent2_connection.enabled)
+                {
+                    var ID = connection_to_clone.ID;
+                    //  its disabled in one of the parents
+                    var idx = offspring.connectionID_to_idx[ID];
+                    bool was_enabled = offspring.connections[idx].enabled;
+                    offspring.connections[idx].enabled = NEATConnection.GetRandomFloat() < 0.75f ? false : true;
+
+                    if (!was_enabled && offspring.connections[idx].enabled) offspring.enabled_connection_idxs.Add(idx);
+                    else if (was_enabled && !offspring.connections[idx].enabled) offspring.enabled_connection_idxs.Remove(idx);
+                }
+            }
+
+
+            foreach (NEATConnection parent2_connection in parent2.connections)
+            {
+                NEATConnection connection_to_clone = null;
+                NEATConnection parent1_connection = null;
+                if (parent1.connectionID_to_idx.ContainsKey(parent2_connection.ID))
+                {
+                    // it is present in both parents, it must already be added
+                    continue;
+                }
+                else
+                {
+                    // connection is unique to parent2, so 50% chance to add it
+                    //float rnd = NEATConnection.GetRandomFloat();
+                    if (NEATConnection.GetRandomFloat() < 0.5f)//!parent1_selected_for_disjoint)
+                    {
+                        connection_to_clone = parent2_connection;
+                    }
                 }
 
+                if (connection_to_clone == null) continue;
+
+                NEATGenome parent_giving_connection = parent2;
+                var fromNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.fromID];
+                var toNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.toID];
+                var fromNode = parent_giving_connection.nodes[fromNodeIdx];
+                var toNode = parent_giving_connection.nodes[toNodeIdx];
+                if (!offspring.nodeID_to_idx.ContainsKey(fromNode.ID)) offspring.AddNode(fromNode.Clone());
+                if (!offspring.nodeID_to_idx.ContainsKey(toNode.ID)) offspring.AddNode(toNode.Clone());
+                offspring.AddConnection(connection_to_clone.Clone());
             }
+
         }
+
 
 
         return (offspring1, offspring2);
@@ -820,7 +706,7 @@ public class NEATGenome : BrainGenome
         }
         for (int i = 0; i < genome1.connections.Count; i++)
         {
-
+       
             var connection = genome1.connections[i];
             if (genome2.connectionID_to_idx.ContainsKey(connection.ID))
             {
@@ -866,4 +752,58 @@ public class NEATGenome : BrainGenome
         if (!this.nodeID_to_idx.ContainsKey(ID)) Debug.LogError("No node with that ID!");
         return this.nodes[this.nodeID_to_idx[ID]];
     }
+
+    // Option 1: ConcurrentDictionary with integer keys (most flexible)
+    public class IndexableConcurrentList<T> : IEnumerable<T>
+    {
+        private readonly ConcurrentDictionary<int, T> _items = new();
+        private int _count = 0;
+
+        public T this[int index]
+        {
+            get => _items.TryGetValue(index, out T value) ? value : throw new IndexOutOfRangeException();
+            set => _items[index] = value;
+        }
+
+        public int Add(T item)
+        {
+            int index = Interlocked.Increment(ref _count) - 1;
+            _items[index] = item;
+            return index;
+        }
+
+        public int Count => _count;
+        public bool TryGetValue(int index, out T value) => _items.TryGetValue(index, out value);
+        public void Clear() { _items.Clear(); _count = 0; }
+
+        // IEnumerable<T> implementation
+        public IEnumerator<T> GetEnumerator()
+        {
+            // Enumerate in index order (0, 1, 2, ...)
+            for (int i = 0; i < _count; i++)
+            {
+                if (_items.TryGetValue(i, out T value))
+                {
+                    yield return value;
+                }
+                // Skip missing indices (though shouldn't happen with sequential adds)
+            }
+        }
+
+        // Non-generic IEnumerable implementation
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        // Alternative: Enumerate by actual stored keys (may be unordered)
+        public IEnumerable<T> GetUnorderedValues()
+        {
+            return _items.Values;
+        }
+
+        // Get key-value pairs for debugging
+        public IEnumerable<KeyValuePair<int, T>> GetIndexedPairs()
+        {
+            return _items.OrderBy(kvp => kvp.Key);
+        }
+    }
+
 }

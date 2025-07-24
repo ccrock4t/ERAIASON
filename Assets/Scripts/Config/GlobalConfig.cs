@@ -123,7 +123,7 @@ public class GlobalConfig : MonoBehaviour
     // ============
 
     // === World voxel automaton === 
-    public const bool RUN_WORLD_AUTOMATA = true;
+    public const bool RUN_WORLD_AUTOMATA = false;
 
     public const ProcessingMethod voxel_processing_method = ProcessingMethod.CPU;
     public const VoxelWorldSmoothingMethod voxel_mesh_smoothing_method = VoxelWorldSmoothingMethod.None;
@@ -137,7 +137,7 @@ public class GlobalConfig : MonoBehaviour
     // ============
 
     //EA settings
-    public static bool USE_NOVELTY_SEARCH = false;
+    public static bool USE_NOVELTY_SEARCH = true;
     public static bool show_lines = true;
 
     // === Saving and loading ===
@@ -149,7 +149,7 @@ public class GlobalConfig : MonoBehaviour
 
 
 
-    public const bool RECORD_DATA_TO_DISK = true;
+    public const bool RECORD_DATA_TO_DISK = false;
     public const bool RECORD_DATA_TO_WEB = true;
 
     // ============
