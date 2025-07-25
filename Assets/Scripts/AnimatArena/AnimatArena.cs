@@ -457,7 +457,6 @@ public class AnimatArena : MonoBehaviour
         float ratio_of_life_spent_looking_at_food = animat.body.frames_food_detected / animat.body.total_frames_alive; //[0,1]
 
         float distance_score = math.min(1.0f, displacement / 20);
-        if (displacement < 2.0f) distance_score = 0; // discourage non-movers
 
         float final_distance_score = ratio_of_life_spent_looking_at_food * distance_score;
         float final_food_score = ratio_of_life_spent_looking_at_food * (food_eaten / AnimatBody.ENERGY_IN_A_FOOD);
@@ -700,6 +699,8 @@ public class AnimatArena : MonoBehaviour
                 Debug.LogError("error not implemented");
                 return null;
             }
+            offspring1_genome.brain_genome.Mutate();
+            offspring2_genome.brain_genome.Mutate();
             offspring1_genome.momName = parent1.uniqueName;
             offspring1_genome.dadName = parent2.uniqueName;
             offspring2_genome.momName = parent1.uniqueName;

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Mathematics;
 using UnityEngine;
+using static BodyGenome;
 using static Brain;
+using static SoftVoxelRobotBodyGenome;
 using CVX_Voxel = System.IntPtr;
 
 public class SoftVoxelRobot : AnimatBody
@@ -40,10 +42,11 @@ public class SoftVoxelRobot : AnimatBody
     {
 
     }
-
+    SoftVoxelRobotBodyGenome genome;
     public void Initialize(SoftVoxelRobotBodyGenome genome, float? scale=null)
     {
         base.InitializeMetabolism();
+        this.genome = genome;
         this.soft_voxel_object = new(genome.dimensions3D,
             genome.voxel_array,
             this.override_color);
@@ -118,7 +121,9 @@ public class SoftVoxelRobot : AnimatBody
                 double[] motor_activations = new double[motor_neurons.Length];
                 for (int i = 0; i < motor_neurons.Length; i++)
                 {
-                    int motor_neuron_idx = nodeID_to_idx[NEATGenome.GetTupleIDFromInt3(coords, i, Neuron.NeuronRole.Motor)];
+                    var motor_key = new SoftVoxelMotorKey(coords, (dof)i);
+                    var motor_ID = genome.svrMotorKeyToNodeID[motor_key];
+                    int motor_neuron_idx = nodeID_to_idx[motor_ID];
                     motor_neurons[i] = brain.GetNeuronCurrentState(motor_neuron_idx);
                     if (motor_neurons[i].neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
                     motor_activations[i] = motor_neurons[i].activation;
@@ -230,7 +235,9 @@ public class SoftVoxelRobot : AnimatBody
 
 
                 // touch sensor
-                int touch_sensory_neuron_idx = nodeID_to_idx[new NeuronID(new int4(coords, 0), Neuron.NeuronRole.Sensor)];
+                var touch_key = new SoftVoxelSensorKey(coords, SoftVoxelSensorType.Touch);
+                var touch_ID = genome.svrSensorKeyToNodeID[touch_key];
+                int touch_sensory_neuron_idx = nodeID_to_idx[touch_ID];
                 Neuron touch_sensory_neuron = brain.GetNeuronCurrentState(touch_sensory_neuron_idx);
                 if (touch_sensory_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
                 touch_sensory_neuron.activation = is_touching_ground ? 1 : 0;
@@ -239,7 +246,22 @@ public class SoftVoxelRobot : AnimatBody
                 // voxel rotation
                 for (int i = 1; i < NUM_OF_SENSOR_NEURONS; i++)
                 {
-                    int rotation_sensory_neuron_idx = nodeID_to_idx[new NeuronID(new int4(coords, i), Neuron.NeuronRole.Sensor)];
+                    int rotation_sensory_neuron_idx;
+                    if (i == 1)
+                    {
+                        var tilt1_key = new SoftVoxelSensorKey(coords, SoftVoxelSensorType.ForwardTilt);
+                        var tilt1_ID = genome.svrSensorKeyToNodeID[tilt1_key];
+                        rotation_sensory_neuron_idx = nodeID_to_idx[tilt1_ID];
+                    }else if(i == 2)
+                    {
+                        var tilt2_key = new SoftVoxelSensorKey(coords, SoftVoxelSensorType.SideTilt);
+                        var tilt2_ID = genome.svrSensorKeyToNodeID[tilt2_key];
+                        rotation_sensory_neuron_idx = nodeID_to_idx[tilt2_ID];
+                    }
+                    else
+                    {
+                        continue;
+                    }
                     Neuron rotation_sensory_neuron = brain.GetNeuronCurrentState(rotation_sensory_neuron_idx);
                     if (rotation_sensory_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
 

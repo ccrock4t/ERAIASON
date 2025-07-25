@@ -125,7 +125,7 @@ public class Animat : MonoBehaviour
         //develop the brain and body in a separate thread
         this.brain_develop_task = Task.Run(() =>
         {
-            Dictionary<NeuronID, int> nodeID_to_idx = new();
+            Dictionary<int, int> nodeID_to_idx = new();
             List<int> motor_neuron_indices = new();
             if (GlobalConfig.BRAIN_GENOME_METHOD == BrainGenomeMethod.CPPN)
             {
@@ -156,12 +156,12 @@ public class Animat : MonoBehaviour
                 foreach (NEATNode node in brain_genome.nodes)
                 {
                     nodeID_to_idx[node.ID] = i;
-                    if (node.ID.neuron_role == Neuron.NeuronRole.Motor) motor_neuron_indices.Add(i);
+                    if (node.neuron_role == Neuron.NeuronRole.Motor) motor_neuron_indices.Add(i);
                     i++;
                 }
 
                 // connections. First group them together
-                Dictionary<NeuronID, List<NEATConnection>> nodeID_to_connections = new();
+                Dictionary<int, List<NEATConnection>> nodeID_to_connections = new();
                 foreach (int connection_idx in brain_genome.enabled_connection_idxs)
                 {
                     var connection = brain_genome.connections[connection_idx];
@@ -170,19 +170,19 @@ public class Animat : MonoBehaviour
                         UnityEngine.Debug.LogError("Error: disabled connection is in enabled connections list");
                         return;
                     }
-                    if (!nodeID_to_connections.ContainsKey(connection.toID))
+                    if (!nodeID_to_connections.ContainsKey(connection.toNodeID))
                     {
-                        nodeID_to_connections[connection.toID] = new();
+                        nodeID_to_connections[connection.toNodeID] = new();
                     }
-                    nodeID_to_connections[connection.toID].Add(connection);
+                    nodeID_to_connections[connection.toNodeID].Add(connection);
                 }
 
                 // connections. Next place them in the array
-                Dictionary<NeuronID, int> nodeID_to_synapse_startIdx = new();
+                Dictionary<int, int> nodeID_to_synapse_startIdx = new();
                 i = 0;
-                foreach (KeyValuePair<NeuronID, List<NEATConnection>> node_connections in nodeID_to_connections)
+                foreach (KeyValuePair<int, List<NEATConnection>> node_connections in nodeID_to_connections)
                 {
-                    NeuronID nodeID = node_connections.Key;
+                    int nodeID = node_connections.Key;
                     nodeID_to_synapse_startIdx[nodeID] = i;
                     foreach (NEATConnection connection in node_connections.Value)
                     {
@@ -192,20 +192,12 @@ public class Animat : MonoBehaviour
 							return;
 						}
 						Synapse synapse = Synapse.GetDefault();
-                        synapse.from_neuron_idx = nodeID_to_idx[connection.fromID];
-                        synapse.to_neuron_idx = nodeID_to_idx[connection.toID];
+                        synapse.from_neuron_idx = nodeID_to_idx[connection.fromNodeID];
+                        synapse.to_neuron_idx = nodeID_to_idx[connection.toNodeID];
 
-                        if (nodeID != connection.toID) Debug.LogError("Error connections dont match");
+                        if (nodeID != connection.toNodeID) Debug.LogError("Error connections dont match");
 
                         synapse.enabled = connection.enabled ? 1 : 0;
-                        if (connection.toID.coords.x != nodeID.coords.x
-                        || connection.toID.coords.y != nodeID.coords.y
-                        || connection.toID.coords.z != nodeID.coords.z
-                        || connection.toID.coords.w != nodeID.coords.w
-                        || connection.toID.neuron_role != nodeID.neuron_role)
-                        {
-                            Debug.LogError("error");
-                        }
                         synapse.weight = connection.weight;
                         synapse.coefficient_A = connection.hebb_ABCDLR[0];
                         synapse.coefficient_B = connection.hebb_ABCDLR[1];
@@ -232,7 +224,7 @@ public class Animat : MonoBehaviour
                         Debug.LogError("o");
                     }
                     neuron.gain = node.gain;
-                    neuron.neuron_role = node.ID.neuron_role;
+                    neuron.neuron_role = node.neuron_role;
                     neuron.sigmoid_alpha = node.sigmoid_alpha;
                     neuron.r = node.r;
                     neuron.w = node.w;

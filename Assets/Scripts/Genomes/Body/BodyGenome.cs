@@ -1,4 +1,9 @@
-﻿public abstract class BodyGenome
+﻿using System;
+using System.Collections.Generic;
+using static ArticulatedRobotBodyGenome;
+using static SoftVoxelRobotBodyGenome;
+
+public abstract class BodyGenome
 {
     public abstract (BodyGenome bodygenome1, BodyGenome bodygenome2) Reproduce(BodyGenome body_genome);
 
@@ -42,4 +47,41 @@
             return 1.0f;
         }
     }
+
+    public enum dof
+    {
+        X, Y, Z
+    }
+
+    public enum VisionSensorType{
+        Obstacle,
+        Food,
+        Animat,
+        PickableVoxel
+    }
+    public struct VisionSensorKey
+    {
+        public int ray;
+        public VisionSensorType sensor;
+
+        public VisionSensorKey(int ray, VisionSensorType type)
+        {
+            this.ray = ray;
+            this.sensor = type;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is VisionSensorKey other &&
+                   ray == other.ray &&
+                   sensor == other.sensor;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(ray, sensor);
+        }
+    }
+    public Dictionary<VisionSensorKey, int> visionSensorKeyToNodeID = new();
+
 }

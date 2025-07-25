@@ -134,7 +134,7 @@ public class NoveltySearchGPU : NoveltySearch
         float novelty = GetAnimatNoveltyScore(behavior);
 
         float rnd = UnityEngine.Random.Range(0.0f, 1.0f);
-        if ( rnd < chance_to_add_to_archive)
+        if (rnd < chance_to_add_to_archive)
         {
             added = true;
             this.AddToArchive(behavior);

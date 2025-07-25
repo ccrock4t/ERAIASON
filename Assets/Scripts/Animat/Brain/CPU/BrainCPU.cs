@@ -51,8 +51,7 @@ public class BrainCPU : Brain
             next_state_synapses = this.next_state_synapses,
             use_hebb = GlobalConfig.USE_HEBBIAN,
             hebb_rule = GlobalConfig.HEBBIAN_METHOD,
-            time = Time.time
-
+            time = Time.time,
         };
         update_job_handle = job.Schedule(this.next_state_neurons.Length, 128);
     }

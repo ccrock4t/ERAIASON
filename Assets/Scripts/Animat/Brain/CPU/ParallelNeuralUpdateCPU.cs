@@ -2,6 +2,7 @@
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
 using static Brain;
 
@@ -37,8 +38,11 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
 
     public double time;
 
+
+
     public void Execute(int i)
     {
+
         // set the neuron data
         this.next_state_neurons[i] = this.CalculateNeuronActivation(i,
             this.current_state_neurons, 
@@ -53,7 +57,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         NativeArray<Synapse> next_state_synapses)
     {
         bool update_synapses = use_hebb;
-
+        Unity.Mathematics.Random randomGen = new Unity.Mathematics.Random((uint)((i + 1) * time) + 1);
         if (current_state_synapses == next_state_synapses && update_synapses)
         {
             Debug.LogError("Error: can't update synapses at the same timestep as using them.");
@@ -70,7 +74,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         to_neuron.real_num_of_synapses = 0; //for metadata
 
         // sum inputs to the neuron
-        
+
         int start_idx = to_neuron.synapse_start_idx;
         int end_idx = (to_neuron.synapse_start_idx + to_neuron.synapse_count);
         double sum = 0; // only bias motor and hidden units (todo - is this right? or include sensors?)
@@ -82,10 +86,25 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
             int from_idx = connection.from_neuron_idx;
             Neuron from_neuron = current_state_neurons[from_idx];
 
-            double input = connection.weight * from_neuron.activation;
- 
+            double noisy_activation = from_neuron.activation;
+            float noise_stddev = 0;
+            if (from_neuron.IsSensory())
+            {
+                noise_stddev = 0.05f;
+            }
+            else if (from_neuron.neuron_role == Neuron.NeuronRole.Hidden)
+            {
+                noise_stddev = 0.025f;
+            }
+            else if (from_neuron.neuron_role == Neuron.NeuronRole.Motor) { 
+                noise_stddev = 0.005f;
+            }
+            float sensornoise = RandomNormal(randomGen, 0, noise_stddev);
+            noisy_activation += sensornoise;
+            double input = connection.weight * noisy_activation;
+
             sum += input;
-            
+
             to_neuron.real_num_of_synapses++;
         }
 
@@ -277,5 +296,13 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         return connection;
     }
 
-
+    public static float RandomNormal(Unity.Mathematics.Random rng, float mean = 0f, float stddev = 1f)
+    {
+        // Use Box-Muller transform
+        double u1 = 1.0 - rng.NextDouble(); // uniform(0,1] random doubles
+        double u2 = 1.0 - rng.NextDouble();
+        double randStdNormal = math.sqrt(-2.0 * math.log(u1)) * math.sin(2.0 * math.PI * u2);
+        double randNormal = mean + stddev * randStdNormal;
+        return (float)randNormal;
+    }
 }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using static ArticulatedRobotBodyGenome;
+using static BodyGenome;
 using static Brain;
 
 public class ArticulatedRobot : AnimatBody
@@ -28,7 +29,7 @@ public class ArticulatedRobot : AnimatBody
 
     // target modes
     public const float TARGET_MODE_FORCE_LIMIT = 750;
-    public const float TARGET_MODE_STIFFNESS = 1500f;
+    public const float TARGET_MODE_STIFFNESS = 1000f;
     public const float TARGET_MODE_DAMPING = 100f;
     public const float TARGET_MODE_MAX_JOINT_VELOCITY = 10f; // rad/s
 
@@ -138,7 +139,8 @@ public class ArticulatedRobot : AnimatBody
                 Vector3 output = new Vector3(0, 0, 0);
                 for (int i = 0; i < NUM_OF_MOTOR_NEURONS_PER_JOINT; i++)
                 {
-                    var neuronID = NEATGenome.GetTupleIDFrom2Ints(j, i, Brain.Neuron.NeuronRole.Motor);
+                    var motorKey = new ArticulatedMotorKey(j,(dof)i);
+                    var neuronID = body_genome.articulatedMotorKeyToNodeID[motorKey];
                     int brain_idx = brain.nodeID_to_idx[neuronID];
 
                     Neuron motor_neuron = brain.GetNeuronCurrentState(brain_idx);
@@ -227,13 +229,25 @@ public class ArticulatedRobot : AnimatBody
             {
                 ArticulationBody body_segment_ab_zDrive = this.body_segments_Drive_abs[j].Item3;
                 ArticulatedRobotBodySegment body_segment = this.body_segments[j];
+                Quaternion canonicalRotation = body_segment.transform.rotation;
 
+                // --- This is the fix ---
+                // If w is negative, flip all components to get the canonical version.
+                if (canonicalRotation.w < 0.0f)
+                {
+                    canonicalRotation.x *= -1f;
+                    canonicalRotation.y *= -1f;
+                    canonicalRotation.z *= -1f;
+                    canonicalRotation.w *= -1f;
+                }
                 for (int i = 0; i < NUM_OF_SENSOR_NEURONS_PER_SEGMENT; i++)
                 {
-                    var neuronID = NEATGenome.GetTupleIDFrom2Ints(j, i, Brain.Neuron.NeuronRole.Sensor);
+                    var sensorKey = new ArticulatedSensorKey(j, (ArticulatedSensorType)i);
+                    var neuronID = body_genome.articulatedSensorKeyToNodeID[sensorKey];
                     int brain_idx = brain.nodeID_to_idx[neuronID];
 
                     Neuron sensory_neuron = brain.GetNeuronCurrentState(brain_idx);
+
 
 
                     //first 6 are touch sensors
@@ -243,19 +257,19 @@ public class ArticulatedRobot : AnimatBody
                     }
                     else if (i == 6)
                     {
-                        sensory_neuron.activation = body_segment_ab_zDrive.transform.rotation.x;
+                        sensory_neuron.activation = canonicalRotation.x;
                     }
                     else if (i == 7)
                     {
-                        sensory_neuron.activation = body_segment_ab_zDrive.transform.rotation.y;
+                        sensory_neuron.activation = canonicalRotation.y;
                     }
                     else if (i == 8)
                     {
-                        sensory_neuron.activation = body_segment_ab_zDrive.transform.rotation.z;
+                        sensory_neuron.activation = canonicalRotation.z;
                     }
                     else if (i == 9)
                     {
-                        sensory_neuron.activation = body_segment_ab_zDrive.transform.rotation.w;
+                        sensory_neuron.activation = canonicalRotation.w;
 
                     }
 

@@ -22,7 +22,7 @@ public class NEATGenome : BrainGenome
     // user changeable parameters
     public static float CHANCE_TO_MUTATE_CONNECTION = 0.8f;
     public static float ADD_CONNECTION_MUTATION_RATE = 0.2f;
-    public static float ADD_NODE_MUTATION_RATE = 0.06f;
+    public static float ADD_NODE_MUTATION_RATE = 0.1f;
 
 
     //constant parameters
@@ -39,7 +39,7 @@ public class NEATGenome : BrainGenome
     const bool ALLOW_OUTBOUND_MOTOR_CONNECTIONS = true;
 
 
-    public Dictionary<NeuronID, int> nodeID_to_idx;
+    public Dictionary<int, int> nodeID_to_idx;
     public Dictionary<int4, int> connectionID_to_idx;
     public List<NEATNode> nodes;
     public List<NEATNode> sensor_and_hidden_nodes;
@@ -145,29 +145,6 @@ public class NEATGenome : BrainGenome
         this.enabled_connection_idxs = new RandomHashSet<int>();
     }
 
-    public static NeuronID GetTupleIDFromInt3(int3 coords, int neuronID, Brain.Neuron.NeuronRole neuron_role)
-    {
-        if(coords.x < 0 || coords.y < 0 || coords.z < 0)
-        {
-            Debug.LogError("Dont use negative coordinates, they are reserved for other IDs");
-        }
-        return new NeuronID(new int4(coords, neuronID), neuron_role);
-    }
-
-    public static NeuronID GetTupleIDFromInt(int neuronID, Brain.Neuron.NeuronRole neuron_role)
-    {
-        return new NeuronID(new(new int3(0, 0, -5), neuronID), neuron_role);
-    }
-
-
-    public static NeuronID GetTupleIDFrom2Ints(int neuronID, int num2, Brain.Neuron.NeuronRole neuron_role)
-    {
-        return new NeuronID(new(new int3(-5, 0, num2), neuronID), neuron_role);
-    }
-
-
-
-
 
     public override void Mutate()
     {
@@ -182,6 +159,7 @@ public class NEATGenome : BrainGenome
 
         // --- 1. Single Loop for All Connection Mutations ---
         // This loop handles all modifications to the 'connections' collection.
+        const float hebb_mut_rate = 0.2f;
         int connection_idx = 0;
         foreach (NEATConnection connection in this.connections)
         {
@@ -198,18 +176,22 @@ public class NEATGenome : BrainGenome
             // b) Mutate Hebbian learning parameters if the pre-computed check passed.
             if (shouldMutateHebbian)
             {
-                // Assuming hebb_ABCDLR is an array or list of size 5.
-                for (int i = 0; i < connection.hebb_ABCDLR.Length; i++)
+                if(NEATConnection.GetRandomFloat() < hebb_mut_rate)
                 {
-                    if (NEATConnection.GetRandomFloat() < 0.9f)
+                    // Assuming hebb_ABCDLR is an array or list of size 5.
+                    for (int i = 0; i < connection.hebb_ABCDLR.Length; i++)
                     {
-                        connection.hebb_ABCDLR[i] += GetPerturbationFromRange(-1f, 1f);
-                    }
-                    else
-                    {
-                        connection.hebb_ABCDLR[i] = NEATConnection.GetRandomInitialWeight();
+                        if (NEATConnection.GetRandomFloat() < 0.3f)
+                        {
+                            connection.hebb_ABCDLR[i] += GetPerturbationFromRange(-1f, 1f);
+                        }
+                        else
+                        {
+                            connection.hebb_ABCDLR[i] = NEATConnection.GetRandomInitialWeight();
+                        }
                     }
                 }
+
             }
 
 
@@ -236,54 +218,69 @@ public class NEATGenome : BrainGenome
 
         // --- 2. Single Loop for All Node Mutations ---
         // This loop handles all modifications to the 'nodes' collection.
-        var r_range = CPG.GetRRange();
-        var w_range = CPG.GetWRange();
-        var thetaRange = CPG.GetThetaRange();
-        var rGainRange = CPG.GetRGainRange();
-        var pGainRange = CPG.GetPGainRange();
-        var muRange = CPG.GetMuRange();
-        var kRange = CPG.GetKRange();
-        var miRange = CPG.GetMaxInputRange();
-        var giRange = CPG.GetOscInjectGainRange();  
-        var phaseOffsetRange = CPG.GetPhaseOffsetRange();
+        var r_range = CPGRanges.GetRRange();
+        var w_range = CPGRanges.GetWRange();
+        var thetaRange = CPGRanges.GetThetaRange();
+        var rGainRange = CPGRanges.GetRGainRange();
+        var pGainRange = CPGRanges.GetPGainRange();
+        var muRange = CPGRanges.GetMuRange();
+        var kRange = CPGRanges.GetKRange();
+        var miRange = CPGRanges.GetMaxInputRange();
+        var giRange = CPGRanges.GetOscInjectGainRange();  
+        var phaseOffsetRange = CPGRanges.GetPhaseOffsetRange();
+
+        const float bias_mut_rate = 0.2f;
+        const float timeconstant_mut_rate = 0.2f;
+        const float gain_mut_rate = 0.2f;
+        const float cpg_mut_rate = 0.2f;
         foreach (NEATNode node in this.nodes)
         {
             // a) Mutate bias.
-            if (NEATConnection.GetRandomFloat() < 0.9f)
+            if(NEATConnection.GetRandomFloat() < bias_mut_rate)
             {
-                node.bias += GetPerturbationFromRange(-1f, 1f);
+                if (NEATConnection.GetRandomFloat() < 0.9f)
+                {
+                    node.bias += GetPerturbationFromRange(-1f, 1f);
+                }
+                else
+                {
+                    node.bias = NEATConnection.GetRandomInitialWeight();
+                }
             }
-            else
-            {
-                node.bias = NEATConnection.GetRandomInitialWeight();
-            }
+
 
             // b) Mutate CTRNN time constant 
             if (shouldMutateTimeConstant)
             {
-                if (NEATConnection.GetRandomFloat() < 0.9f)
+                if (NEATConnection.GetRandomFloat() < timeconstant_mut_rate)
                 {
-                    node.time_constant += GetPerturbationFromRange(0f, 1f);
+                    if (NEATConnection.GetRandomFloat() < 0.9f)
+                    {
+                        node.time_constant += GetPerturbationFromRange(0f, 1f);
+                    }
+                    else
+                    {
+                        node.time_constant = NEATConnection.GetRandomInitialWeight();
+                    }
+                    node.time_constant = math.abs(node.time_constant);
                 }
-                else
-                {
-                    node.time_constant = NEATConnection.GetRandomInitialWeight();
-                }
-                node.time_constant = math.abs(node.time_constant);
             }
 
             // c) Mutate CTRNN gain 
             if (shouldMutateGain)
             {
-                if (NEATConnection.GetRandomFloat() < 0.9f)
+                if (NEATConnection.GetRandomFloat() < gain_mut_rate)
                 {
-                    node.gain += GetPerturbationFromRange(0f, 1f);
+                    if (NEATConnection.GetRandomFloat() < 0.9f)
+                    {
+                        node.gain += GetPerturbationFromRange(0f, 1f);
+                    }
+                    else
+                    {
+                        node.gain = NEATConnection.GetRandomInitialWeight();
+                    }
+                    node.gain = math.abs(node.gain);
                 }
-                else
-                {
-                    node.gain = NEATConnection.GetRandomInitialWeight();
-                }
-                node.gain = math.abs(node.gain);
             }
 
             // d) Mutate sigmoid slope parameters 
@@ -299,32 +296,19 @@ public class NEATGenome : BrainGenome
 
             // e) Mutate all CPG (Central Pattern Generator) parameters.
 
-            MutateParameter(ref node.r, r_range);
-            MutateParameter(ref node.w, w_range);
-            MutateParameter(ref node.theta, thetaRange);
-            MutateParameter(ref node.r_gain, rGainRange);
-            MutateParameter(ref node.p_gain, pGainRange);
-            MutateParameter(ref node.mu, muRange);
-            MutateParameter(ref node.K, kRange);
-            MutateParameter(ref node.max_input, miRange);
-            MutateParameter(ref node.osc_inject_gain, giRange);
-            MutateParameter(ref node.phase_offset, phaseOffsetRange);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.r, r_range);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.w, w_range);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.theta, thetaRange);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.r_gain, rGainRange);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.p_gain, pGainRange);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.mu, muRange);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.K, kRange);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.max_input, miRange);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.osc_inject_gain, giRange);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.phase_offset, phaseOffsetRange);
         }
 
         float rnd;
-        if (EVOLVE_ACTIVATION_FUNCTIONS)
-        {
-            foreach (NEATNode node in this.nodes)
-            {
-                if (node.ID.neuron_role != Neuron.NeuronRole.Hidden) continue;
-                rnd = NEATConnection.GetRandomFloat();
-                if (rnd < CHANCE_TO_MUTATE_ACTIVATION_FUNCTIONS)
-                {
-                    node.activation_function = Brain.Neuron.GetRandomActivationFunction();
-                }
-
-            }
-        }
 
 
         // disable connection?
@@ -371,14 +355,8 @@ public class NEATGenome : BrainGenome
         param = math.clamp(param, range.x, range.y);
     }
 
-    private void MutateCTNNParameters()
-    {
 
-
-    }
-
-
-    public static class CPG
+    public static class CPGRanges
     {
         public static Vector2 GetWRange() => new(0.1f, 40f);
         public static Vector2 GetThetaRange() => new(0f, math.PI2);
@@ -478,15 +456,15 @@ public class NEATGenome : BrainGenome
         random_connection.enabled = false;
 
         // set node position to be used in BrainViewer
-        NEATNode to_node = GetNode(random_connection.toID);
-        NEATNode from_node = GetNode(random_connection.fromID);
+        NEATNode to_node = GetNode(random_connection.toNodeID);
+        NEATNode from_node = GetNode(random_connection.fromNodeID);
         float4 coords = (to_node.brainviewer_coords + from_node.brainviewer_coords) / 2f;
 
         NEATNode new_node = AddDisconnectedHiddenNode(brainviewer_coords: coords);
 
-        NEATConnection new_connectionA = new(weight: 1, fromID: random_connection.fromID, toID: new_node.ID, ID: int.MinValue);
+        NEATConnection new_connectionA = new(weight: 1, fromNodeID: random_connection.fromNodeID, toNodeID: new_node.ID, ID: int.MinValue);
 
-        NEATConnection new_connectionB = new(weight: random_connection.weight, fromID: new_node.ID, toID: random_connection.toID, ID: int.MinValue);
+        NEATConnection new_connectionB = new(weight: random_connection.weight, fromNodeID: new_node.ID, toNodeID: random_connection.toNodeID, ID: int.MinValue);
         for (int i = 0; i < random_connection.hebb_ABCDLR.Length; i++)
         {
             new_connectionB.hebb_ABCDLR[i] = random_connection.hebb_ABCDLR[i];
@@ -501,10 +479,9 @@ public class NEATGenome : BrainGenome
         return new_node;
     }
 
-    public NEATNode AddDisconnectedHiddenNode(NeuronID? ID_override = null, float4? brainviewer_coords = null)
+    public NEATNode AddDisconnectedHiddenNode(int? ID_override=null, float4? brainviewer_coords = null)
     {
-        var ID_coords = ID_override == null ? new NeuronID(new int4(int3.zero, int.MinValue), Brain.Neuron.NeuronRole.Hidden) : (NeuronID)ID_override;
-        NEATNode new_node = new(ID: ID_coords, InitialNEATGenomes.neuron_activation_function, brainviewer_coords);
+        NEATNode new_node = new(ID: ID_override ?? int.MinValue, InitialNEATGenomes.neuron_activation_function, Brain.Neuron.NeuronRole.Hidden,brainviewer_coords);
         this.AddNode(new_node);
         return new_node;
     }
@@ -514,20 +491,20 @@ public class NEATGenome : BrainGenome
         this.nodes.Add(node);
         this.nodeID_to_idx[node.ID] = this.nodes.Count - 1;
 
-        if (node.ID.neuron_role == Brain.Neuron.NeuronRole.Motor)
+        if (node.neuron_role == Brain.Neuron.NeuronRole.Motor)
         {
             this.motor_and_hidden_nodes.Add(node);
             this.motor_nodes.Add(node);
         }
 
-        if (node.ID.neuron_role == Brain.Neuron.NeuronRole.Hidden)
+        if (node.neuron_role == Brain.Neuron.NeuronRole.Hidden)
         {
             this.motor_and_hidden_nodes.Add(node);
             this.sensor_and_hidden_nodes.Add(node);
             this.hidden_nodes.Add(node);
         }
 
-        if (node.ID.neuron_role == Brain.Neuron.NeuronRole.Sensor)
+        if (node.neuron_role == Brain.Neuron.NeuronRole.Sensor)
         {
             this.sensor_and_hidden_nodes.Add(node);
             this.sensor_nodes.Add(node);
@@ -536,8 +513,8 @@ public class NEATGenome : BrainGenome
 
     public void AddConnection(NEATConnection connection)
     {
-        if (!this.nodeID_to_idx.ContainsKey(connection.fromID)
-            || !this.nodeID_to_idx.ContainsKey(connection.toID)) Debug.LogError("Error cant form connection to non-existent node");
+        if (!this.nodeID_to_idx.ContainsKey(connection.fromNodeID)
+            || !this.nodeID_to_idx.ContainsKey(connection.toNodeID)) Debug.LogError("Error cant form connection to non-existent node");
         this.connections.Add(connection);
         this.connectionID_to_idx[connection.ID] = this.connections.Count - 1;
         if (connection.enabled) this.enabled_connection_idxs.Add(this.connections.Count - 1);
@@ -552,11 +529,13 @@ public class NEATGenome : BrainGenome
 
         bool parent1_selected_for_disjoint = NEATConnection.GetRandomFloat() < 0.5f;
 
+
+
         foreach (NEATGenome offspring in new NEATGenome[] { offspring1, offspring2 })
         {
 
             //
-            // now do connections
+            // first  do connections
             //
             foreach (NEATConnection parent1_connection in parent1.connections)
             {
@@ -602,25 +581,28 @@ public class NEATGenome : BrainGenome
                 {
                     parent_giving_connection = parent2;
                 }
-                var fromNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.fromID];
-                var toNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.toID];
+                
+                var fromNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.fromNodeID];
+                var toNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.toNodeID];
                 var fromNode = parent_giving_connection.nodes[fromNodeIdx];
                 var toNode = parent_giving_connection.nodes[toNodeIdx];
                 if (!offspring.nodeID_to_idx.ContainsKey(fromNode.ID)) offspring.AddNode(fromNode.Clone());
                 if (!offspring.nodeID_to_idx.ContainsKey(toNode.ID)) offspring.AddNode(toNode.Clone());
                 offspring.AddConnection(connection_to_clone.Clone());
-            
+
+                //enabled/disabled
                 if (parent2_connection == null) continue;
                 if (parent1_connection.enabled != parent2_connection.enabled)
                 {
                     var ID = connection_to_clone.ID;
                     //  its disabled in one of the parents
                     var idx = offspring.connectionID_to_idx[ID];
-                    bool was_enabled = offspring.connections[idx].enabled;
-                    offspring.connections[idx].enabled = NEATConnection.GetRandomFloat() < 0.75f ? false : true;
+                    var connection = offspring.connections[idx];
+                    bool was_enabled = connection.enabled;
+                    connection.enabled = NEATConnection.GetRandomFloat() < 0.75f ? false : true;
 
-                    if (!was_enabled && offspring.connections[idx].enabled) offspring.enabled_connection_idxs.Add(idx);
-                    else if (was_enabled && !offspring.connections[idx].enabled) offspring.enabled_connection_idxs.Remove(idx);
+                    if (!was_enabled && connection.enabled) offspring.enabled_connection_idxs.Add(idx);
+                    else if (was_enabled && !connection.enabled) offspring.enabled_connection_idxs.Remove(idx);
                 }
             }
 
@@ -647,8 +629,8 @@ public class NEATGenome : BrainGenome
                 if (connection_to_clone == null) continue;
 
                 NEATGenome parent_giving_connection = parent2;
-                var fromNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.fromID];
-                var toNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.toID];
+                var fromNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.fromNodeID];
+                var toNodeIdx = parent_giving_connection.nodeID_to_idx[connection_to_clone.toNodeID];
                 var fromNode = parent_giving_connection.nodes[fromNodeIdx];
                 var toNode = parent_giving_connection.nodes[toNodeIdx];
                 if (!offspring.nodeID_to_idx.ContainsKey(fromNode.ID)) offspring.AddNode(fromNode.Clone());
@@ -656,8 +638,58 @@ public class NEATGenome : BrainGenome
                 offspring.AddConnection(connection_to_clone.Clone());
             }
 
-        }
+            // finally add any mising sensorymotor nodes
 
+            for (int parent1_sensor_idx = 0; parent1_sensor_idx < parent1.sensor_nodes.Count; parent1_sensor_idx++)
+            {
+                var parent1_sense_node = parent1.sensor_nodes[parent1_sensor_idx];
+                var ID = parent1_sense_node.ID;
+                var parent2_sensor_node_idx = parent2.nodeID_to_idx[(int)ID];
+                var parent2_sense_node = parent2.nodes[parent2_sensor_node_idx];
+                if (parent1_sense_node.ID != parent2_sense_node.ID) Debug.LogError("error");
+               
+                if (!offspring.nodeID_to_idx.ContainsKey(ID))
+                {
+                    NEATNode node_to_clone = null;
+                    float rnd = NEATConnection.GetRandomFloat();
+                    if (rnd < 0.5f)
+                    {
+                        node_to_clone = parent1_sense_node;
+
+                    }
+                    else
+                    {
+                        node_to_clone = parent2_sense_node;
+                    }
+
+                    offspring.AddNode(node_to_clone.Clone());
+                }
+            }
+            for (int parent1_motor_idx = 0; parent1_motor_idx < parent1.motor_nodes.Count; parent1_motor_idx++)
+            {
+                var parent1_motor_node = parent1.motor_nodes[parent1_motor_idx];
+                var ID = parent1_motor_node.ID;
+                var parent2_motor_node_idx = parent2.nodeID_to_idx[(int)ID];
+                var parent2_motor_node = parent2.nodes[parent2_motor_node_idx];
+                if (parent1_motor_node.ID != parent2_motor_node.ID) Debug.LogError("error");
+                if (!offspring.nodeID_to_idx.ContainsKey(ID))
+                {
+                    NEATNode node_to_clone = null;
+                    //float rnd = NEATConnection.GetRandomFloat();
+                    if (parent1_selected_for_disjoint)
+                    {
+                        node_to_clone = parent1_motor_node;
+
+                    }
+                    else
+                    {
+                        node_to_clone = parent2_motor_node;
+                    }
+
+                    offspring.AddNode(node_to_clone.Clone());
+                }
+            }
+        }
 
 
         return (offspring1, offspring2);
@@ -679,9 +711,9 @@ public class NEATGenome : BrainGenome
         return cloned_genome;
     }
 
-    public static bool IsFightingNeuron(NeuronID ID)
+    public static bool IsFightingNeuron(int ID)
     {
-        return ID.coords.w == InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX;
+        return ID == InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX;
     }
 
     public override float CalculateHammingDistance(BrainGenome other_genome)
@@ -747,7 +779,7 @@ public class NEATGenome : BrainGenome
         return distance;
     }
 
-    internal NEATNode GetNode(NeuronID ID)
+    internal NEATNode GetNode(int ID)
     {
         if (!this.nodeID_to_idx.ContainsKey(ID)) Debug.LogError("No node with that ID!");
         return this.nodes[this.nodeID_to_idx[ID]];

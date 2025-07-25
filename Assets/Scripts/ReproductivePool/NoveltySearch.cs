@@ -11,7 +11,7 @@ public abstract class NoveltySearch
     public const int k_for_kNN = 15; // more neighbors is less strict, similar behaviors to enter the archive; less neighbors is more strict, only very novel behaviors can enter
 
     public float initial_novelty = 1.0f;
-    public const float chance_to_add_to_archive = 0.03f;
+    public const float chance_to_add_to_archive = 0.1f;
 
     public NoveltySearch()
     {
@@ -50,8 +50,8 @@ public abstract class NoveltySearch
         {
             Color gpu_datapoint = new();
             gpu_datapoint.r = x;// a.body.food_was_seen;
-            // gpu_datapoint.g = food_eaten_since_last_datapoint;
-            gpu_datapoint.g = a.body.food_was_seen;
+            gpu_datapoint.g = food_eaten_since_last_datapoint;
+            //gpu_datapoint.g = a.body.food_was_seen;
             gpu_datapoint.b = z;
 
           

@@ -6,7 +6,7 @@ using UnityEngine;
 public abstract class Brain : Mind
 {
     public const string save_file_extension = ".Brain";
-    public Dictionary<NeuronID, int> nodeID_to_idx;
+    public Dictionary<int, int> nodeID_to_idx;
     public List<int> motor_neuron_indices = new(); // 1-to-1 mapping NeuronID --> neuron
 
     public struct MultiLayerNetworkInfo
@@ -150,36 +150,6 @@ public abstract class Brain : Mind
     }
 
     [System.Serializable]
-    public struct NeuronID
-    {
-        public int4 coords;
-        public Neuron.NeuronRole neuron_role;
-
-        public NeuronID(int4 coords, Neuron.NeuronRole neuron_role)
-        {
-            this.coords = coords;
-            this.neuron_role = neuron_role;
-        }
-
-        public static bool operator ==(NeuronID obj1, NeuronID obj2)
-        {
-            return math.all(obj1.coords == obj2.coords)
-                && obj1.neuron_role == obj2.neuron_role;
-        }
-
-        public static bool operator !=(NeuronID obj1, NeuronID obj2)
-        {
-            return !(obj1 == obj2);
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj.GetType() != this.GetType()) return false;
-            return this == (NeuronID)obj;
-        }
-    }
-
-    [System.Serializable]
     public struct Neuron
     {
 
@@ -250,7 +220,7 @@ public abstract class Brain : Mind
         public int real_num_of_synapses;
         public float5 position_normalized;
 
-        public NeuronID ID;
+        public int ID;
         public int idx;
 
         public double mu;

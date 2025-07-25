@@ -1,13 +1,16 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Unity.Collections;
+using Unity.Entities.UniversalDelegates;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using static ArticulatedRobotBodyGenome;
+using static BodyGenome;
 using static Brain;
-using CVX_Voxel = System.IntPtr;
-using static WorldAutomaton.Elemental;
 using static RayPreview;
+using static WorldAutomaton.Elemental;
+using CVX_Voxel = System.IntPtr;
 
 public class VisionSensor
 {
@@ -22,11 +25,11 @@ public class VisionSensor
     public const float MAX_VISION_DISTANCE = 40f;
     const float EAT_RATE = 2;
     public const float ACTION_RANGE = 2f;
-    const float EAT_THRESHOLD = 0.5f;
-    const float MATE_THRESHOLD = 0.5f;
-    const float FIGHT_THRESHOLD = 0.5f;
-    const float PICKUP_VOXEL_THRESHOLD = 0.5f;
-    public const float PLACE_VOXEL_THRESHOLD = 0.5f;
+    const float EAT_THRESHOLD = 0.1f;
+    const float MATE_THRESHOLD = 0.1f;
+    const float FIGHT_THRESHOLD = 0.1f;
+    const float PICKUP_VOXEL_THRESHOLD = 0.1f;
+    public const float PLACE_VOXEL_THRESHOLD = 0.1f;
     public const float ASEXUAL_THRESHOLD = 0.05f;
 
     public RayPreview ray_preview;
@@ -50,29 +53,29 @@ public class VisionSensor
         {
             Brain brain = animat.mind as Brain;
             // get neuron info
-            int motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.EATING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+            int motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.EATING_MOTOR_NEURON_INDEX];
             Neuron motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             eat_motor_activation = motor_neuron.activation;
 
 
-            motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+            motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX];
             motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             fight_motor_activation = motor_neuron.activation;
 
 
-            motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.MATING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+            motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.MATING_MOTOR_NEURON_INDEX];
             motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             mate_motor_activation = motor_neuron.activation;
 
-            motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.PICKUP_VOXEL_MOTOR_NEURON, Neuron.NeuronRole.Motor)];
+            motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.PICKUP_VOXEL_MOTOR_NEURON];
             motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             pickup_voxel_motor_activation = motor_neuron.activation;
 
-            motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.PLACE_VOXEL_MOTOR_NEURON, Neuron.NeuronRole.Motor)];
+            motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.PLACE_VOXEL_MOTOR_NEURON];
             motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             place_voxel_motor_activation = motor_neuron.activation;
@@ -400,19 +403,28 @@ public class VisionSensor
             if (animat.mind is Brain)
             {
                 Brain brain = animat.mind as Brain;
-                int sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFrom2Ints(InitialNEATGenomes.RAYCAST_VISION_SENSOR_FOOD_NEURON_INDEX, r, Neuron.NeuronRole.Sensor)];
+                // food
+                var sensorKey = new VisionSensorKey(r, VisionSensorType.Food);
+                var neuronID = animat.genome.body_genome.visionSensorKeyToNodeID[sensorKey];
+                int sensory_neuron_idx = brain.nodeID_to_idx[neuronID];
                 Neuron sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
                 if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
                 sensor_neuron.activation = food_activation;
                 brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
 
-                sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFrom2Ints(InitialNEATGenomes.RAYCAST_VISION_SENSOR_ANIMAT_NEURON_INDEX, r, Neuron.NeuronRole.Sensor)];
+                // animat
+                sensorKey = new VisionSensorKey(r, VisionSensorType.Animat);
+                neuronID = animat.genome.body_genome.visionSensorKeyToNodeID[sensorKey];
+                sensory_neuron_idx = brain.nodeID_to_idx[neuronID];
                 sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
                 if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
                 sensor_neuron.activation = animat_activation;
                 brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
 
-                sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFrom2Ints(InitialNEATGenomes.RAYCAST_VISION_SENSOR_OBSTACLE_NEURON_INDEX, r, Neuron.NeuronRole.Sensor)];
+                //obstacle
+                sensorKey = new VisionSensorKey(r, VisionSensorType.Obstacle);
+                neuronID = animat.genome.body_genome.visionSensorKeyToNodeID[sensorKey];
+                sensory_neuron_idx = brain.nodeID_to_idx[neuronID];
                 sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
                 if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
                 sensor_neuron.activation = obstacle_activation;
@@ -420,7 +432,9 @@ public class VisionSensor
 
                 if (GlobalConfig.WORLD_TYPE == GlobalConfig.WorldType.VoxelWorld)
                 {
-                    sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFrom2Ints(InitialNEATGenomes.RAYCAST_VISION_SENSOR_INTERACTABLE_VOXEL, r, Neuron.NeuronRole.Sensor)];
+                    sensorKey = new VisionSensorKey(r, VisionSensorType.PickableVoxel);
+                    neuronID = animat.genome.body_genome.visionSensorKeyToNodeID[sensorKey];
+                    sensory_neuron_idx = brain.nodeID_to_idx[neuronID];
                     sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
                     if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
                     sensor_neuron.activation = pickable_voxel_activation;
@@ -505,7 +519,7 @@ public class VisionSensor
                             }
                             else if(other_animat.mind is Brain)
                             {
-                                int other_mate_motor_neuron_idx = ((Brain)other_animat.mind).nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.MATING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+                                int other_mate_motor_neuron_idx = ((Brain)other_animat.mind).nodeID_to_idx[InitialNEATGenomes.MATING_MOTOR_NEURON_INDEX];
                                 Neuron other_mate_motor_neuron = ((Brain)other_animat.mind).GetNeuronCurrentState(other_mate_motor_neuron_idx);
                                 if (other_mate_motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
                                 other_animat_mate_motor_activation = other_mate_motor_neuron.activation;
@@ -632,7 +646,7 @@ public class VisionSensor
         if (animat.mind is Brain)
         {
             Brain brain = animat.mind as Brain;
-            int mouth_sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.MOUTH_SENSOR, Neuron.NeuronRole.Sensor)];
+            int mouth_sensory_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.MOUTH_SENSOR];
             Neuron mouth_sensory_neuron = brain.GetNeuronCurrentState(mouth_sensory_neuron_idx);
             if (mouth_sensory_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
             mouth_sensory_neuron.activation = food_was_eaten;

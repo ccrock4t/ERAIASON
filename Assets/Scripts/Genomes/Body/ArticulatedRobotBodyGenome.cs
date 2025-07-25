@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Unity.Mathematics;
 using UnityEngine;
 
 /*
@@ -52,7 +53,69 @@ public class ArticulatedRobotBodyGenome : BodyGenome
         {"-z" , (new Vector3(0, 0.5f, -0.5f), new Vector3(-90, 0, 0)) }
     };
 
+    public struct ArticulatedSensorKey
+    {
+        public int segment;
+        public ArticulatedSensorType sensor;
 
+        public ArticulatedSensorKey(int segment, ArticulatedSensorType type)
+        {
+            this.segment = segment;
+            this.sensor = type;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ArticulatedSensorKey other &&
+                   segment == other.segment &&
+                   sensor == other.sensor;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(segment, sensor);
+        }
+    }
+    public enum ArticulatedSensorType
+    {
+        touch1,
+        touch2,
+        touch3,
+        touch4,
+        touch5,
+        touch6,
+        rotX,
+        rotY,
+        rotZ,
+        rotW,
+    }
+
+    public struct ArticulatedMotorKey
+    {
+        public int segment;
+        public dof dof;
+        public ArticulatedMotorKey(int segment, dof dof)
+        {
+            this.segment = segment;
+            this.dof = dof;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ArticulatedMotorKey other &&
+                   segment == other.segment &&
+                   dof == other.dof;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(segment, dof);
+        }
+    }
+    
+
+    public Dictionary<ArticulatedSensorKey, int> articulatedSensorKeyToNodeID = new();
+    public Dictionary<ArticulatedMotorKey, int> articulatedMotorKeyToNodeID = new();
 
 
     /// <summary>
