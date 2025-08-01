@@ -585,7 +585,7 @@ public class NEATGenome : BrainGenome
                 {
                     NEATNode node_to_clone = null;
                     float rnd = NEATConnection.GetRandomFloat();
-                    if (NEATConnection.GetRandomFloat() < 0.5f) //parent1_selected_for_disjoint)
+                    if (parent1_selected_for_disjoint)//NEATConnection.GetRandomFloat() < 0.5f) //parent1_selected_for_disjoint)
                     {
                         node_to_clone = parent1_sense_node;
 
@@ -609,7 +609,7 @@ public class NEATGenome : BrainGenome
                 {
                     NEATNode node_to_clone = null;
                     //float rnd = NEATConnection.GetRandomFloat();
-                    if (NEATConnection.GetRandomFloat() < 0.5f) //parent1_selected_for_disjoint)
+                    if (parent1_selected_for_disjoint)//NEATConnection.GetRandomFloat() < 0.5f) //parent1_selected_for_disjoint)
                     {
                         node_to_clone = parent1_motor_node;
                     }
@@ -651,7 +651,7 @@ public class NEATGenome : BrainGenome
                 {
                     // connection is unique to parent1, so 50% chance to add it
                    
-                    if (true)//NEATConnection.GetRandomFloat() < 0.5f) //)
+                    if (parent1_selected_for_disjoint)//NEATConnection.GetRandomFloat() < 0.5f) //)
                     {
                         connection_to_clone = parent1_connection;
                     }
@@ -707,7 +707,7 @@ public class NEATGenome : BrainGenome
                 {
                     // connection is unique to parent2, so 50% chance to add it
                     //float rnd = NEATConnection.GetRandomFloat();
-                    if(true)//!parent1_selected_for_disjoint || NEATConnection.GetRandomFloat() < 0.5f) //)
+                    if(!parent1_selected_for_disjoint)//NEATConnection.GetRandomFloat() < 0.5f) //)
                     {
                         connection_to_clone = parent2_connection;
                     }
