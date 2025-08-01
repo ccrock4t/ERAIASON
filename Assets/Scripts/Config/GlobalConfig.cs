@@ -107,7 +107,7 @@ public class GlobalConfig : MonoBehaviour
     public const NeuralLearningMethod HEBBIAN_METHOD = NeuralLearningMethod.HebbABCD;
     public static Brain.Neuron.NeuronClass NEURAL_NETWORK_METHOD = Brain.Neuron.NeuronClass.SumAndSquash;
 
-    public static CPGtype CPG_TYPE = CPGtype.Hopf;
+    public static CPGtype CPG_TYPE = CPGtype.None;
 
     public static int ANIMAT_BRAIN_UPDATE_PERIOD = 2; // runs every X FixedUpdates. Lower number = runs more freqeuntlly
     public static int BRAIN_VIEWER_UPDATE_PERIOD = 8;
@@ -159,7 +159,7 @@ public class GlobalConfig : MonoBehaviour
 
 
 
-    public const bool RECORD_DATA_TO_DISK = false;
+    public const bool RECORD_DATA_TO_DISK = true;
     public const bool RECORD_DATA_TO_WEB = true;
 
     // ============
