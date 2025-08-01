@@ -234,6 +234,7 @@ public class Animat : MonoBehaviour
                     neuron.p_gain = node.p_gain;
                     neuron.mu = node.mu;
                     neuron.osc_inject_gain = node.osc_inject_gain;
+                    neuron.amp_gain = node.amp_gain;
                     neuron.max_input = node.max_input;
                     neuron.K = node.K;
                     neuron.ID = node.ID;
@@ -500,6 +501,7 @@ public class Animat : MonoBehaviour
             offspring = AnimatArena.GetInstance().SpawnGenomeInPosition(offspring2, position);
         }
         offspring.was_born = true;
+
         DataAnalyzer.RegisterBirth();
 
 

@@ -450,19 +450,44 @@ public class AnimatArena : MonoBehaviour
     public float GetAnimatObjectiveFitnessScore(Animat animat)
     {
         //float food_was_seen = animat.body.food_was_seen
+        //float displacement = animat.GetDisplacementFromBirthplace();
+        //float food_eaten = animat.body.number_of_food_eaten;
+        //float times_reproduced = animat.body.times_reproduced;
+        //float ratio_of_life_spent_looking_at_food = animat.body.frames_food_detected / animat.body.total_frames_alive; //[0,1]
+        //float distance_score = math.min(1.0f, displacement / 20);
+
+        //distance_score *= ratio_of_life_spent_looking_at_food;
+
+        //return distance_score + ((food_eaten / AnimatBody.ENERGY_IN_A_FOOD) * (1 + times_reproduced));
+
+
+        // Total food eaten
+        float food_score = animat.body.number_of_food_eaten / AnimatBody.ENERGY_IN_A_FOOD;
+        float reproduction_bonus = math.pow(1f + animat.body.times_reproduced,2);
+        float look_score = animat.body.frames_food_detected / animat.body.total_frames_alive;
         float displacement = animat.GetDisplacementFromBirthplace();
-      
-        float food_eaten = animat.body.number_of_food_eaten;
-        float times_reproduced = animat.body.times_reproduced;
-        float ratio_of_life_spent_looking_at_food = animat.body.frames_food_detected / animat.body.total_frames_alive; //[0,1]
+        float distance_score = math.min(1.0f, displacement / 20f);
+ 
+        return (distance_score + distance_score * look_score + look_score * food_score + food_score) * reproduction_bonus;
+     
 
-        float distance_score = math.min(1.0f, displacement / 20);
+        // Reproduction bonus
 
-        float final_distance_score = ratio_of_life_spent_looking_at_food * distance_score;
-        float final_food_score = ratio_of_life_spent_looking_at_food * (food_eaten / AnimatBody.ENERGY_IN_A_FOOD);
-        float final_reproductive_score = (1 + times_reproduced)* (1 + food_eaten / AnimatBody.ENERGY_IN_A_FOOD);
-        return (final_distance_score + final_food_score) * final_reproductive_score;
 
+
+
+        //// Reward *progress* toward food based on sensor activation increases
+        //// You need to compute this inside the animat update loop:
+        ////   if (activation > lastActivation)
+        ////       animat.body.approach_reward += activation - lastActivation;
+        //
+
+        //// Combine components
+        //return
+        //    0.2f * distance_score +        // encourages general movement
+        //    0.4f * look_score +           // encourages facing food
+        //    0.4f * approach_score +       // encourages moving toward food
+        //    3.0f * food_score * reproduction_bonus; // strong reward for eating/reproducing
     }
 
     public void KillAnimat(int i, bool ignore_for_reproduction)
@@ -691,16 +716,14 @@ public class AnimatArena : MonoBehaviour
             else if (GlobalConfig.BRAIN_GENOME_METHOD == BrainGenomeMethod.NEAT)
             {
                 (offspring1_genome, offspring2_genome) = parent1.Reproduce(parent2);
-                // offspring1_genome.brain_genome.Mutate();
-                // offspring2_genome.brain_genome.Mutate();
+                //offspring1_genome.brain_genome.Mutate();
+                //offspring2_genome.brain_genome.Mutate();
             }
             else
             {
                 Debug.LogError("error not implemented");
                 return null;
             }
-            offspring1_genome.brain_genome.Mutate();
-            offspring2_genome.brain_genome.Mutate();
             offspring1_genome.momName = parent1.uniqueName;
             offspring1_genome.dadName = parent2.uniqueName;
             offspring2_genome.momName = parent1.uniqueName;

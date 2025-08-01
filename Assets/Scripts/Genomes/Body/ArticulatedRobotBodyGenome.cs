@@ -481,15 +481,6 @@ public class ArticulatedRobotBodyGenome : BodyGenome
         body_dimensions = new Vector3(1.75f, 1.75f, 0.75f);
         //}
 
-        // make head node
-        Vector3 head_dimensions = new Vector3(1.0f, 1.0f, 1.0f);
-
-        MorphologyNode head_node = new MorphologyNode(dimensions: head_dimensions);
-
-        head_node.name = "head node";
-        nodes.Add(head_node);
-
-
         MorphologyNode body_node = new MorphologyNode(dimensions: body_dimensions,
              recursive_limit: rec_limit);
 
@@ -518,13 +509,20 @@ public class ArticulatedRobotBodyGenome : BodyGenome
         nodes.Add(leg_node);
 
         // make foot node
-        Vector3 foot_dimensions = new Vector3(0.75f, 0.3f, 0.75f);
+        Vector3 foot_dimensions = new Vector3(1.00f, 0.3f, 0.75f);
 
         MorphologyNode foot_node = new MorphologyNode(dimensions: foot_dimensions);
 
         foot_node.name = "foot node";
         nodes.Add(foot_node);
 
+        // make head node
+        Vector3 head_dimensions = new Vector3(1.0f, 1.0f, 1.0f);
+
+        MorphologyNode head_node = new MorphologyNode(dimensions: head_dimensions);
+
+        head_node.name = "head node";
+        nodes.Add(head_node);
 
 
         //make recursive leg connections
@@ -598,18 +596,20 @@ public class ArticulatedRobotBodyGenome : BodyGenome
 
 
         //make body to head connection
-        Vector3 head_face_position = top_face_position;// Vector3.Scale(top_face_position, body_dimensions);
+        Vector3 head_face_position = Vector3.Scale(top_face_position, body_dimensions);
+        // move foot forward foot_face_position.x = -0.4f;
         Vector3 head_rotation = top_face_rotation;
+        //foot_rotation.x += 20f;
 
         MorphologyConnection head_connection =
-            new(to_node: body_node,
+            new(to_node: head_node,
             terminal_only: true,
             position_offset: head_face_position,
             rotation: head_rotation,
             scale: 1,
             joint_type: ArticulationJointType.SphericalJoint);
 
-        head_node.connections.Add(head_connection);
+        body_node.connections.Add(head_connection);
 
         return nodes.ToArray();
     }

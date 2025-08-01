@@ -52,6 +52,7 @@ public class BrainCPU : Brain
             use_hebb = GlobalConfig.USE_HEBBIAN,
             hebb_rule = GlobalConfig.HEBBIAN_METHOD,
             time = Time.time,
+            cpgtype =GlobalConfig.CPG_TYPE
         };
         update_job_handle = job.Schedule(this.next_state_neurons.Length, 128);
     }

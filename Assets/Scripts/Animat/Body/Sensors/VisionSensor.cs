@@ -655,6 +655,8 @@ public class VisionSensor
 
         // data stuff
         body.food_eaten_since_last_novelty_datapoint += (float)food_was_eaten;
+
+        body.food_was_seen_last_time = body.food_was_seen;
         body.food_was_seen = max_food_activation;
         animat.body.frames_food_detected += max_food_activation;
         animat.body.total_frames_alive++;

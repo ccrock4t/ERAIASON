@@ -41,6 +41,7 @@ public abstract class AnimatBody : MonoBehaviour
     public Color? override_color = null;
     public float food_eaten_since_last_novelty_datapoint;
     public float food_was_seen;
+    public float food_was_seen_last_time;
 
 
 

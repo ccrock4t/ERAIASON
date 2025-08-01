@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
 using static Brain;
+using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
 
 // Parallel compute the neural activations for the next time step
 
@@ -38,7 +39,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
 
     public double time;
 
-
+    public GlobalConfig.CPGtype cpgtype;
 
     public void Execute(int i)
     {
@@ -87,20 +88,20 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
             Neuron from_neuron = current_state_neurons[from_idx];
 
             double noisy_activation = from_neuron.activation;
-            float noise_stddev = 0;
-            if (from_neuron.IsSensory())
-            {
-                noise_stddev = 0.05f;
-            }
-            else if (from_neuron.neuron_role == Neuron.NeuronRole.Hidden)
-            {
-                noise_stddev = 0.025f;
-            }
-            else if (from_neuron.neuron_role == Neuron.NeuronRole.Motor) { 
-                noise_stddev = 0.005f;
-            }
-            float sensornoise = RandomNormal(randomGen, 0, noise_stddev);
-            noisy_activation += sensornoise;
+            //float noise_stddev = 0;
+            //if (from_neuron.IsSensory())
+            //{
+            //    noise_stddev = 0.05f;
+            //}
+            //else if (from_neuron.neuron_role == Neuron.NeuronRole.Hidden)
+            //{
+            //    noise_stddev = 0.025f;
+            //}
+            //else if (from_neuron.neuron_role == Neuron.NeuronRole.Motor) { 
+            //    noise_stddev = 0.005f;
+            //}
+            //float sensornoise = RandomNormal(randomGen, 0, noise_stddev);
+            //noisy_activation += sensornoise;
             double input = connection.weight * noisy_activation;
 
             sum += input;
@@ -127,65 +128,152 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         if (to_neuron.neuron_class == Neuron.NeuronClass.CTRNN) sum *= to_neuron.gain;
 
         double net_input = sum;
-        if (to_neuron.neuron_role == Neuron.NeuronRole.Hidden)
+        if (cpgtype != GlobalConfig.CPGtype.None && to_neuron.neuron_role == Neuron.NeuronRole.Hidden)
         {
-            // 1. Unpack state & parameters
-            double r = to_neuron.r;
-            double theta = to_neuron.theta;
-            double mu = to_neuron.mu;
-            double omega = to_neuron.w;
-            double K = to_neuron.K;
-            double pGain = to_neuron.p_gain;
-            double blend_alpha = to_neuron.r_gain;
-            double oscGain = to_neuron.osc_inject_gain;
-            double maxInp = to_neuron.max_input;
-            double phaseOffset = to_neuron.phase_offset;
-
-            // 2. Normalize sensor drive once (or move inside loop if 'sum' changes)
-            double safeMaxInp = math.max(1e-6, maxInp);
-            double u = math.clamp(sum / safeMaxInp, -1.0, 1.0);
-
-
-            // 3. Determine micro‑step size
-            const double maxDt = 0.02;  // 20 ms “safe” sub‐step
-            int nSteps = math.max(1, (int)math.ceil(brain_update_period / maxDt));
-            double dt = brain_update_period / nSteps;
-
-            for (int substep = 0; substep < nSteps; substep++)
+            if (cpgtype == GlobalConfig.CPGtype.Hopf)
             {
-                // 1. Compute derivatives at current state
-                double dr1 = mu * (1.0 - r * r) * r + K * u;
-                double dth1 = omega + pGain * u;
+                // HOPF
+                // 1. Unpack state & parameters
+                double r = to_neuron.r;
+                double theta = to_neuron.theta;
+                double mu = to_neuron.mu;
+                double omega = to_neuron.w;
+                double K = to_neuron.K;
+                double pGain = to_neuron.p_gain;
+                double blend_alpha = to_neuron.r_gain;
+                double oscGain = to_neuron.osc_inject_gain;
+                double maxInp = to_neuron.max_input;
+                double phaseOffset = to_neuron.phase_offset;
 
-                // 2. Estimate midpoint state (RK2)
-                double rMid = r + dr1 * dt * 0.5;
-                double thetaMid = theta + dth1 * dt * 0.5;
+                // 2. Normalize sensor drive once (or move inside loop if 'sum' changes)
+                double safeMaxInp = math.max(1e-6, maxInp);
+                double u = math.clamp(sum / safeMaxInp, -1.0, 1.0);
 
-                // 3. Compute derivatives at midpoint
-                double dr2 = mu * (1.0 - rMid * rMid) * rMid + K * u;
-                double dth2 = omega + pGain * u;
 
-                // 4. Update r and theta with RK2 step
-                r += dr2 * dt;
-                r = math.max(0.0, r); // clamp non-negative as before
+                // 3. Determine micro‑step size
+                const double maxDt = 0.02;  // 20 ms “safe” sub‐step
+                int nSteps = math.max(1, (int)math.ceil(brain_update_period / maxDt));
+                double dt = brain_update_period / nSteps;
 
-                theta += dth2 * dt;
+                for (int substep = 0; substep < nSteps; substep++)
+                {
+                    // 1. Compute derivatives at current state
+                    double dr1 = mu * (1.0 - r * r) * r + K * u;
+                    double dth1 = omega + pGain * u;
 
-                // 5. Wrap theta to [0, 2π)
-                theta = math.fmod(theta, math.PI * 2);
-                if (theta < 0.0) theta += math.PI * 2;
+                    // 2. Estimate midpoint state (RK2)
+                    double rMid = r + dr1 * dt * 0.5;
+                    double thetaMid = theta + dth1 * dt * 0.5;
 
-                // (Optional) If u changes during substeps, recalc here before next iteration
+                    // 3. Compute derivatives at midpoint
+                    double dr2 = mu * (1.0 - rMid * rMid) * rMid + K * u;
+                    double dth2 = omega + pGain * u;
+
+                    // 4. Update r and theta with RK2 step
+                    r += dr2 * dt;
+                    r = math.max(0.0, r); // clamp non-negative as before
+
+                    theta += dth2 * dt;
+
+                    // 5. Wrap theta to [0, 2π)
+                    theta = math.fmod(theta, math.PI * 2);
+                    if (theta < 0.0) theta += math.PI * 2;
+
+                    // (Optional) If u changes during substeps, recalc here before next iteration
+                }
+
+                // 5. Compute oscillator output & mix
+                double oscillator = r * math.sin(theta + phaseOffset);
+                //net_input = blend_alpha * sum + (1.0 - blend_alpha) * (oscGain * oscillator);
+                //  net_input = sum * (1.0 + oscGain * oscillator);
+                double modFactor = 1.0 + oscGain * oscillator;
+                modFactor = math.clamp(modFactor, 0.0, 3.0);
+                net_input = sum * modFactor;
+                // 6. Save state
+                to_neuron.r = r;
+                to_neuron.theta = theta;
+
+            }
+            else if (cpgtype == GlobalConfig.CPGtype.Matsuoka)
+            {
+                // 1. Unpack state & parameters
+                double x = to_neuron.r;      // membrane potential
+                double v = to_neuron.theta;  // adaptation state
+
+                double tau_r = to_neuron.mu;      // membrane time constant (e.g., 0.1 to 1.0)
+                double tau_a = to_neuron.w;       // adaptation time constant (e.g., 0.3 to 2.0)
+                double beta = to_neuron.K;         // adaptation strength (e.g., 2.5)
+                double w = to_neuron.p_gain;       // input weight
+                double bias = to_neuron.r_gain;   // tonic bias (optional)
+                double oscGain = to_neuron.osc_inject_gain; // output gain
+
+                double maxInp = to_neuron.max_input;
+                double safeMaxInp = math.max(1e-6, maxInp);
+                double u = math.clamp(sum / safeMaxInp, -1.0, 1.0);
+
+                // 2. Time stepping params
+                const double maxDt = 0.02;  // max 20ms step
+                int nSteps = math.max(1, (int)math.ceil(brain_update_period / maxDt));
+                double dt = brain_update_period / nSteps;
+
+                // RK2 integration loop for Matsuoka Oscillator
+                for (int loop = 0; loop < nSteps; loop++)
+                {
+                    // 1. Calculate derivatives at the current state (k1)
+                    double y1 = math.max(0.0, x);
+                    double dx1 = (-x - beta * v + w * u + bias) / tau_r;
+                    double dv1 = (-v + y1) / tau_a;
+
+                    // 2. Estimate the state at the midpoint
+                    double x_mid = x + dx1 * dt * 0.5;
+                    double v_mid = v + dv1 * dt * 0.5;
+
+                    // 3. Calculate derivatives at the midpoint state (k2)
+                    double y_mid = math.max(0.0, x_mid);
+                    double dx2 = (-x_mid - beta * v_mid + w * u + bias) / tau_r;
+                    double dv2 = (-v_mid + y_mid) / tau_a;
+
+                    // 4. Update state using the midpoint derivatives
+                    x += dx2 * dt;
+                    v += dv2 * dt;
+                }
+
+                // 3. Compute output (oscillator)
+                double oscillator = oscGain * math.max(0.0, x);
+
+                // 4. Combine output with input (modulation)
+                double modFactor = 1.0 + oscillator;
+                modFactor = math.clamp(modFactor, 0.0, 3.0);
+                net_input = sum * modFactor;
+
+                // 5. Save state back
+                to_neuron.r = x;
+                to_neuron.theta = v;
+            }else if(cpgtype == GlobalConfig.CPGtype.Kuramoto){
+                // Per-neuron state
+                double phase = to_neuron.theta; // store per neuron
+                double freq = to_neuron.w + to_neuron.amp_gain * sum; // input can change frequency
+                double amp = to_neuron.r_gain + to_neuron.K * sum;   // input can change amplitude
+
+                // Advance phase
+                phase += freq * brain_update_period * 2.0 * math.PI;
+                // Correctly wraps theta to [0, 2π)
+                phase = math.fmod(phase, math.PI * 2);
+                if (phase < 0.0) phase += math.PI * 2;
+
+                // Get oscillator output
+                double oscillator = math.sin(phase) * amp;
+
+                // Combine with input
+                double modFactor = 1.0 + to_neuron.osc_inject_gain * oscillator;
+                modFactor = math.clamp(modFactor, 0.0, 3.0);
+                net_input = sum * modFactor;
+
+                // Save phase
+                to_neuron.theta = phase;
             }
 
-            // 5. Compute oscillator output & mix
-            double oscillator = r * math.sin(theta + phaseOffset);
-            net_input = blend_alpha * sum
-                              + (1.0 - blend_alpha) * (oscGain * oscillator);
 
-            // 6. Save state
-            to_neuron.r = r;
-            to_neuron.theta = theta;
         }
 
         // 9. Activation

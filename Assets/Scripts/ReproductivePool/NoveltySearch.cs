@@ -50,7 +50,7 @@ public abstract class NoveltySearch
         {
             Color gpu_datapoint = new();
             gpu_datapoint.r = x;// a.body.food_was_seen;
-            gpu_datapoint.g = food_eaten_since_last_datapoint;
+            gpu_datapoint.g = a.body.food_was_seen;
             //gpu_datapoint.g = a.body.food_was_seen;
             gpu_datapoint.b = z;
 

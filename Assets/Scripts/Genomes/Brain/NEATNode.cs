@@ -32,6 +32,7 @@ public class NEATNode
     public Neuron.ActivationFunction activation_function;
     public static int NEXT_GLOBAL_HIDDENNODE_ID = -1;
     internal Neuron.NeuronRole neuron_role;
+    internal double amp_gain;
 
     public NEATNode(int ID, 
         Neuron.ActivationFunction activation_function,

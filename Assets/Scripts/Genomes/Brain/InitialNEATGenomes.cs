@@ -92,7 +92,7 @@ public class InitialNEATGenomes : MonoBehaviour
 
         AddUniversalSensorNeurons(body_genome, brain_genome);
         AddUniversalMotorNeurons(brain_genome);
-        //ConnectVisionSensorsToMotors(genome);
+        ConnectVisionSensorsToMotors(brain_genome, body_genome);
 
 
         brain_genome.sensorymotor_end_idx = brain_genome.nodes.Count;
@@ -259,111 +259,105 @@ public class InitialNEATGenomes : MonoBehaviour
     public static int FullyConnect(NEATGenome genome)
     {
         int conn_ID = genome.connections.Count;
-
-        //List<NEATNode> hiddenLayer1 = new();
-        //List<NEATNode> hiddenLayer2 = new();
-        //for (int i = 0; i < 50; i++)
-        //{
-        //    NEATNode hidden_node = genome.AddDisconnectedHiddenNode(genome.nodes.Count);
-        //    if(i <= 25)
-        //    {
-        //        hiddenLayer1.Add(hidden_node);
-        //    }
-        //    else
-        //    {
-        //        hiddenLayer2.Add(hidden_node);
-        //    }
-        //}
-
-        //foreach (var sensor_node in genome.sensor_nodes)
-        //{
-        //    foreach (var hidden_node in hiddenLayer1)
-        //    {
-        //        conn_ID++;
-        //        if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) continue;
-        //        NEATConnection sr_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
-        //            fromNodeID: sensor_node.ID,
-        //             toNodeID: hidden_node.ID,
-        //            ID: conn_ID - 1);
-        //        genome.AddConnection(sr_connection);
-
-        //    }
-        //}
-
-        //foreach (var hidden_node1 in hiddenLayer1)
-        //{
-        //    foreach (var hidden_node2 in hiddenLayer2)
-        //    {
-        //        conn_ID++;
-        //        if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) continue;
-        //        NEATConnection sr_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
-        //            fromNodeID: hidden_node1.ID,
-        //             toNodeID: hidden_node2.ID,
-        //            ID: conn_ID - 1);
-        //        genome.AddConnection(sr_connection);
-
-        //    }
-        //}
-
-        //foreach (var hidden_node in hiddenLayer2)
-        //{
-        //    foreach (var motor_node in genome.motor_nodes)
-        //    {
-        //        conn_ID++;
-        //        if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) continue;
-        //        NEATConnection sr_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
-        //            fromNodeID: hidden_node.ID,
-        //             toNodeID: motor_node.ID,
-        //            ID: conn_ID - 1);
-        //        genome.AddConnection(sr_connection);
-
-        //    }
-        //}
-
-
+        const int num_hidden_neurons = 10;
+        List<NEATNode> hiddenLayer1 = new();
+        for (int i = 0; i < num_hidden_neurons; i++)
+        {
+            NEATNode hidden_node = genome.AddDisconnectedHiddenNode(genome.nodes.Count);
+            hiddenLayer1.Add(hidden_node);
+        }
 
         foreach (var sensor_node in genome.sensor_nodes)
+        {
+            foreach (var hidden_node in hiddenLayer1)
+            {
+                conn_ID++;
+                if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) continue;
+                NEATConnection sr_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
+                    fromNodeID: sensor_node.ID,
+                     toNodeID: hidden_node.ID,
+                    ID: conn_ID - 1);
+                genome.AddConnection(sr_connection);
+
+            }
+        }
+
+        // recurrent
+        foreach (var hidden_node1 in genome.hidden_nodes)
+        {
+            foreach (var hidden_node2 in genome.hidden_nodes)
+            {
+                conn_ID++;
+                if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) continue;
+                NEATConnection sr_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
+                    fromNodeID: hidden_node1.ID,
+                     toNodeID: hidden_node2.ID,
+                    ID: conn_ID - 1);
+                genome.AddConnection(sr_connection);
+
+            }
+        }
+
+        // hidden to motor
+        foreach (var hidden_node in hiddenLayer1)
         {
             foreach (var motor_node in genome.motor_nodes)
             {
                 conn_ID++;
                 if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) continue;
                 NEATConnection sr_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
-                    fromNodeID: sensor_node.ID,
-                    toNodeID: motor_node.ID,
+                    fromNodeID: hidden_node.ID,
+                     toNodeID: motor_node.ID,
                     ID: conn_ID - 1);
                 genome.AddConnection(sr_connection);
 
             }
         }
+
+
+
+        //foreach (var sensor_node in genome.sensor_nodes)
+        //{
+        //    foreach (var motor_node in genome.motor_nodes)
+        //    {
+        //        conn_ID++;
+        //        if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) continue;
+        //        NEATConnection sr_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
+        //            fromNodeID: sensor_node.ID,
+        //            toNodeID: motor_node.ID,
+        //            ID: conn_ID - 1);
+        //        genome.AddConnection(sr_connection);
+
+        //    }
+        //}
         return conn_ID;
     }
 
-    //public static void ConnectVisionSensorsToMotors(NEATGenome genome)
-    //{
-    //    // connect all the vision sensory neurons for a given raycast to a hidden neuron
-    //    for (int i = 0; i < VisionSensor.NUM_OF_RAYCASTS; i++)
-    //    {
-    //        foreach (int neuronID in vision_neurons_IDs)
-    //        {
-    //            var vision_neuron_ID = NEATGenome.GetTupleIDFrom2Ints(neuronID, i, Brain.Neuron.NeuronRole.Sensor);
-    //            var vision_neuron = genome.GetNode(vision_neuron_ID);
-    //            foreach (var motor_node in genome.motor_nodes)
-    //            {
-    //                NEATConnection vision_to_motor_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
-    //                fromNodeID: vision_neuron.ID,
-    //                toNodeID: motor_node.ID,
-    //                ID: genome.connections.Count);
-    //                if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) vision_to_motor_connection.enabled = false;
-    //                genome.AddConnection(vision_to_motor_connection);
-    //            }
-    //        }
+    public static void ConnectVisionSensorsToMotors(NEATGenome brain_genome, BodyGenome body_genome)
+    {
 
 
+        int vision_sensor_types_count = Enum.GetValues(typeof(VisionSensorType)).Length;
+        for (int r = 0; r < VisionSensor.NUM_OF_RAYCASTS; r++)
+        {
+            for (int i = 0; i < vision_sensor_types_count - 1; i++)
+            {
+                var sensorKey = new VisionSensorKey(r, (VisionSensorType)i);
 
-    //    }
+                var vision_node_id =  body_genome.visionSensorKeyToNodeID[sensorKey];
+                foreach (var motor_node in brain_genome.motor_nodes)
+                {
+                    NEATConnection vision_to_motor_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
+                    fromNodeID: vision_node_id,
+                    toNodeID: motor_node.ID,
+                    ID: brain_genome.connections.Count);
+                    if (DROPOUT && NEATConnection.GetRandomFloat() < DROPOUT_RATE) vision_to_motor_connection.enabled = false;
+                    brain_genome.AddConnection(vision_to_motor_connection);
+                }
+            }
+        }
 
-    //}
+    }
 
     //public static void AddUniversalHiddenNeurons(NEATGenome genome)
     //{
@@ -400,7 +394,7 @@ public class InitialNEATGenomes : MonoBehaviour
     //        }
     //    }
 
-  
+
     //}
 
     // add universal sensor neurons (for all robots)
