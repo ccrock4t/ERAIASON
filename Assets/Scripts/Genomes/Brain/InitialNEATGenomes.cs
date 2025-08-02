@@ -19,7 +19,7 @@ public class InitialNEATGenomes : MonoBehaviour
     const int NUM_OF_RANDOM_STARTING_NODES = 3;
     const int NUM_OF_UNIVERSAL_HIDDEN_NEURONS = 40;
     const bool DROPOUT = true;
-    const float DROPOUT_RATE = 0.8f;
+    const float DROPOUT_RATE = 0.7f;
 
     public const Neuron.ActivationFunction neuron_activation_function = ActivationFunction.Tanh;
 
@@ -92,13 +92,13 @@ public class InitialNEATGenomes : MonoBehaviour
 
         AddUniversalSensorNeurons(body_genome, brain_genome);
         AddUniversalMotorNeurons(brain_genome);
-        ConnectVisionSensorsToMotors(brain_genome, body_genome);
+        int global_connection_start_id = ConnectVisionSensorsToMotors(brain_genome, body_genome, brain_genome.connections.Count);
 
 
         brain_genome.sensorymotor_end_idx = brain_genome.nodes.Count;
 
-        //int global_connection_start_id = FullyConnect(brain_genome);
-        int global_connection_start_id = brain_genome.connections.Count;
+        //global_connection_start_id = FullyConnect(brain_genome, global_connection_start_id);
+        //int global_connection_start_id = brain_genome.connections.Count;
         if (NEATConnection.NEXT_GLOBAL_CONNECTION_ID == -1) NEATConnection.NEXT_GLOBAL_CONNECTION_ID = global_connection_start_id;
         if (NEATNode.NEXT_GLOBAL_HIDDENNODE_ID == -1) NEATNode.NEXT_GLOBAL_HIDDENNODE_ID = brain_genome.nodes.Count;
 
@@ -256,10 +256,9 @@ public class InitialNEATGenomes : MonoBehaviour
         return brain_genome;
     }
 
-    public static int FullyConnect(NEATGenome genome)
+    public static int FullyConnect(NEATGenome genome, int conn_ID)
     {
-        int conn_ID = genome.connections.Count;
-        const int num_hidden_neurons = 10;
+        const int num_hidden_neurons = 5;
         List<NEATNode> hiddenLayer1 = new();
         for (int i = 0; i < num_hidden_neurons; i++)
         {
@@ -333,10 +332,8 @@ public class InitialNEATGenomes : MonoBehaviour
         return conn_ID;
     }
 
-    public static void ConnectVisionSensorsToMotors(NEATGenome brain_genome, BodyGenome body_genome)
+    public static int ConnectVisionSensorsToMotors(NEATGenome brain_genome, BodyGenome body_genome, int conn_ID)
     {
-
-
         int vision_sensor_types_count = Enum.GetValues(typeof(VisionSensorType)).Length;
         for (int r = 0; r < VisionSensor.NUM_OF_RAYCASTS; r++)
         {
@@ -347,6 +344,7 @@ public class InitialNEATGenomes : MonoBehaviour
                 var vision_node_id =  body_genome.visionSensorKeyToNodeID[sensorKey];
                 foreach (var motor_node in brain_genome.motor_nodes)
                 {
+                    conn_ID++;
                     NEATConnection vision_to_motor_connection = new(weight: NEATConnection.GetRandomInitialWeight(),
                     fromNodeID: vision_node_id,
                     toNodeID: motor_node.ID,
@@ -356,7 +354,7 @@ public class InitialNEATGenomes : MonoBehaviour
                 }
             }
         }
-
+        return conn_ID;
     }
 
     //public static void AddUniversalHiddenNeurons(NEATGenome genome)

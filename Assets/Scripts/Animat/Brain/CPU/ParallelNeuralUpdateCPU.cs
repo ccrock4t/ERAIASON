@@ -6,6 +6,7 @@ using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
 using static Brain;
 using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
+using static UnityEngine.UI.Extensions.Gradient2;
 
 // Parallel compute the neural activations for the next time step
 
@@ -132,7 +133,8 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         {
             if (cpgtype == GlobalConfig.CPGtype.Hopf)
             {
-                // HOPF
+                // ===== HOPF OSCILLATOR (RK2 STABLE INTEGRATION) =====
+
                 // 1. Unpack state & parameters
                 double r = to_neuron.r;
                 double theta = to_neuron.theta;
@@ -140,56 +142,61 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
                 double omega = to_neuron.w;
                 double K = to_neuron.K;
                 double pGain = to_neuron.p_gain;
-                double blend_alpha = to_neuron.r_gain;
+                double blend = to_neuron.r_gain;
                 double oscGain = to_neuron.osc_inject_gain;
                 double maxInp = to_neuron.max_input;
                 double phaseOffset = to_neuron.phase_offset;
 
-                // 2. Normalize sensor drive once (or move inside loop if 'sum' changes)
+                // 2. Normalize sensor drive
                 double safeMaxInp = math.max(1e-6, maxInp);
                 double u = math.clamp(sum / safeMaxInp, -1.0, 1.0);
 
+                // 3. Determine step size
+                const double maxDt = 0.02; // safe substep
+                double dt = math.min(maxDt, brain_update_period);
+                int nSteps = (int)math.ceil(brain_update_period / dt);
 
-                // 3. Determine micro‑step size
-                const double maxDt = 0.02;  // 20 ms “safe” sub‐step
-                int nSteps = math.max(1, (int)math.ceil(brain_update_period / maxDt));
-                double dt = brain_update_period / nSteps;
-
-                for (int substep = 0; substep < nSteps; substep++)
+                // 4. Substeps integration
+                for (int substep = 0; substep < nSteps; ++substep)
                 {
-                    // 1. Compute derivatives at current state
+                    // (Optional) If u depends on oscillator output, recompute u here:
+                    // double oscillator = r * math.sin(theta + phaseOffset);
+                    // u = math.clamp((sum + oscFeedback * oscillator) / safeMaxInp, -1.0, 1.0);
+
+                    // ---- 1. Compute derivatives at current state
                     double dr1 = mu * (1.0 - r * r) * r + K * u;
                     double dth1 = omega + pGain * u;
 
-                    // 2. Estimate midpoint state (RK2)
-                    double rMid = r + dr1 * dt * 0.5;
-                    double thetaMid = theta + dth1 * dt * 0.5;
+                    // ---- 2. Midpoint state
+                    double rMid = r + 0.5 * dr1 * dt;
+                    double thetaMid = theta + 0.5 * dth1 * dt;
 
-                    // 3. Compute derivatives at midpoint
+                    // ---- 3. Derivatives at midpoint
                     double dr2 = mu * (1.0 - rMid * rMid) * rMid + K * u;
-                    double dth2 = omega + pGain * u;
+                    double dth2 = omega + pGain * u; // If omega depends on r/theta, recompute at midpoint
 
-                    // 4. Update r and theta with RK2 step
+                    // ---- 4. RK2 update
                     r += dr2 * dt;
-                    r = math.max(0.0, r); // clamp non-negative as before
+                    r = math.max(0.0, r);                 // prevent negative r
+                    r = math.min(r, 5.0);                 // clamp max radius to avoid blow-up (adjust if needed)
 
                     theta += dth2 * dt;
-
-                    // 5. Wrap theta to [0, 2π)
-                    theta = math.fmod(theta, math.PI * 2);
-                    if (theta < 0.0) theta += math.PI * 2;
-
-                    // (Optional) If u changes during substeps, recalc here before next iteration
+                    theta = math.fmod(theta, 2.0 * math.PI);       // wrap to [0, 2π)
+                    if (theta < 0.0) theta += 2.0 * math.PI;
                 }
 
-                // 5. Compute oscillator output & mix
+                // 5. Compute oscillator output
                 double oscillator = r * math.sin(theta + phaseOffset);
-                //net_input = blend_alpha * sum + (1.0 - blend_alpha) * (oscGain * oscillator);
-                //  net_input = sum * (1.0 + oscGain * oscillator);
-                double modFactor = 1.0 + oscGain * oscillator;
-                modFactor = math.clamp(modFactor, 0.0, 3.0);
-                net_input = sum * modFactor;
-                // 6. Save state
+
+                // 6. Compute net input (choose modulation style)
+                //double modFactor = 1.0 + oscGain * oscillator;
+                //modFactor = math.clamp(modFactor, 0.0, 3.0);
+                //net_input = sum * modFactor;
+
+                // Alternative (safer, additive mixing):
+                net_input = blend * sum + (1.0 - blend) * (oscGain * oscillator);
+
+                // 7. Save state
                 to_neuron.r = r;
                 to_neuron.theta = theta;
 
@@ -242,10 +249,10 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
                 double oscillator = oscGain * math.max(0.0, x);
 
                 // 4. Combine output with input (modulation)
-                double modFactor = 1.0 + oscillator;
-                modFactor = math.clamp(modFactor, 0.0, 3.0);
-                net_input = sum * modFactor;
-
+                //double modFactor = 1.0 + oscillator;
+                //modFactor = math.clamp(modFactor, 0.0, 3.0);
+                //net_input = sum * modFactor;
+               // net_input = blend * sum + (1.0 - blend) * (oscGain * oscillator);
                 // 5. Save state back
                 to_neuron.r = x;
                 to_neuron.theta = v;

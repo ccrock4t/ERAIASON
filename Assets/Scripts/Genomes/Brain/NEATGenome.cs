@@ -182,7 +182,7 @@ public class NEATGenome : BrainGenome
                     // Assuming hebb_ABCDLR is an array or list of size 5.
                     for (int i = 0; i < connection.hebb_ABCDLR.Length; i++)
                     {
-                        if (NEATConnection.GetRandomFloat() < 0.3f)
+                        if (NEATConnection.GetRandomFloat() < 0.9f)
                         {
                             connection.hebb_ABCDLR[i] += GetPerturbationFromRange(-1f, 1f);
                         }
@@ -237,7 +237,7 @@ public class NEATGenome : BrainGenome
         foreach (NEATNode node in this.nodes)
         {
             // a) Mutate bias.
-            if(NEATConnection.GetRandomFloat() < bias_mut_rate)
+            if (NEATConnection.GetRandomFloat() < bias_mut_rate)
             {
                 if (NEATConnection.GetRandomFloat() < 0.9f)
                 {
@@ -297,17 +297,22 @@ public class NEATGenome : BrainGenome
 
             // e) Mutate all CPG (Central Pattern Generator) parameters.
 
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.r, r_range);
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.w, w_range);
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.theta, thetaRange);
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.r_gain, rGainRange);
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.p_gain, pGainRange);
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.mu, muRange);
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.K, kRange);
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.max_input, miRange);
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.osc_inject_gain, giRange);
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.amp_gain, giRange);
-            if (NEATConnection.GetRandomFloat() < cpg_mut_rate) MutateParameter(ref node.phase_offset, phaseOffsetRange);
+            if (NEATConnection.GetRandomFloat() < cpg_mut_rate)
+            {
+                const float perturb_rate = 0.97f;
+                MutateParameter(ref node.r, r_range, perturb_rate);
+                MutateParameter(ref node.w, w_range, perturb_rate);
+                MutateParameter(ref node.theta, thetaRange, perturb_rate);
+                MutateParameter(ref node.r_gain, rGainRange, perturb_rate);
+                MutateParameter(ref node.p_gain, pGainRange, perturb_rate);
+                MutateParameter(ref node.mu, muRange, perturb_rate);
+                MutateParameter(ref node.K, kRange, perturb_rate);
+                MutateParameter(ref node.max_input, miRange, perturb_rate);
+                MutateParameter(ref node.osc_inject_gain, giRange, perturb_rate);
+                MutateParameter(ref node.amp_gain, giRange, perturb_rate);
+                MutateParameter(ref node.phase_offset, phaseOffsetRange, perturb_rate);
+
+            }
         }
 
         float rnd;
@@ -344,9 +349,9 @@ public class NEATGenome : BrainGenome
 
     }
 
-    void MutateParameter(ref double param, Vector2 range)
+    void MutateParameter(ref double param, Vector2 range, float perturb_change=0.9f)
     {
-        if (NEATConnection.GetRandomFloat() < 0.9f)
+        if (NEATConnection.GetRandomFloat() < perturb_change)
         {
             param += GetPerturbationFromRange(range.x, range.y);
         }
