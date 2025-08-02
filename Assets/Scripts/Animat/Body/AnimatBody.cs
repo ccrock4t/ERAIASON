@@ -19,7 +19,7 @@ public abstract class AnimatBody : MonoBehaviour
     public const float MAX_VOXELS_HELD = 5;
     const float SINE_SPEED = 3;
     //  reproduction
-    public const float OFFSPRING_COST = AnimatBody.ENERGY_IN_A_FOOD / 2;
+    public const float OFFSPRING_COST = 1*AnimatBody.ENERGY_IN_A_FOOD / 4;
 
 
     //variables
