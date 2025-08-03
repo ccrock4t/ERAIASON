@@ -27,12 +27,12 @@ public class NEATNode
     public double theta;
     public double phase_offset;
 
+    public double blend;
 
     public float4 brainviewer_coords;
     public Neuron.ActivationFunction activation_function;
     public static int NEXT_GLOBAL_HIDDENNODE_ID = -1;
     internal Neuron.NeuronRole neuron_role;
-    internal double amp_gain;
 
     public NEATNode(int ID, 
         Neuron.ActivationFunction activation_function,
@@ -58,6 +58,7 @@ public class NEATNode
         var miRange = CPGRanges.GetMaxInputRange();
         var giRange = CPGRanges.GetOscInjectGainRange();
         var phaseOffsetRange = CPGRanges.GetPhaseOffsetRange();
+        var blendRange = CPGRanges.GetBlendRange();
 
         // Assign random values from ranges
         this.r = UnityEngine.Random.Range(r_range.x, r_range.y);
@@ -70,6 +71,7 @@ public class NEATNode
         this.max_input = UnityEngine.Random.Range(miRange.x, miRange.y);
         this.osc_inject_gain = UnityEngine.Random.Range(giRange.x, giRange.y);
         this.phase_offset = UnityEngine.Random.Range(phaseOffsetRange.x, phaseOffsetRange.y);
+        this.blend = UnityEngine.Random.Range(blendRange.x, blendRange.y);
         this.activation_function = activation_function;
     }
 
@@ -94,7 +96,7 @@ public class NEATNode
         new_node.time_constant = this.time_constant;
         new_node.gain = this.gain;
 
-        //cphg
+        //cpg
         new_node.r = this.r;
         new_node.w = this.w;
         new_node.r_gain = this.r_gain;
@@ -105,6 +107,7 @@ public class NEATNode
         new_node.osc_inject_gain = this.osc_inject_gain;
         new_node.theta = this.theta;
         new_node.phase_offset = this.phase_offset;
+        new_node.blend = this.blend;
 
         // update this whenever a new field is added
         return new_node; // shallow copy of the object, its ok because tthe fields are primitives

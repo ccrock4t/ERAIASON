@@ -207,8 +207,6 @@ public abstract class Brain : Mind
         public double w_gain; // wave frequency
         public double p_gain; // wave phase offset
 
-        public double amp_gain; // wave phase offset
-
         // === misc parameters
         public double bias;  // bias
         public double sigmoid_alpha; // larger alpha = steeper slope, easier to activate --- smaller alpha = gradual slope, harder to activate.
@@ -231,6 +229,7 @@ public abstract class Brain : Mind
         public double K;
         internal double theta;
         internal double phase_offset;
+        internal double blend;
 
         public static Neuron GetNewNeuron()
         {

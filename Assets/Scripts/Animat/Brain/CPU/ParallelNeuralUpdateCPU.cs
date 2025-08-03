@@ -131,6 +131,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         double net_input = sum;
         if (cpgtype != GlobalConfig.CPGtype.None && to_neuron.neuron_role == Neuron.NeuronRole.Hidden)
         {
+            double blend = to_neuron.blend;
             if (cpgtype == GlobalConfig.CPGtype.Hopf)
             {
                 // ===== HOPF OSCILLATOR (RK2 STABLE INTEGRATION) =====
@@ -142,7 +143,6 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
                 double omega = to_neuron.w;
                 double K = to_neuron.K;
                 double pGain = to_neuron.p_gain;
-                double blend = to_neuron.r_gain;
                 double oscGain = to_neuron.osc_inject_gain;
                 double maxInp = to_neuron.max_input;
                 double phaseOffset = to_neuron.phase_offset;
@@ -252,32 +252,11 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
                 //double modFactor = 1.0 + oscillator;
                 //modFactor = math.clamp(modFactor, 0.0, 3.0);
                 //net_input = sum * modFactor;
-               // net_input = blend * sum + (1.0 - blend) * (oscGain * oscillator);
+                net_input = blend * sum + (1.0 - blend) * (oscGain * oscillator);
+
                 // 5. Save state back
                 to_neuron.r = x;
                 to_neuron.theta = v;
-            }else if(cpgtype == GlobalConfig.CPGtype.Kuramoto){
-                // Per-neuron state
-                double phase = to_neuron.theta; // store per neuron
-                double freq = to_neuron.w + to_neuron.amp_gain * sum; // input can change frequency
-                double amp = to_neuron.r_gain + to_neuron.K * sum;   // input can change amplitude
-
-                // Advance phase
-                phase += freq * brain_update_period * 2.0 * math.PI;
-                // Correctly wraps theta to [0, 2π)
-                phase = math.fmod(phase, math.PI * 2);
-                if (phase < 0.0) phase += math.PI * 2;
-
-                // Get oscillator output
-                double oscillator = math.sin(phase) * amp;
-
-                // Combine with input
-                double modFactor = 1.0 + to_neuron.osc_inject_gain * oscillator;
-                modFactor = math.clamp(modFactor, 0.0, 3.0);
-                net_input = sum * modFactor;
-
-                // Save phase
-                to_neuron.theta = phase;
             }
 
 

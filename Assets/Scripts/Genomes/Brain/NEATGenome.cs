@@ -229,6 +229,8 @@ public class NEATGenome : BrainGenome
         var miRange = CPGRanges.GetMaxInputRange();
         var giRange = CPGRanges.GetOscInjectGainRange();  
         var phaseOffsetRange = CPGRanges.GetPhaseOffsetRange();
+        var blendRange = CPGRanges.GetBlendRange();
+
 
         const float bias_mut_rate = 0.5f;
         const float timeconstant_mut_rate = 0.5f;
@@ -309,9 +311,8 @@ public class NEATGenome : BrainGenome
                 MutateParameter(ref node.K, kRange, perturb_rate);
                 MutateParameter(ref node.max_input, miRange, perturb_rate);
                 MutateParameter(ref node.osc_inject_gain, giRange, perturb_rate);
-                MutateParameter(ref node.amp_gain, giRange, perturb_rate);
                 MutateParameter(ref node.phase_offset, phaseOffsetRange, perturb_rate);
-
+                MutateParameter(ref node.blend, blendRange, perturb_rate);
             }
         }
 
@@ -367,7 +368,7 @@ public class NEATGenome : BrainGenome
 
         public static Vector2 GetWRange() =>
             GlobalConfig.CPG_TYPE != GlobalConfig.CPGtype.Matsuoka
-                ? new Vector2(0.1f, 2f)   // Hopf/Kuramoto
+                ? new Vector2(0.1f, 2f)   // Hopf
                 : new Vector2(0.3f, 2f);  // Matsuoka
 
         public static Vector2 GetThetaRange() =>
@@ -411,6 +412,9 @@ public class NEATGenome : BrainGenome
             GlobalConfig.CPG_TYPE != GlobalConfig.CPGtype.Matsuoka
                 ? new Vector2(0f, 1f)     // Hopf tonic bias
                 : new Vector2(-1f, 1f);   // Matsuoka tonic bias
+
+        public static Vector2 GetBlendRange() => new Vector2(0f, 1f);
+
     }
 
     public NEATConnection AddNewRandomConnection()
