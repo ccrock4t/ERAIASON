@@ -246,7 +246,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
                 }
 
                 // 3. Compute output (oscillator)
-                double oscillator = oscGain * math.max(0.0, x);
+                double oscillator = math.max(0.0, x);
 
                 // 4. Combine output with input (modulation)
                 //double modFactor = 1.0 + oscillator;
