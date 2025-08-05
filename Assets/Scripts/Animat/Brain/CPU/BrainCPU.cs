@@ -50,8 +50,9 @@ public class BrainCPU : Brain
             next_state_neurons = this.next_state_neurons,
             next_state_synapses = this.next_state_synapses,
             use_hebb = GlobalConfig.USE_HEBBIAN,
-            hebb_rule = GlobalConfig.HEBBIAN_METHOD
-
+            hebb_rule = GlobalConfig.HEBBIAN_METHOD,
+            time = Time.time,
+            cpgtype =GlobalConfig.CPG_TYPE
         };
         update_job_handle = job.Schedule(this.next_state_neurons.Length, 128);
     }
@@ -81,6 +82,19 @@ public class BrainCPU : Brain
     public override int GetNumberOfNeurons()
     {
         return this.current_state_neurons.Length;
+    }
+
+    public override int CountNumberOfHiddenNeurons()
+    {
+        int cnt = 0;
+        for (int i = 0; i < this.current_state_neurons.Length; i++)
+        {
+            if (this.current_state_neurons[i].neuron_role == Neuron.NeuronRole.Hidden)
+            {
+                cnt++;
+            }
+        }
+        return cnt;
     }
 
     public override void SaveToDisk()

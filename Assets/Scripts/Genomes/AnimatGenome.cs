@@ -40,6 +40,20 @@ public class AnimatGenome
         AnimatGenome offspring1_genome = new(braingenome1, bodygenome1, generation);
         AnimatGenome offspring2_genome = new(braingenome2, bodygenome2, generation);
 
+        foreach(var offspring in new AnimatGenome[] { offspring1_genome, offspring2_genome })
+        {
+            offspring.body_genome.visionSensorKeyToNodeID = this.body_genome.visionSensorKeyToNodeID;
+            if (offspring.body_genome is ArticulatedRobotBodyGenome)
+            {
+                ((ArticulatedRobotBodyGenome)offspring.body_genome).articulatedSensorKeyToNodeID = ((ArticulatedRobotBodyGenome)this.body_genome).articulatedSensorKeyToNodeID;
+                ((ArticulatedRobotBodyGenome)offspring.body_genome).articulatedMotorKeyToNodeID = ((ArticulatedRobotBodyGenome)this.body_genome).articulatedMotorKeyToNodeID;
+            }
+            else if (offspring.body_genome is SoftVoxelRobotBodyGenome)
+            {
+                ((SoftVoxelRobotBodyGenome)offspring.body_genome).svrSensorKeyToNodeID = ((SoftVoxelRobotBodyGenome)this.body_genome).svrSensorKeyToNodeID;
+                ((SoftVoxelRobotBodyGenome)offspring.body_genome).svrMotorKeyToNodeID = ((SoftVoxelRobotBodyGenome)this.body_genome).svrMotorKeyToNodeID;
+            }
+        }
         return (offspring1_genome, offspring2_genome);
     }
 }

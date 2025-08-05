@@ -191,6 +191,7 @@ public class SimulationUserInterface : MonoBehaviour
             Debug.LogWarning("couldnt parse " + new_number_string);
         }
 
+        this.arena.MINIMUM_POPULATION_QUANTITY = math.clamp(this.arena.MINIMUM_POPULATION_QUANTITY, 1, AnimatArena.MAXIMUM_POPULATION_QUANTITY);
     }
 
     public void SaveCurrentAnimatBrain()

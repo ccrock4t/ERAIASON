@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Unity.Mathematics;
 using UnityEngine;
@@ -10,13 +11,69 @@ public class SoftVoxelRobotBodyGenome : BodyGenome
 {
     public RobotVoxel[] voxel_array;
 
-    public  int3 dimensions3D;
+    public int3 dimensions3D;
+
+    public struct SoftVoxelSensorKey
+    {
+        public int3 voxel;
+        public SoftVoxelSensorType sensor;
+
+        public SoftVoxelSensorKey(int3 voxel, SoftVoxelSensorType type)
+        {
+            this.voxel = voxel;
+            this.sensor = type;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is SoftVoxelSensorKey other &&
+                   math.all(voxel == other.voxel) &&
+                   sensor == other.sensor;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(voxel, sensor);
+        }
+    }
+    public enum SoftVoxelSensorType
+    {
+        Touch,
+        ForwardTilt,
+        SideTilt
+    }
+
+    public struct SoftVoxelMotorKey
+    {
+        public int3 voxel;
+        public dof dof;
+        public SoftVoxelMotorKey(int3 voxel, dof dof)
+        {
+            this.voxel = voxel;
+            this.dof = dof;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is SoftVoxelMotorKey other &&
+                   math.all(voxel == other.voxel) &&
+                   dof == other.dof;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(voxel, dof);
+        }
+    }
+    
+
+    public Dictionary<SoftVoxelSensorKey, int> svrSensorKeyToNodeID = new();
+    public Dictionary<SoftVoxelMotorKey, int> svrMotorKeyToNodeID = new();
 
     public SoftVoxelRobotBodyGenome(int3 dimensions3D) {
 
         this.dimensions3D = dimensions3D;
         this.voxel_array = new RobotVoxel[dimensions3D.x * dimensions3D.y * dimensions3D.z];
-
     }
 
 

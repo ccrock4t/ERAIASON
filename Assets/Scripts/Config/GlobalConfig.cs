@@ -68,6 +68,14 @@ public class GlobalConfig : MonoBehaviour
         VoxelWorld
     }
 
+    public enum CPGtype
+    {
+        None,
+        Kuramoto,
+        Hopf,
+        Matsuoka
+    }
+
 
     // ========================================================================
 
@@ -95,10 +103,11 @@ public class GlobalConfig : MonoBehaviour
 
     // === Animat brain ===
     public static BrainProcessingMethod BRAIN_PROCESSING_METHOD = BrainProcessingMethod.NeuralNetworkCPU;
-    public static bool USE_HEBBIAN = true;
+    public static bool USE_HEBBIAN = false;
     public const NeuralLearningMethod HEBBIAN_METHOD = NeuralLearningMethod.HebbABCD;
     public static Brain.Neuron.NeuronClass NEURAL_NETWORK_METHOD = Brain.Neuron.NeuronClass.SumAndSquash;
 
+    public static CPGtype CPG_TYPE = CPGtype.Matsuoka;
 
     public static int ANIMAT_BRAIN_UPDATE_PERIOD = 2; // runs every X FixedUpdates. Lower number = runs more freqeuntlly
     public static int BRAIN_VIEWER_UPDATE_PERIOD = 8;
@@ -110,6 +119,7 @@ public class GlobalConfig : MonoBehaviour
 
     public static BodyMethod BODY_METHOD = BodyMethod.ArticulatedRobot;
     public static BodyGenome custom_genome = null;
+
 
     // wheeled robot config
 
@@ -123,7 +133,7 @@ public class GlobalConfig : MonoBehaviour
     // ============
 
     // === World voxel automaton === 
-    public const bool RUN_WORLD_AUTOMATA = true;
+    public const bool RUN_WORLD_AUTOMATA = false;
 
     public const ProcessingMethod voxel_processing_method = ProcessingMethod.CPU;
     public const VoxelWorldSmoothingMethod voxel_mesh_smoothing_method = VoxelWorldSmoothingMethod.None;
@@ -137,8 +147,8 @@ public class GlobalConfig : MonoBehaviour
     // ============
 
     //EA settings
-    public static bool USE_NOVELTY_SEARCH = false;
-    internal static bool show_lines;
+    public static bool USE_NOVELTY_SEARCH = true;
+    public static bool show_lines = true;
 
     // === Saving and loading ===
     public const string save_file_path = "SaveFiles/";
@@ -149,12 +159,17 @@ public class GlobalConfig : MonoBehaviour
 
 
 
-    public const bool RECORD_DATA = false;
+    public const bool RECORD_DATA_TO_DISK = true;
+    public const bool RECORD_DATA_TO_WEB = false;
 
     // ============
 
 
-
+    [ContextMenu("Toggle vision rays")]
+    void ToggleVisionRays()
+    {
+        show_lines = !show_lines;
+    }
 
 
     private void Awake()

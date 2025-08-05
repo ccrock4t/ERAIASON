@@ -62,15 +62,14 @@ public class WheeledRobot : AnimatBody
     {
         base.MotorEffect(animat);
 
-        float move_activation = 0;
-        float rotate_activation = 0;
-        float jump_activation = 0;
+        double move_activation = 0;
+        double rotate_activation = 0;
+        double jump_activation = 0;
         if (animat.mind is Brain brain)
         {
             // move forward
-            var move_forward_neuron_ID = NEATGenome.GetTupleIDFromInt(MOVE_FORWARD_NEURON_ID, Brain.Neuron.NeuronRole.Motor);
-            int move_forward_neuron_idx = brain.nodeID_to_idx[move_forward_neuron_ID];
-            Brain.Neuron move_forward_neuron = brain.GetNeuronCurrentState(move_forward_neuron_idx);
+            int move_forward_neuron_idx = brain.nodeID_to_idx[MOVE_FORWARD_NEURON_ID];
+            Brain.Neuron move_forward_neuron = brain.GetNeuronCurrentState(MOVE_FORWARD_NEURON_ID);
 
 
             move_activation = move_forward_neuron.activation;
@@ -81,19 +80,19 @@ public class WheeledRobot : AnimatBody
             }
 
             // rotate
-            var rotate_right_neuron_ID = NEATGenome.GetTupleIDFromInt(ROTATE_RIGHT_NEURON_ID, Brain.Neuron.NeuronRole.Motor);
+            var rotate_right_neuron_ID = ROTATE_RIGHT_NEURON_ID;
             int rotate_right_neuron_idx = brain.nodeID_to_idx[rotate_right_neuron_ID];
             Brain.Neuron rotate_right_neuron = brain.GetNeuronCurrentState(rotate_right_neuron_idx);
             rotate_activation = rotate_right_neuron.activation;
 
-            var rotate_left_neuron_ID = NEATGenome.GetTupleIDFromInt(ROTATE_LEFT_NEURON_ID, Brain.Neuron.NeuronRole.Motor);
+            var rotate_left_neuron_ID = ROTATE_LEFT_NEURON_ID;
             int rotate_left_neuron_idx = brain.nodeID_to_idx[rotate_left_neuron_ID];
             Brain.Neuron rotate_left_neuron = brain.GetNeuronCurrentState(rotate_left_neuron_idx);
             rotate_activation -= rotate_left_neuron.activation;
 
          
             // Jump
-            var jump_neuron_ID = NEATGenome.GetTupleIDFromInt(JUMP_MOTOR_NEURON_ID, Brain.Neuron.NeuronRole.Motor);
+            var jump_neuron_ID = JUMP_MOTOR_NEURON_ID;
             int jump_neuron_idx = brain.nodeID_to_idx[jump_neuron_ID];
             Brain.Neuron jump_neuron = brain.GetNeuronCurrentState(jump_neuron_idx);
             jump_activation = jump_neuron.activation;
@@ -128,13 +127,13 @@ public class WheeledRobot : AnimatBody
 
         // move
         Vector3 motion_vector = controller.transform.forward;
-        Vector3 new_position = controller.position + motion_vector * move_activation * movement_speed;
+        Vector3 new_position = controller.position + motion_vector * (float)move_activation * movement_speed;
 
         // jump
      
         if (this.object_touching_counter.num_objects_touching > 0)
         {
-            new_position.y += jump_activation * climb_speed;
+            new_position.y += (float)jump_activation * climb_speed;
         }
        
 
@@ -142,7 +141,7 @@ public class WheeledRobot : AnimatBody
         this.controller.MovePosition(new_position);
 
         // rotate
-        this.controller.MoveRotation(controller.rotation * Quaternion.Euler(Vector3.up * rotate_activation * rotate_speed));
+        this.controller.MoveRotation(controller.rotation * Quaternion.Euler(Vector3.up * (float)rotate_activation * rotate_speed));
 
    
     }
@@ -155,7 +154,7 @@ public class WheeledRobot : AnimatBody
         if (animat.mind is Brain brain)
         {
             // touch sensor
-            var touch_sensor_neuron_ID = NEATGenome.GetTupleIDFromInt(TOUCH_SENSOR_NEURON_ID, Brain.Neuron.NeuronRole.Sensor);
+            var touch_sensor_neuron_ID = TOUCH_SENSOR_NEURON_ID;
             int touch_sensor_neuron_idx = brain.nodeID_to_idx[touch_sensor_neuron_ID];
             Brain.Neuron touch_sensor_neuron = brain.GetNeuronCurrentState(touch_sensor_neuron_idx);
             if (this.object_touching_counter.num_objects_touching > 0)

@@ -1,13 +1,16 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Unity.Collections;
+using Unity.Entities.UniversalDelegates;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using static ArticulatedRobotBodyGenome;
+using static BodyGenome;
 using static Brain;
-using CVX_Voxel = System.IntPtr;
-using static WorldAutomaton.Elemental;
 using static RayPreview;
+using static WorldAutomaton.Elemental;
+using CVX_Voxel = System.IntPtr;
 
 public class VisionSensor
 {
@@ -22,11 +25,11 @@ public class VisionSensor
     public const float MAX_VISION_DISTANCE = 40f;
     const float EAT_RATE = 2;
     public const float ACTION_RANGE = 2f;
-    const float EAT_THRESHOLD = 0.5f;
-    const float MATE_THRESHOLD = 0.5f;
-    const float FIGHT_THRESHOLD = 0.5f;
-    const float PICKUP_VOXEL_THRESHOLD = 0.5f;
-    public const float PLACE_VOXEL_THRESHOLD = 0.5f;
+    const float EAT_THRESHOLD = 0.1f;
+    const float MATE_THRESHOLD = 0.1f;
+    const float FIGHT_THRESHOLD = 0.1f;
+    const float PICKUP_VOXEL_THRESHOLD = 0.1f;
+    public const float PLACE_VOXEL_THRESHOLD = 0.1f;
     public const float ASEXUAL_THRESHOLD = 0.05f;
 
     public RayPreview ray_preview;
@@ -40,39 +43,39 @@ public class VisionSensor
         //
         // get animat motor activations
         //
-        float eat_motor_activation;
-        float fight_motor_activation;
-        float mate_motor_activation;
-        float pickup_voxel_motor_activation;
-        float place_voxel_motor_activation;
+        double eat_motor_activation;
+        double fight_motor_activation;
+        double mate_motor_activation;
+        double pickup_voxel_motor_activation;
+        double place_voxel_motor_activation;
 
         if (animat.mind is Brain)
         {
             Brain brain = animat.mind as Brain;
             // get neuron info
-            int motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.EATING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+            int motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.EATING_MOTOR_NEURON_INDEX];
             Neuron motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             eat_motor_activation = motor_neuron.activation;
 
 
-            motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+            motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX];
             motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             fight_motor_activation = motor_neuron.activation;
 
 
-            motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.MATING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+            motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.MATING_MOTOR_NEURON_INDEX];
             motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             mate_motor_activation = motor_neuron.activation;
 
-            motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.PICKUP_VOXEL_MOTOR_NEURON, Neuron.NeuronRole.Motor)];
+            motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.PICKUP_VOXEL_MOTOR_NEURON];
             motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             pickup_voxel_motor_activation = motor_neuron.activation;
 
-            motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.PLACE_VOXEL_MOTOR_NEURON, Neuron.NeuronRole.Motor)];
+            motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.PLACE_VOXEL_MOTOR_NEURON];
             motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             place_voxel_motor_activation = motor_neuron.activation;
@@ -157,7 +160,7 @@ public class VisionSensor
         //
         //handle raycast results
         // 
-        ConcurrentQueue<(RaycastHit, int, float)> objects_to_update = new(); // raycast object, behavior index, activation
+        ConcurrentQueue<(RaycastHit, int, double)> objects_to_update = new(); // raycast object, behavior index, activation
 
         bool voxel_was_picked = false;
         float max_food_activation = 0;
@@ -265,7 +268,7 @@ public class VisionSensor
                     if (draw_sensor_raycasts)
                     {
                         var dir = ((RaycastHit)food_hit).transform.position - raycast_position;
-                        ray_preview_casts.Add(new RayPreviewCast(raycast_position, dir.normalized, dir.magnitude, new Color(0, eat_motor_activation, 0)));
+                        ray_preview_casts.Add(new RayPreviewCast(raycast_position, dir.normalized, dir.magnitude, new Color(0, (float)eat_motor_activation, 0)));
                     }
                     
                 }
@@ -400,30 +403,43 @@ public class VisionSensor
             if (animat.mind is Brain)
             {
                 Brain brain = animat.mind as Brain;
-                int sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFrom2Ints(InitialNEATGenomes.RAYCAST_VISION_SENSOR_FOOD_NEURON_INDEX, r, Neuron.NeuronRole.Sensor)];
+                // food
+                var sensorKey = new VisionSensorKey(r, VisionSensorType.Food);
+                var neuronID = animat.genome.body_genome.visionSensorKeyToNodeID[sensorKey];
+                int sensory_neuron_idx = brain.nodeID_to_idx[neuronID];
                 Neuron sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
                 if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
                 sensor_neuron.activation = food_activation;
                 brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
 
-                sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFrom2Ints(InitialNEATGenomes.RAYCAST_VISION_SENSOR_ANIMAT_NEURON_INDEX, r, Neuron.NeuronRole.Sensor)];
+                // animat
+                sensorKey = new VisionSensorKey(r, VisionSensorType.Animat);
+                neuronID = animat.genome.body_genome.visionSensorKeyToNodeID[sensorKey];
+                sensory_neuron_idx = brain.nodeID_to_idx[neuronID];
                 sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
                 if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
                 sensor_neuron.activation = animat_activation;
                 brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
 
-                sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFrom2Ints(InitialNEATGenomes.RAYCAST_VISION_SENSOR_OBSTACLE_NEURON_INDEX, r, Neuron.NeuronRole.Sensor)];
+                //obstacle
+                sensorKey = new VisionSensorKey(r, VisionSensorType.Obstacle);
+                neuronID = animat.genome.body_genome.visionSensorKeyToNodeID[sensorKey];
+                sensory_neuron_idx = brain.nodeID_to_idx[neuronID];
                 sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
                 if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
                 sensor_neuron.activation = obstacle_activation;
                 brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
 
-           
-                sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFrom2Ints(InitialNEATGenomes.RAYCAST_VISION_SENSOR_INTERACTABLE_VOXEL, r, Neuron.NeuronRole.Sensor)];
-                sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
-                if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
-                sensor_neuron.activation = pickable_voxel_activation;
-                brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
+                if (GlobalConfig.WORLD_TYPE == GlobalConfig.WorldType.VoxelWorld)
+                {
+                    sensorKey = new VisionSensorKey(r, VisionSensorType.PickableVoxel);
+                    neuronID = animat.genome.body_genome.visionSensorKeyToNodeID[sensorKey];
+                    sensory_neuron_idx = brain.nodeID_to_idx[neuronID];
+                    sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
+                    if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
+                    sensor_neuron.activation = pickable_voxel_activation;
+                    brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
+                }
                 
             }
             else
@@ -439,7 +455,7 @@ public class VisionSensor
 
 
 
-        float food_was_eaten = 0;
+        double food_was_eaten = 0;
 
         Dictionary<object, bool> object_already_interacted = new();
         foreach (var hit_tuple in objects_to_update)
@@ -447,13 +463,13 @@ public class VisionSensor
 
             RaycastHit hit = hit_tuple.Item1;
             int behavior = hit_tuple.Item2;
-            float activation = hit_tuple.Item3;
+            double activation = hit_tuple.Item3;
             if (hit.transform.gameObject.layer == AnimatArena.FOOD_GAMEOBJECT_LAYER)
             {
                 // eating food
 
 
-                float amount_of_food_to_eat = math.abs(eat_motor_activation);
+                double amount_of_food_to_eat = math.abs(eat_motor_activation);
                 var food = hit.transform.gameObject.GetComponent<Food>();
 
          
@@ -467,8 +483,8 @@ public class VisionSensor
 
                     if (food.nutrition_remaining > amount_of_food_to_eat)
                     {
-                        food.RemoveNutrition(amount_of_food_to_eat);
-                        body.FoodEaten(amount_of_food_to_eat);
+                        food.RemoveNutrition((float)amount_of_food_to_eat);
+                        body.FoodEaten((float)amount_of_food_to_eat);
                     }
                     else
                     {
@@ -495,7 +511,7 @@ public class VisionSensor
                         object_already_interacted[other_animat] = true;
                         if (!other_animat.dead)
                         {
-                            float other_animat_mate_motor_activation;
+                            double other_animat_mate_motor_activation;
                             if(other_animat.mind is NARS)
                             {
                                 NARS other_NARS = (NARS)other_animat.mind;
@@ -503,7 +519,7 @@ public class VisionSensor
                             }
                             else if(other_animat.mind is Brain)
                             {
-                                int other_mate_motor_neuron_idx = ((Brain)other_animat.mind).nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.MATING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+                                int other_mate_motor_neuron_idx = ((Brain)other_animat.mind).nodeID_to_idx[InitialNEATGenomes.MATING_MOTOR_NEURON_INDEX];
                                 Neuron other_mate_motor_neuron = ((Brain)other_animat.mind).GetNeuronCurrentState(other_mate_motor_neuron_idx);
                                 if (other_mate_motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
                                 other_animat_mate_motor_activation = other_mate_motor_neuron.activation;
@@ -533,7 +549,7 @@ public class VisionSensor
                     if (!object_already_interacted.ContainsKey(other_animat))
                     {
                         object_already_interacted[other_animat] = true;
-                        other_animat.ReduceHealth(math.abs(activation));
+                        other_animat.ReduceHealth((float)math.abs(activation));
                     }
                 }
             }
@@ -630,7 +646,7 @@ public class VisionSensor
         if (animat.mind is Brain)
         {
             Brain brain = animat.mind as Brain;
-            int mouth_sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.MOUTH_SENSOR, Neuron.NeuronRole.Sensor)];
+            int mouth_sensory_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.MOUTH_SENSOR];
             Neuron mouth_sensory_neuron = brain.GetNeuronCurrentState(mouth_sensory_neuron_idx);
             if (mouth_sensory_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
             mouth_sensory_neuron.activation = food_was_eaten;
@@ -638,7 +654,9 @@ public class VisionSensor
         }
 
         // data stuff
-        body.food_eaten_since_last_novelty_datapoint += food_was_eaten;
+        body.food_eaten_since_last_novelty_datapoint += (float)food_was_eaten;
+
+        body.food_was_seen_last_time = body.food_was_seen;
         body.food_was_seen = max_food_activation;
         animat.body.frames_food_detected += max_food_activation;
         animat.body.total_frames_alive++;
@@ -646,41 +664,55 @@ public class VisionSensor
         ray_preview.UpdateRays(ray_preview_casts);
     }
 
-    public static void SetupRaycasts(Vector3 up,
-        Vector3 raycast_direction, 
+    public static void SetupRaycasts(
+        Vector3 up,
+        Vector3 raycast_direction,
         Vector3 raycast_position,
         QueryParameters query_params,
         NativeArray<RaycastCommand> raycast_commands)
     {
         int idx = 0;
-        // create raycast command
-        float degrees_offset = 2;
 
-        float origin_offset = 0.1f;
+        float horizontalFOV = 5f; // total width of view in degrees
+        float verticalFOV = 5f;   // total height of view in degrees
 
-   
-        Vector3 right = Vector3.Cross(raycast_direction, up).normalized;
+        int xCount = eye_dimensions.x;
+        int yCount = eye_dimensions.y;
 
-        for (int x = -(eye_dimensions.x / 2); x <= (eye_dimensions.x / 2); x++)
+        // Build local basis
+        Vector3 forward = raycast_direction.normalized;
+        Vector3 right = Vector3.Cross(up.normalized, forward).normalized;
+        Vector3 adjusted_up = Vector3.Cross(forward, right).normalized;
+
+        for (int y = 0; y < yCount; y++)
         {
-            for (int y = -(eye_dimensions.y / 2); y <= (eye_dimensions.y / 2); y++)
+            float yPercent = (y / (float)(yCount - 1)) - 0.5f; // from -0.5 to 0.5
+            float verticalAngle = yPercent * verticalFOV;
+
+            for (int x = 0; x < xCount; x++)
             {
-                Vector3 rotation_axis = new Vector3(0.5f * x, 0.5f * y, 0);
-                var rotated_axis = Vector3.Cross(raycast_direction.normalized, Quaternion.identity * rotation_axis);
-                var rotated_direction = Quaternion.AngleAxis(degrees_offset, rotated_axis) * raycast_direction.normalized;
+                float xPercent = (x / (float)(xCount - 1)) - 0.5f; // from -0.5 to 0.5
+                float horizontalAngle = xPercent * horizontalFOV;
+
+                // First rotate around local X (right), then Y (up)
+                Quaternion rot = Quaternion.AngleAxis(-verticalAngle, right) *
+                                 Quaternion.AngleAxis(horizontalAngle, adjusted_up);
+
+                Vector3 rotated_direction = rot * forward;
+
+                // Slightly offset origin for better spacing (optional)
                 Vector3 origin = raycast_position
-                    + y * origin_offset * up
-                    + x * origin_offset * right;
-                raycast_commands[idx] = new RaycastCommand(origin, rotated_direction, query_params, MAX_VISION_DISTANCE);
-                idx++;
+                    + xPercent * 0.1f * right
+                    + yPercent * 0.1f * adjusted_up;
+
+                raycast_commands[idx++] = new RaycastCommand(origin, rotated_direction, query_params, MAX_VISION_DISTANCE);
             }
         }
 
-        if(idx != raycast_commands.Length)
+        if (idx != raycast_commands.Length)
         {
-            Debug.LogError("error not enough raycasts");
+            Debug.LogError("Mismatch in raycast count");
         }
-
     }
 
     Vector3Int GetNextVoxel(Vector3 ray_position, Vector3 ray_direction)

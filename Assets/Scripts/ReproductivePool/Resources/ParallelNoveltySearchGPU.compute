@@ -16,7 +16,7 @@ float CalculateSumOfSquareDistances(BehaviorCharacterizationGPUMetadata table_en
     int p2_Count = archive_entry_metadata.behavior_length;
     
     
-    int bigger_array_size = max(p1_Count, p2_Count);
+    int smaller_array_size = min(p1_Count, p2_Count);
     
     if (p1_Count == 0 || p2_Count == 0)
     {
@@ -32,7 +32,7 @@ float CalculateSumOfSquareDistances(BehaviorCharacterizationGPUMetadata table_en
     float g1, g2;
     float b1 = 0, b2 = 0;
     int i1, i2;
-    for (int i = 0; i < bigger_array_size; i++)
+    for (int i = 0; i < smaller_array_size; i++)
     {
         i1 = min(p1_Count - 1, i);
         i2 = min(p2_Count - 1, i);
@@ -72,19 +72,15 @@ float CalculateSumOfSquareDistances(BehaviorCharacterizationGPUMetadata table_en
         float dist = 0;
         
 
-        dist += abs(g1 - g2);
+        dist = abs(g1 - g2);
         dist += distance(float2(r1, b1), float2(r2, b2));
-        
-        // now calculate how closer each one moved towards food
-
-       
-        
-        
+    
+      
         total_distance += dist;
 
     }
 
-    return total_distance;
+    return total_distance / smaller_array_size;
 
 }
 

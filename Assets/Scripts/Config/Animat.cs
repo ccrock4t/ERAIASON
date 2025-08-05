@@ -111,7 +111,7 @@ public class Animat : MonoBehaviour
         else if (GlobalConfig.BRAIN_GENOME_METHOD == BrainGenomeMethod.NEAT)
         {
             num_of_neurons = ((NEATGenome)this.genome.brain_genome).nodes.Count;
-            num_of_synapses = ((NEATGenome)this.genome.brain_genome).connections.Count;
+            num_of_synapses = ((NEATGenome)this.genome.brain_genome).enabled_connection_idxs.Count;
         }
         else
         {
@@ -125,7 +125,7 @@ public class Animat : MonoBehaviour
         //develop the brain and body in a separate thread
         this.brain_develop_task = Task.Run(() =>
         {
-            Dictionary<NeuronID, int> nodeID_to_idx = new();
+            Dictionary<int, int> nodeID_to_idx = new();
             List<int> motor_neuron_indices = new();
             if (GlobalConfig.BRAIN_GENOME_METHOD == BrainGenomeMethod.CPPN)
             {
@@ -156,45 +156,48 @@ public class Animat : MonoBehaviour
                 foreach (NEATNode node in brain_genome.nodes)
                 {
                     nodeID_to_idx[node.ID] = i;
-                    if (node.ID.neuron_role == Neuron.NeuronRole.Motor) motor_neuron_indices.Add(i);
+                    if (node.neuron_role == Neuron.NeuronRole.Motor) motor_neuron_indices.Add(i);
                     i++;
                 }
 
                 // connections. First group them together
-                Dictionary<NeuronID, List<NEATConnection>> nodeID_to_connections = new();
-                foreach (NEATConnection connection in brain_genome.connections)
+                Dictionary<int, List<NEATConnection>> nodeID_to_connections = new();
+                foreach (int connection_idx in brain_genome.enabled_connection_idxs)
                 {
-                    if (!nodeID_to_connections.ContainsKey(connection.toID))
+                    var connection = brain_genome.connections[connection_idx];
+                    if (!connection.enabled)
                     {
-                        nodeID_to_connections[connection.toID] = new();
+                        UnityEngine.Debug.LogError("Error: disabled connection is in enabled connections list");
+                        return;
                     }
-                    nodeID_to_connections[connection.toID].Add(connection);
+                    if (!nodeID_to_connections.ContainsKey(connection.toNodeID))
+                    {
+                        nodeID_to_connections[connection.toNodeID] = new();
+                    }
+                    nodeID_to_connections[connection.toNodeID].Add(connection);
                 }
 
                 // connections. Next place them in the array
-                Dictionary<NeuronID, int> nodeID_to_synapse_startIdx = new();
+                Dictionary<int, int> nodeID_to_synapse_startIdx = new();
                 i = 0;
-                foreach (KeyValuePair<NeuronID, List<NEATConnection>> node_connections in nodeID_to_connections)
+                foreach (KeyValuePair<int, List<NEATConnection>> node_connections in nodeID_to_connections)
                 {
-                    NeuronID nodeID = node_connections.Key;
+                    int nodeID = node_connections.Key;
                     nodeID_to_synapse_startIdx[nodeID] = i;
                     foreach (NEATConnection connection in node_connections.Value)
                     {
-                        Synapse synapse = Synapse.GetDefault();
-                        synapse.from_neuron_idx = nodeID_to_idx[connection.fromID];
-                        synapse.to_neuron_idx = nodeID_to_idx[connection.toID];
+						if (!connection.enabled)
+						{
+							UnityEngine.Debug.LogError("Error: disabled connection is in enabled connections list");
+							return;
+						}
+						Synapse synapse = Synapse.GetDefault();
+                        synapse.from_neuron_idx = nodeID_to_idx[connection.fromNodeID];
+                        synapse.to_neuron_idx = nodeID_to_idx[connection.toNodeID];
 
-                        if (nodeID != connection.toID) Debug.LogError("Error connections dont match");
+                        if (nodeID != connection.toNodeID) Debug.LogError("Error connections dont match");
 
                         synapse.enabled = connection.enabled ? 1 : 0;
-                        if (connection.toID.coords.x != nodeID.coords.x
-                        || connection.toID.coords.y != nodeID.coords.y
-                        || connection.toID.coords.z != nodeID.coords.z
-                        || connection.toID.coords.w != nodeID.coords.w
-                        || connection.toID.neuron_role != nodeID.neuron_role)
-                        {
-                            Debug.LogError("error");
-                        }
                         synapse.weight = connection.weight;
                         synapse.coefficient_A = connection.hebb_ABCDLR[0];
                         synapse.coefficient_B = connection.hebb_ABCDLR[1];
@@ -221,8 +224,19 @@ public class Animat : MonoBehaviour
                         Debug.LogError("o");
                     }
                     neuron.gain = node.gain;
-                    neuron.neuron_role = node.ID.neuron_role;
+                    neuron.neuron_role = node.neuron_role;
                     neuron.sigmoid_alpha = node.sigmoid_alpha;
+                    neuron.r = node.r;
+                    neuron.w = node.w;
+                    neuron.theta = node.theta;
+                    neuron.phase_offset = node.phase_offset;
+                    neuron.r_gain = node.r_gain;
+                    neuron.p_gain = node.p_gain;
+                    neuron.mu = node.mu;
+                    neuron.osc_inject_gain = node.osc_inject_gain;
+                    neuron.blend = node.blend;
+                    neuron.max_input = node.max_input;
+                    neuron.K = node.K;
                     neuron.ID = node.ID;
                     neuron.idx = nodeID_to_idx[node.ID];
                     int layer_num;
@@ -405,7 +419,9 @@ public class Animat : MonoBehaviour
             this.birthplace = GetCenterOfMass();
             this.birthplace_forward_vector = Vector3.forward;
             float min_dist = float.MaxValue;
-            (closest_food, last_datapoint_distance_to_food) = AnimatArena.GetInstance().GetClosestFoodAndDistance(this.GetCenterOfMass());
+            //(closest_food, last_datapoint_distance_to_food) = AnimatArena.GetInstance().GetClosestFoodAndDistance(this.GetCenterOfMass());
+           // this.original_distance_to_closest_food = last_datapoint_distance_to_food;
+            //this.closest_food_gameobject = closest_food;
             this.birthed = true;
         }
 
@@ -447,6 +463,7 @@ public class Animat : MonoBehaviour
         position.y = 0;
         Animat offspring = AnimatArena.GetInstance().SpawnGenomeInPosition(offspring_genome, position);
         offspring.was_born = true;
+        DataAnalyzer.RegisterBirth();
         this.body.energy -= AnimatBody.OFFSPRING_COST;
         this.body.times_reproduced++;
         this.body.times_reproduced_asexually++;
@@ -475,7 +492,7 @@ public class Animat : MonoBehaviour
         Vector3 position = (mate1.GetCenterOfMass() + mate2.GetCenterOfMass()) / 2;
         position.y = 0;
         Animat offspring;
-        if (UnityEngine.Random.Range(0, 2) == 0)
+        if (NEATConnection.ThreadSafeSystemRandomRange(0, 2) == 0)
         {
             offspring = AnimatArena.GetInstance().SpawnGenomeInPosition(offspring1, position);
         }
@@ -485,6 +502,7 @@ public class Animat : MonoBehaviour
         }
         offspring.was_born = true;
 
+        DataAnalyzer.RegisterBirth();
 
 
         mate1.body.energy -= AnimatBody.OFFSPRING_COST / 2;
@@ -678,6 +696,33 @@ public class Animat : MonoBehaviour
 
         //Vector2 D = this.GetCenterOfMass().xz - this.birthplace.xz;
     }
+
+    public Vector2 GetVectorFromBirthplace()
+    {
+        Vector2 position = this.GetCenterOfMass().xz;
+        Vector2 distance = (Vector2) (this.birthplace.xz) + position;
+
+        /*
+        if (distance > 10)
+        {
+            int test = 1;
+        }
+        */
+        return distance;
+
+        //Vector2 D = this.GetCenterOfMass().xz - this.birthplace.xz;
+    }
+
+    float original_distance_to_closest_food;
+    public GameObject closest_food_gameobject;
+    public float CalculateCloserToFoodFitness()
+    {
+        float currentDistance = Vector3.Distance(closest_food.transform.position, this.GetCenterOfMass());
+        float fitness = original_distance_to_closest_food - currentDistance; // Positive if it got closer
+        return math.max(0,fitness)/ original_distance_to_closest_food;
+    }
+
+
     public float GetDistanceTowardsClosestFood()
     {
         float distance = Vector3.Distance(closest_food.transform.position, this.GetCenterOfMass());
@@ -686,6 +731,11 @@ public class Animat : MonoBehaviour
         return difference;
 
         //Vector2 D = this.GetCenterOfMass().xz - this.birthplace.xz;
+    }
+
+    public Vector2 GetVectorTowardsClosestFood()
+    {
+        return (Vector2)closest_food.transform.position + (Vector2) this.GetCenterOfMass().xz;
     }
 
     public float GetDisplacementAlongBirthplaceForwardVector()

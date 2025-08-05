@@ -19,7 +19,7 @@ public abstract class AnimatBody : MonoBehaviour
     public const float MAX_VOXELS_HELD = 5;
     const float SINE_SPEED = 3;
     //  reproduction
-    public const float OFFSPRING_COST = AnimatBody.ENERGY_IN_A_FOOD / 2;
+    public const float OFFSPRING_COST = 1*AnimatBody.ENERGY_IN_A_FOOD / 4;
 
 
     //variables
@@ -41,6 +41,7 @@ public abstract class AnimatBody : MonoBehaviour
     public Color? override_color = null;
     public float food_eaten_since_last_novelty_datapoint;
     public float food_was_seen;
+    public float food_was_seen_last_time;
 
 
 
@@ -55,21 +56,21 @@ public abstract class AnimatBody : MonoBehaviour
         if (animat.mind is Brain brain)
         {
             // sense energy
-            int sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.INTERNAL_ENERGY_SENSOR, Neuron.NeuronRole.Sensor)];
+            int sensory_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.INTERNAL_ENERGY_SENSOR];
             Neuron sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
             if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
             sensor_neuron.activation = this.energy / MAX_ENERGY;
             brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
 
             //sense health
-            sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.INTERNAL_HEALTH_SENSOR, Neuron.NeuronRole.Sensor)];
+            sensory_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.INTERNAL_HEALTH_SENSOR];
             sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
             if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
             sensor_neuron.activation = this.health / MAX_HEALTH;
             brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
 
             // sinewave
-            sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.SINEWAVE_SENSOR, Neuron.NeuronRole.Sensor)];
+            sensory_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.SINEWAVE_SENSOR];
             sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
             if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
             float current_time = Time.time;
@@ -77,20 +78,23 @@ public abstract class AnimatBody : MonoBehaviour
             brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
 
             // pain
-            sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.PAIN_SENSOR, Neuron.NeuronRole.Sensor)];
+            sensory_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.PAIN_SENSOR];
             sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
             if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
             sensor_neuron.activation = animat.was_hit;
             brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
             animat.was_hit = 0;
             
-          
-            // internally held voxels
-            sensory_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.INTERNAL_VOXEL_HELD, Neuron.NeuronRole.Sensor)];
-            sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
-            if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
-            sensor_neuron.activation = number_of_voxels_held / MAX_VOXELS_HELD;
-            brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
+            if(GlobalConfig.WORLD_TYPE  == GlobalConfig.WorldType.VoxelWorld)
+            {
+                // internally held voxels
+                sensory_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.INTERNAL_VOXEL_HELD];
+                sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
+                if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
+                sensor_neuron.activation = number_of_voxels_held / MAX_VOXELS_HELD;
+                brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
+            }
+
             
   
         }
@@ -121,11 +125,11 @@ public abstract class AnimatBody : MonoBehaviour
 
     public virtual void MotorEffect(Animat animat)
     {
-        float asexual_activation;
+        double asexual_activation;
 
         if (animat.mind is Brain brain)
         {
-            int motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.ASEXUAL_MOTOR_NEURON, Neuron.NeuronRole.Motor)];
+            int motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.ASEXUAL_MOTOR_NEURON];
             Neuron motor_neuron = brain.GetNeuronCurrentState(motor_neuron_idx);
             if (motor_neuron.neuron_role != Neuron.NeuronRole.Motor) Debug.LogError("error");
             asexual_activation = motor_neuron.activation;
@@ -168,20 +172,20 @@ public abstract class AnimatBody : MonoBehaviour
 
     public void UpdateColor(Animat a)
     {
-        float eat_color;
-        float mate_color;
-        float fight_color;
+        double eat_color;
+        double mate_color;
+        double fight_color;
         if (a.mind is Brain brain)
         {
-            int eat_motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+            int eat_motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX];
             Neuron eat_motor_neuron = brain.GetNeuronCurrentState(eat_motor_neuron_idx);
             eat_color = eat_motor_neuron.activation >= 0 ? eat_motor_neuron.activation : 0;
 
-            int mate_motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.MATING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+            int mate_motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.MATING_MOTOR_NEURON_INDEX];
             Neuron mate_motor_neuron = brain.GetNeuronCurrentState(mate_motor_neuron_idx);
             mate_color = mate_motor_neuron.activation >= 0 ? mate_motor_neuron.activation : 0;
 
-            int fight_motor_neuron_idx = brain.nodeID_to_idx[NEATGenome.GetTupleIDFromInt(InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX, Neuron.NeuronRole.Motor)];
+            int fight_motor_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.FIGHTING_MOTOR_NEURON_INDEX];
             Neuron fight_motor_neuron = brain.GetNeuronCurrentState(fight_motor_neuron_idx);
             fight_color = fight_motor_neuron.activation >= 0 ? fight_motor_neuron.activation : 0;
         }else if(a.mind is NARS nar)
@@ -195,12 +199,12 @@ public abstract class AnimatBody : MonoBehaviour
         {
             return;
         }
-        
-        float r = fight_color;
-        float g = eat_color;
-        float b = mate_color;
 
-        Color new_color = new(r, g, b);
+        double r = fight_color;
+        double g = eat_color;
+        double b = mate_color;
+
+        Color new_color = new((float)r, (float)g, (float)b);
 
         new_color = Color.Lerp(new_color, Color.gray, 0.5f + 0.5f*(this.age / MAX_AGE));
 

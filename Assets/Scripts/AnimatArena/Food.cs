@@ -16,7 +16,7 @@ public class Food : MonoBehaviour
     void Start()
     {
         this.transform.gameObject.tag = "Food";
-        ResetFood();
+        ResetFood(AnimatBody.ENERGY_IN_A_FOOD);
     }
 
     public void ResetFood(float food_amount=1)
@@ -35,14 +35,9 @@ public class Food : MonoBehaviour
     {
         Vector3 new_scale;
 
-        if(nutrition_remaining < MAX_ENERGY_FROM_GROWTH)
-        {
-            new_scale = 3.0f*(new Vector3(nutrition_remaining, nutrition_remaining, nutrition_remaining) / AnimatBody.MAX_ENERGY) + 0.5f * Vector3.one;
-        }
-        else
-        {
-            new_scale = (new Vector3(nutrition_remaining, nutrition_remaining, nutrition_remaining) / AnimatBody.MAX_ENERGY) + 1.3f * Vector3.one;
-        }
+    
+        new_scale = 0.5f*Vector3.one * nutrition_remaining / AnimatBody.ENERGY_IN_A_FOOD + 1.0f * Vector3.one;
+        
         this.transform.localScale = new_scale;
 
         if (!held)

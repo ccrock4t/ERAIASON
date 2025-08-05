@@ -1,9 +1,12 @@
-using Unity.Burst;
+﻿using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
 using static Brain;
+using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
+using static UnityEngine.UI.Extensions.Gradient2;
 
 // Parallel compute the neural activations for the next time step
 
@@ -26,17 +29,22 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
     public NativeArray<Synapse> next_state_synapses; // 1-to-many mapping NeuronID --> synapse1, synapse2, synapse3, etc.
 
     const bool CONSTRAIN_WEIGHT = false;
-    //static float2 CONSTRAIN_WEIGHT_RANGE = (GlobalConfig.USE_HEBBIAN && GlobalConfig.HEBBIAN_METHOD == GlobalConfig.NeuralLearningMethod.HebbYaeger) ? new float2(0, 50) : new float2(-50, 50);
+    //static double2 CONSTRAIN_WEIGHT_RANGE = (GlobalConfig.USE_HEBBIAN && GlobalConfig.HEBBIAN_METHOD == GlobalConfig.NeuralLearningMethod.HebbYaeger) ? new double2(0, 50) : new double2(-50, 50);
 
     const bool CONSTRAIN_BIAS = false;
-    static float2 CONSTRAIN_BIAS_RANGE = new float2(-10, 10);
+    static double2 CONSTRAIN_BIAS_RANGE = new double2(-10, 10);
 
     public bool use_hebb;
     public GlobalConfig.NeuralLearningMethod hebb_rule;
-    public float brain_update_period;
+    public double brain_update_period;
+
+    public double time;
+
+    public GlobalConfig.CPGtype cpgtype;
 
     public void Execute(int i)
     {
+
         // set the neuron data
         this.next_state_neurons[i] = this.CalculateNeuronActivation(i,
             this.current_state_neurons, 
@@ -51,7 +59,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         NativeArray<Synapse> next_state_synapses)
     {
         bool update_synapses = use_hebb;
-
+        Unity.Mathematics.Random randomGen = new Unity.Mathematics.Random((uint)((i + 1) * time) + 1);
         if (current_state_synapses == next_state_synapses && update_synapses)
         {
             Debug.LogError("Error: can't update synapses at the same timestep as using them.");
@@ -68,10 +76,10 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         to_neuron.real_num_of_synapses = 0; //for metadata
 
         // sum inputs to the neuron
-        
+
         int start_idx = to_neuron.synapse_start_idx;
         int end_idx = (to_neuron.synapse_start_idx + to_neuron.synapse_count);
-        float sum = 0; // only bias motor and hidden units (todo - is this right? or include sensors?)
+        double sum = 0; // only bias motor and hidden units (todo - is this right? or include sensors?)
 
         for (int j = start_idx; j < end_idx; j++)
         {
@@ -80,19 +88,34 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
             int from_idx = connection.from_neuron_idx;
             Neuron from_neuron = current_state_neurons[from_idx];
 
-            float input = connection.weight * from_neuron.activation;
- 
+            double noisy_activation = from_neuron.activation;
+            //float noise_stddev = 0;
+            //if (from_neuron.IsSensory())
+            //{
+            //    noise_stddev = 0.05f;
+            //}
+            //else if (from_neuron.neuron_role == Neuron.NeuronRole.Hidden)
+            //{
+            //    noise_stddev = 0.025f;
+            //}
+            //else if (from_neuron.neuron_role == Neuron.NeuronRole.Motor) { 
+            //    noise_stddev = 0.005f;
+            //}
+            //float sensornoise = RandomNormal(randomGen, 0, noise_stddev);
+            //noisy_activation += sensornoise;
+            double input = connection.weight * noisy_activation;
+
             sum += input;
-            
+
             to_neuron.real_num_of_synapses++;
         }
 
-        float to_neuron_new_activation;
+        double to_neuron_new_activation;
 
 
         if (to_neuron.neuron_class == Neuron.NeuronClass.CTRNN)
         {
-            float voltage_change = -to_neuron.voltage;
+            double voltage_change = -to_neuron.voltage;
             voltage_change += sum;
             var delta = (voltage_change * brain_update_period / to_neuron.tau_time_constant);
             to_neuron.voltage += delta;
@@ -105,14 +128,144 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
 
         if (to_neuron.neuron_class == Neuron.NeuronClass.CTRNN) sum *= to_neuron.gain;
 
-        to_neuron_new_activation = to_neuron.RunActivationFunction(sum);
+        double net_input = sum;
+        if (cpgtype != GlobalConfig.CPGtype.None && to_neuron.neuron_role == Neuron.NeuronRole.Hidden)
+        {
+            double blend = to_neuron.blend;
+            if (cpgtype == GlobalConfig.CPGtype.Hopf)
+            {
+                // ===== HOPF OSCILLATOR (RK2 STABLE INTEGRATION) =====
+
+                // 1. Unpack state & parameters
+                double r = to_neuron.r;
+                double theta = to_neuron.theta;
+                double mu = to_neuron.mu;
+                double omega = to_neuron.w;
+                double K = to_neuron.K;
+                double pGain = to_neuron.p_gain;
+                double oscGain = to_neuron.osc_inject_gain;
+                double maxInp = to_neuron.max_input;
+                double phaseOffset = to_neuron.phase_offset;
+
+                // 2. Normalize sensor drive
+                double safeMaxInp = math.max(1e-6, maxInp);
+                double u = math.clamp(sum / safeMaxInp, -1.0, 1.0);
+
+                // 3. Determine step size
+                const double maxDt = 0.02; // safe substep
+                double dt = math.min(maxDt, brain_update_period);
+                int nSteps = (int)math.ceil(brain_update_period / dt);
+
+                // 4. Substeps integration
+                for (int substep = 0; substep < nSteps; ++substep)
+                {
+                    // (Optional) If u depends on oscillator output, recompute u here:
+                    // double oscillator = r * math.sin(theta + phaseOffset);
+                    // u = math.clamp((sum + oscFeedback * oscillator) / safeMaxInp, -1.0, 1.0);
+
+                    // ---- 1. Compute derivatives at current state
+                    double dr1 = mu * (1.0 - r * r) * r + K * u;
+                    double dth1 = omega + pGain * u;
+
+                    // ---- 2. Midpoint state
+                    double rMid = r + 0.5 * dr1 * dt;
+                    double thetaMid = theta + 0.5 * dth1 * dt;
+
+                    // ---- 3. Derivatives at midpoint
+                    double dr2 = mu * (1.0 - rMid * rMid) * rMid + K * u;
+                    double dth2 = omega + pGain * u; // If omega depends on r/theta, recompute at midpoint
+
+                    // ---- 4. RK2 update
+                    r += dr2 * dt;
+                    r = math.max(0.0, r);                 // prevent negative r
+                    r = math.min(r, 5.0);                 // clamp max radius to avoid blow-up (adjust if needed)
+
+                    theta += dth2 * dt;
+                    theta = math.fmod(theta, 2.0 * math.PI);       // wrap to [0, 2π)
+                    if (theta < 0.0) theta += 2.0 * math.PI;
+                }
+
+                // 5. Compute oscillator output
+                double oscillator = r * math.sin(theta + phaseOffset);
+
+                // 6. Compute net input (choose modulation style)
+                //double modFactor = 1.0 + oscGain * oscillator;
+                //modFactor = math.clamp(modFactor, 0.0, 3.0);
+                //net_input = sum * modFactor;
+
+                // Alternative (safer, additive mixing):
+                net_input = blend * sum + (1.0 - blend) * (oscGain * oscillator);
+
+                // 7. Save state
+                to_neuron.r = r;
+                to_neuron.theta = theta;
+
+            }
+            else if (cpgtype == GlobalConfig.CPGtype.Matsuoka)
+            {
+                // 1. Unpack state & parameters
+                double x = to_neuron.r;      // membrane potential
+                double v = to_neuron.theta;  // adaptation state
+
+                double tau_r = to_neuron.mu;      // membrane time constant (e.g., 0.1 to 1.0)
+                double tau_a = to_neuron.w;       // adaptation time constant (e.g., 0.3 to 2.0)
+                double beta = to_neuron.K;         // adaptation strength (e.g., 2.5)
+                double w = to_neuron.p_gain;       // input weight
+                double bias = to_neuron.r_gain;   // tonic bias (optional)
+                double oscGain = to_neuron.osc_inject_gain; // output gain
+
+                double maxInp = to_neuron.max_input;
+                double safeMaxInp = math.max(1e-6, maxInp);
+                double u = math.clamp(sum / safeMaxInp, -1.0, 1.0);
+
+                // 2. Time stepping params
+                const double maxDt = 0.02;  // max 20ms step
+                int nSteps = math.max(1, (int)math.ceil(brain_update_period / maxDt));
+                double dt = brain_update_period / nSteps;
+
+                // RK2 integration loop for Matsuoka Oscillator
+                for (int loop = 0; loop < nSteps; loop++)
+                {
+                    // 1. Calculate derivatives at the current state (k1)
+                    double y1 = math.max(0.0, x);
+                    double dx1 = (-x - beta * v + w * u + bias) / tau_r;
+                    double dv1 = (-v + y1) / tau_a;
+
+                    // 2. Estimate the state at the midpoint
+                    double x_mid = x + dx1 * dt * 0.5;
+                    double v_mid = v + dv1 * dt * 0.5;
+
+                    // 3. Calculate derivatives at the midpoint state (k2)
+                    double y_mid = math.max(0.0, x_mid);
+                    double dx2 = (-x_mid - beta * v_mid + w * u + bias) / tau_r;
+                    double dv2 = (-v_mid + y_mid) / tau_a;
+
+                    // 4. Update state using the midpoint derivatives
+                    x += dx2 * dt;
+                    v += dv2 * dt;
+                }
+
+                // 3. Compute output (oscillator)
+                double oscillator = math.max(0.0, x);
+
+                // 4. Combine output with input (modulation)
+                //double modFactor = 1.0 + oscillator;
+                //modFactor = math.clamp(modFactor, 0.0, 3.0);
+                //net_input = sum * modFactor;
+                net_input = blend * sum + (1.0 - blend) * (oscGain * oscillator);
+
+                // 5. Save state back
+                to_neuron.r = x;
+                to_neuron.theta = v;
+            }
 
 
+        }
 
-       // if (incoming_activated_neuron_count < 2) new_activation = 0; 
-        to_neuron.activation = to_neuron_new_activation;
-
-
+        // 9. Activation
+        double activation = to_neuron.RunActivationFunction(net_input);
+        to_neuron_new_activation = activation;
+        to_neuron.activation = activation;
 
         if (update_synapses)
         {
@@ -154,9 +307,9 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
 
 
     public Synapse HebbianUpdateSynapse(Synapse connection,
-        float sum,
+        double sum,
         NativeArray<Neuron> current_state_neurons,
-        float to_neuron_next_activation)
+        double to_neuron_next_activation)
     {
         if (connection.IsEnabled())
         {
@@ -165,13 +318,13 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
             Neuron to_neuron_current_state = current_state_neurons[to_idx];
             Neuron from_neuron_current_state = current_state_neurons[from_idx];
 
-            float presynaptic_firing = from_neuron_current_state.activation;
+            double presynaptic_firing = from_neuron_current_state.activation;
             
-            float delta_weight;
+            double delta_weight;
 
             if (hebb_rule == GlobalConfig.NeuralLearningMethod.HebbABCD)
             {
-                float postsynaptic_firing = to_neuron_current_state.activation;
+                double postsynaptic_firing = to_neuron_current_state.activation;
                 delta_weight = connection.coefficient_LR * (connection.coefficient_A * presynaptic_firing * postsynaptic_firing
                     + connection.coefficient_B * presynaptic_firing
                     + connection.coefficient_C * postsynaptic_firing
@@ -192,7 +345,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
             connection.weight += delta_weight;
             //if (GlobalConfig.HEBBIAN_METHOD == GlobalConfig.HebbianMethod.Yaeger) connection.weight *= connection.decay_rate;
 
-            /*     if (!float.IsFinite(connection.weight))
+            /*     if (!double.IsFinite(connection.weight))
                  {
                      connection.weight = 0;
                  }*/
@@ -217,5 +370,13 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         return connection;
     }
 
-
+    public static float RandomNormal(Unity.Mathematics.Random rng, float mean = 0f, float stddev = 1f)
+    {
+        // Use Box-Muller transform
+        double u1 = 1.0 - rng.NextDouble(); // uniform(0,1] random doubles
+        double u2 = 1.0 - rng.NextDouble();
+        double randStdNormal = math.sqrt(-2.0 * math.log(u1)) * math.sin(2.0 * math.PI * u2);
+        double randNormal = mean + stddev * randStdNormal;
+        return (float)randNormal;
+    }
 }
