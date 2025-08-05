@@ -71,6 +71,7 @@ public class ArticulatedRobot : AnimatBody
         this.body_genome = body_genome;
         this.CreateGenomeAndInstantiateBody(body_genome);
         this.root_ab = this.root_gameobject.GetComponent<ArticulationBody>();
+        this.vision_segment = this.root_gameobject;
 
         // ignore self collisions
         Collider[] colliders = GetComponentsInChildren<Collider>();
@@ -553,11 +554,6 @@ public class ArticulatedRobot : AnimatBody
 
         Transform segment = nodeGO.transform.GetChild(0).GetChild(0).Find("Segment");
 
-        if (n.name.Contains("head"))
-        {
-            this.vision_segment = segment.gameObject;
-        }
-
         ArticulationBody xDrive_ab, yDrive_ab;
         ArticulationBody zDrive_ab = nodeGO.GetComponent<ArticulationBody>();
         ArticulationJointType joint_type;
@@ -775,7 +771,7 @@ public class ArticulatedRobot : AnimatBody
     public override (Vector3, Vector3) GetVisionSensorPositionAndDirection()
     {
         var vision_transform = GetVisionSensorSegment().transform;
-        return (vision_transform.position + 0.5f*vision_transform.up, vision_transform.up);
+        return (vision_transform.position, -vision_transform.up);
     }
 
     public override Vector3 GetVisionSensorUpDirection()
