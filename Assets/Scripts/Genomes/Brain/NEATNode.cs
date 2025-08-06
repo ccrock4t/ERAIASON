@@ -31,7 +31,7 @@ public class NEATNode
 
     public float4 brainviewer_coords;
     public Neuron.ActivationFunction activation_function;
-    public static int NEXT_GLOBAL_HIDDENNODE_ID = -1;
+    public static int NEXT_GLOBAL_HIDDENNODE_ID = 1_000_000;
     internal Neuron.NeuronRole neuron_role;
 
     public NEATNode(int ID, 

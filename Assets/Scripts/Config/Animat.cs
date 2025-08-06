@@ -155,6 +155,10 @@ public class Animat : MonoBehaviour
                 int i = 0;
                 foreach (NEATNode node in brain_genome.nodes)
                 {
+                    if (nodeID_to_idx.ContainsKey(node.ID))
+                    {
+                        Debug.LogError("ERROR: duplicate node ID: " + node.ID);
+                    }
                     nodeID_to_idx[node.ID] = i;
                     if (node.neuron_role == Neuron.NeuronRole.Motor) motor_neuron_indices.Add(i);
                     i++;
