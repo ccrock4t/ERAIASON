@@ -108,7 +108,7 @@ public class DataAnalyzer : MonoBehaviour
         if (populationSamples == 0) return 0;
 
         float averagePopulation = (float)populationSum / populationSamples;
-        float intervalSeconds = 15f;
+        float intervalSeconds = WRITE_DATA_TO_FILE_TIMER * Time.fixedDeltaTime;
 
         float standardizedBirthRate = (birthsThisWindow / averagePopulation) * (1000f / intervalSeconds);
 
