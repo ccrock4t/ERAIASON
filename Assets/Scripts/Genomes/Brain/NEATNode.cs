@@ -33,6 +33,9 @@ public class NEATNode
     public Neuron.ActivationFunction activation_function;
     public static int NEXT_GLOBAL_HIDDENNODE_ID = 1_000_000;
     internal Neuron.NeuronRole neuron_role;
+    internal double w_gain;
+    internal double epsilon;
+    internal double tau;
 
     public NEATNode(int ID, 
         Neuron.ActivationFunction activation_function,
@@ -53,6 +56,9 @@ public class NEATNode
         var thetaRange = CPGRanges.GetThetaRange();
         var rGainRange = CPGRanges.GetRGainRange();
         var pGainRange = CPGRanges.GetPGainRange();
+        var wGainRange = CPGRanges.GetWGainRange();
+        var epsilonRange = CPGRanges.GetEpsilonRange();
+        var tauRange = CPGRanges.GetTauRange();
         var muRange = CPGRanges.GetMuRange();
         var kRange = CPGRanges.GetKRange();
         var miRange = CPGRanges.GetMaxInputRange();
@@ -66,6 +72,9 @@ public class NEATNode
         this.theta = UnityEngine.Random.Range(thetaRange.x, thetaRange.y); // assuming 'p' is phase offset
         this.r_gain = UnityEngine.Random.Range(rGainRange.x, rGainRange.y);
         this.p_gain = UnityEngine.Random.Range(pGainRange.x, pGainRange.y);
+        this.w_gain = UnityEngine.Random.Range(wGainRange.x, wGainRange.y);
+        this.epsilon = UnityEngine.Random.Range(epsilonRange.x, epsilonRange.y);
+        this.tau = UnityEngine.Random.Range(tauRange.x, tauRange.y);
         this.mu = UnityEngine.Random.Range(muRange.x, muRange.y);
         this.K = UnityEngine.Random.Range(kRange.x, kRange.y);         
         this.max_input = UnityEngine.Random.Range(miRange.x, miRange.y);
@@ -101,6 +110,9 @@ public class NEATNode
         new_node.w = this.w;
         new_node.r_gain = this.r_gain;
         new_node.p_gain = this.p_gain;
+        new_node.w_gain = this.w_gain;
+        new_node.epsilon = this.epsilon;
+        new_node.tau = this.tau;
         new_node.mu = this.mu;
         new_node.K = this.K;
         new_node.max_input = this.max_input;

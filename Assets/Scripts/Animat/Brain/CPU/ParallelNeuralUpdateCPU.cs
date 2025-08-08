@@ -2,11 +2,9 @@
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
+using UnityEngine.UIElements;
 using static Brain;
-using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
-using static UnityEngine.UI.Extensions.Gradient2;
 
 // Parallel compute the neural activations for the next time step
 
@@ -59,7 +57,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
         NativeArray<Synapse> next_state_synapses)
     {
         bool update_synapses = use_hebb;
-        Unity.Mathematics.Random randomGen = new Unity.Mathematics.Random((uint)((i + 1) * time) + 1);
+        //Unity.Mathematics.Random randomGen = new Unity.Mathematics.Random((uint)((i + 1) * time) + 1);
         if (current_state_synapses == next_state_synapses && update_synapses)
         {
             Debug.LogError("Error: can't update synapses at the same timestep as using them.");
@@ -143,6 +141,10 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
                 double omega = to_neuron.w;
                 double K = to_neuron.K;
                 double pGain = to_neuron.p_gain;
+                double J = to_neuron.r_gain;
+                double gamma = to_neuron.w_gain;   
+                double epsilon = to_neuron.epsilon;   
+                double tau = to_neuron.tau;   
                 double oscGain = to_neuron.osc_inject_gain;
                 double maxInp = to_neuron.max_input;
                 double phaseOffset = to_neuron.phase_offset;
@@ -156,28 +158,29 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
                 double dt = math.min(maxDt, brain_update_period);
                 int nSteps = (int)math.ceil(brain_update_period / dt);
 
+               
                 // 4. Substeps integration
                 for (int substep = 0; substep < nSteps; ++substep)
                 {
                     // (Optional) If u depends on oscillator output, recompute u here:
                     // double oscillator = r * math.sin(theta + phaseOffset);
                     // u = math.clamp((sum + oscFeedback * oscillator) / safeMaxInp, -1.0, 1.0);
-
+                  
                     // ---- 1. Compute derivatives at current state
-                    double dr1 = mu * (1.0 - r * r) * r + K * u;
-                    double dth1 = omega + pGain * u;
+                    double dr1 = gamma * (mu - r * r) * r + math.cos(theta) * (epsilon * u + tau * math.sin(theta));
+                    double dth1 = omega - (math.sin(theta)/r) * (epsilon * u + tau * math.sin(theta));
 
                     // ---- 2. Midpoint state
                     double rMid = r + 0.5 * dr1 * dt;
                     double thetaMid = theta + 0.5 * dth1 * dt;
 
                     // ---- 3. Derivatives at midpoint
-                    double dr2 = mu * (1.0 - rMid * rMid) * rMid + K * u;
-                    double dth2 = omega + pGain * u; // If omega depends on r/theta, recompute at midpoint
+                    double dr2 = gamma * (mu - rMid * rMid) * rMid + math.cos(thetaMid) * (epsilon * u + tau * math.sin(thetaMid));
+                    double dth2 = omega - (math.sin(thetaMid) / rMid) * (epsilon * u + tau * math.sin(thetaMid));// If omega depends on r/theta, recompute at midpoint
 
                     // ---- 4. RK2 update
                     r += dr2 * dt;
-                    r = math.max(0.0, r);                 // prevent negative r
+                    r = math.max(0.0001, r);                 // prevent negative r
                     r = math.min(r, 5.0);                 // clamp max radius to avoid blow-up (adjust if needed)
 
                     theta += dth2 * dt;
@@ -212,6 +215,7 @@ public struct ParallelNeuralUpdateCPU : IJobParallelFor
                 double beta = to_neuron.K;         // adaptation strength (e.g., 2.5)
                 double w = to_neuron.p_gain;       // input weight
                 double bias = to_neuron.r_gain;   // tonic bias (optional)
+
                 double oscGain = to_neuron.osc_inject_gain; // output gain
 
                 double maxInp = to_neuron.max_input;

@@ -76,7 +76,6 @@ public class GlobalConfig : MonoBehaviour
         Matsuoka
     }
 
-
     // ========================================================================
 
 
@@ -107,7 +106,7 @@ public class GlobalConfig : MonoBehaviour
     public const NeuralLearningMethod HEBBIAN_METHOD = NeuralLearningMethod.HebbABCD;
     public static Brain.Neuron.NeuronClass NEURAL_NETWORK_METHOD = Brain.Neuron.NeuronClass.SumAndSquash;
 
-    public static CPGtype CPG_TYPE = CPGtype.Matsuoka;
+    public static CPGtype CPG_TYPE = CPGtype.None;
 
     public static int ANIMAT_BRAIN_UPDATE_PERIOD = 2; // runs every X FixedUpdates. Lower number = runs more freqeuntlly
     public static int BRAIN_VIEWER_UPDATE_PERIOD = 8;
@@ -119,7 +118,6 @@ public class GlobalConfig : MonoBehaviour
 
     public static BodyMethod BODY_METHOD = BodyMethod.ArticulatedRobot;
     public static BodyGenome custom_genome = null;
-
 
     // wheeled robot config
 
@@ -133,7 +131,7 @@ public class GlobalConfig : MonoBehaviour
     // ============
 
     // === World voxel automaton === 
-    public const bool RUN_WORLD_AUTOMATA = false;
+    public const bool RUN_WORLD_AUTOMATA = true;
 
     public const ProcessingMethod voxel_processing_method = ProcessingMethod.CPU;
     public const VoxelWorldSmoothingMethod voxel_mesh_smoothing_method = VoxelWorldSmoothingMethod.None;
@@ -148,7 +146,7 @@ public class GlobalConfig : MonoBehaviour
 
     //EA settings
     public static bool USE_NOVELTY_SEARCH = true;
-    public static bool show_lines = true;
+    internal static bool show_lines;
 
     // === Saving and loading ===
     public const string save_file_path = "SaveFiles/";
@@ -157,24 +155,36 @@ public class GlobalConfig : MonoBehaviour
     public const string close_string = "]";
 
 
-
-
     public const bool RECORD_DATA_TO_DISK = true;
-    public const bool RECORD_DATA_TO_WEB = false;
+    public const bool RECORD_DATA_TO_WEB = true;
 
     // ============
 
-
-    [ContextMenu("Toggle vision rays")]
-    void ToggleVisionRays()
+    static bool? isMobile = null;
+    public static bool DeviceIsMobile()
     {
-        show_lines = !show_lines;
+        if(isMobile == null) SetIsMobileVar();
+        return (bool)isMobile;
+    }
+
+    public static bool DeviceIsDesktop()
+    {
+        return !DeviceIsMobile();
     }
 
 
+    public static void SetIsMobileVar()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+            isMobile = true;
+#else
+            isMobile = false;
+#endif
+    }
+
     private void Awake()
     {
- 
+        SetIsMobileVar();
         // setup automaton
         WorldAutomaton world_automaton;
 
@@ -195,6 +205,7 @@ public class GlobalConfig : MonoBehaviour
 
         GlobalConfig.world_automaton = world_automaton;
         GlobalConfig.world_automaton.Start();
-    
+
     }
 }
+

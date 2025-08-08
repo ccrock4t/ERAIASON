@@ -4,13 +4,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
-using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
-using UnityEditor.Experimental.GraphView;
-using UnityEditor.Localization.Plugins.XLIFF.V20;
 using UnityEngine;
-using static Brain;
 
 public class NEATGenome : BrainGenome
 {
@@ -224,6 +219,9 @@ public class NEATGenome : BrainGenome
         var thetaRange = CPGRanges.GetThetaRange();
         var rGainRange = CPGRanges.GetRGainRange();
         var pGainRange = CPGRanges.GetPGainRange();
+        var wGainRange = CPGRanges.GetWGainRange();
+        var epsilonRange = CPGRanges.GetEpsilonRange();
+        var tauRange = CPGRanges.GetTauRange();
         var muRange = CPGRanges.GetMuRange();
         var kRange = CPGRanges.GetKRange();
         var miRange = CPGRanges.GetMaxInputRange();
@@ -307,6 +305,9 @@ public class NEATGenome : BrainGenome
                 MutateParameter(ref node.theta, thetaRange, perturb_rate);
                 MutateParameter(ref node.r_gain, rGainRange, perturb_rate);
                 MutateParameter(ref node.p_gain, pGainRange, perturb_rate);
+                MutateParameter(ref node.w_gain, wGainRange, perturb_rate);
+                MutateParameter(ref node.epsilon, wGainRange, perturb_rate);
+                MutateParameter(ref node.tau, wGainRange, perturb_rate);
                 MutateParameter(ref node.mu, muRange, perturb_rate);
                 MutateParameter(ref node.K, kRange, perturb_rate);
                 MutateParameter(ref node.max_input, miRange, perturb_rate);
@@ -408,10 +409,16 @@ public class NEATGenome : BrainGenome
                 ? new Vector2(-0.5f, 0.5f) // Hopf p_gain
                 : new Vector2(-5f, 5f);   // Matsuoka p_gain
 
+        public static Vector2 GetWGainRange() => new Vector2(0.1f,3f);   // Matsuoka p_gain
+
         public static Vector2 GetRGainRange() =>
             GlobalConfig.CPG_TYPE != GlobalConfig.CPGtype.Matsuoka
-                ? new Vector2(0f, 1f)     // Hopf tonic bias
+                ? new Vector2(-1f, 1f)     // Hopf tonic bias
                 : new Vector2(-1f, 1f);   // Matsuoka tonic bias
+
+        public static Vector2 GetEpsilonRange() => new Vector2(0, 2f);
+
+        public static Vector2 GetTauRange() => new Vector2(0, 2f);
 
         public static Vector2 GetBlendRange() => new Vector2(0f, 1f);
 

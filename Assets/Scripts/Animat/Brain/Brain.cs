@@ -230,6 +230,8 @@ public abstract class Brain : Mind
         internal double theta;
         internal double phase_offset;
         internal double blend;
+        internal double epsilon;
+        internal double tau;
 
         public static Neuron GetNewNeuron()
         {
