@@ -33,6 +33,8 @@ public static class TermHelperFunctions
         term_string = term_string.Replace(" ", "");
         Asserts.assert(term_string.Length > 0, "ERROR: Cannot convert empty string to a Term.");
 
+        if(created_terms.ContainsKey(term_string)) return created_terms[term_string];
+
        // if(created_terms.ContainsKey(term_string)) return created_terms[term_string];
 
         string statementStartString = SyntaxUtils.stringValueOf(StatementSyntax.Start);
@@ -88,7 +90,7 @@ public static class TermHelperFunctions
             term = new AtomicTerm(term_string);
         }
 
-      //  created_terms.Add(term_string,term);
+        created_terms.Add(term_string,term);
 
         return term;
     }
@@ -622,7 +624,7 @@ public class CompoundTerm : Term
     }
 
 
-    public static CompoundTerm from_string(string compound_term_string)
+    public new static CompoundTerm from_string(string compound_term_string)
     {
         /*
             Create a compound term from a string representing a compound term

@@ -7,11 +7,10 @@
 /*
     <frequency, confidence>
 */
-public class EvidentialValue
+public struct EvidentialValue
 {
     public float frequency;
     public float confidence;
-    public string formatted_string = "";
     public EvidentialValue(float frequency=1.0f, float confidence=0.9f)
     {
         if (confidence >= 1.0f) confidence = 0.9999f;
@@ -23,15 +22,14 @@ public class EvidentialValue
     }
 
     public string get_formatted_string() {
-        if (this.formatted_string.Length == 0)
-        {
-            this.formatted_string = SyntaxUtils.stringValueOf(StatementSyntax.TruthValMarker)
-               + this.frequency.ToString("F3")
-               + SyntaxUtils.stringValueOf(StatementSyntax.ValueSeparator)
-               + this.confidence.ToString("F3")
-               + SyntaxUtils.stringValueOf(StatementSyntax.TruthValMarker);
-        }
-        return this.formatted_string;
+     
+        string str = SyntaxUtils.stringValueOf(StatementSyntax.TruthValMarker)
+            + this.frequency.ToString("F3")
+            + SyntaxUtils.stringValueOf(StatementSyntax.ValueSeparator)
+            + this.confidence.ToString("F3")
+            + SyntaxUtils.stringValueOf(StatementSyntax.TruthValMarker);
+        
+        return str;
     }
 
 

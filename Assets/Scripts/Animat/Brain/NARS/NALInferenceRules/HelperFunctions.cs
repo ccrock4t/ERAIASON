@@ -175,7 +175,7 @@ public class HelperFunctions
 
         //}
 
-        stamp_and_print_inference_rule(result, nameof(truth_value_function), new Sentence[] { j1, j2 });
+        stamp_and_print_inference_rule(result, nameof(truth_value_function), j1, j2);
 
         return result;
     }
@@ -216,11 +216,11 @@ public class HelperFunctions
         Sentence result = null;
         if (result_type == typeof(Judgment))
         {
-            result = new Judgment(result_statement, result_truth, this.nars.current_cycle_number);
+            result = new Judgment(result_statement, (EvidentialValue)result_truth, this.nars.current_cycle_number);
         }
         else if (result_type == typeof(Goal))
         {
-            result = new Goal(result_statement, result_truth, this.nars.current_cycle_number);
+            result = new Goal(result_statement, (EvidentialValue)result_truth, this.nars.current_cycle_number);
         }
         else if (result_type == typeof(Question))
         {
@@ -230,11 +230,11 @@ public class HelperFunctions
 
         if (truth_value_function == null)
         {
-            stamp_and_print_inference_rule(result, nameof(truth_value_function), j.stamp.parent_premises);
+            stamp_and_print_inference_rule(result, nameof(truth_value_function));
         }
         else
         {
-            stamp_and_print_inference_rule(result, nameof(truth_value_function), new Sentence[] { j });
+            stamp_and_print_inference_rule(result, nameof(truth_value_function), j);
         }
 
 
@@ -243,7 +243,7 @@ public class HelperFunctions
         return result;
     }
 
-    public void stamp_and_print_inference_rule(Sentence sentence, string inference_rule, Sentence[] parent_sentences)
+    public void stamp_and_print_inference_rule(Sentence sentence, string inference_rule, Sentence parent1=null, Sentence parent2 = null)
     {
         if (inference_rule == null)
         {
@@ -255,12 +255,12 @@ public class HelperFunctions
         }
 
 
-        List<Sentence> parent_premises = new List<Sentence>();
+        //List<Sentence> parent_premises = new List<Sentence>();
 
-        foreach (Sentence parent in parent_sentences)
-        {
-            parent_premises.Add(parent);
-        }
+        //foreach (Sentence parent in parent_sentences)
+        //{
+        //    parent_premises.Add(parent);
+        //}
 
 
     }

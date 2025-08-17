@@ -221,7 +221,7 @@ public class Question : Sentence
         question ::= <statement>? %<truth-value>%
     */
 
-    public Question(Term statement) : base(statement, null, Punctuation.Question)
+    public Question(Term statement) : base(statement, default, Punctuation.Question)
     {
 
     }
@@ -272,7 +272,6 @@ public class Stamp
     public Sentence sentence;
     public EvidentialBase evidential_base;
     public string derived_by;
-    public Sentence[] parent_premises;
     public bool from_one_premise_inference;
 
     public Stamp(Sentence this_sentence, int? occurrence_time = null)
@@ -282,7 +281,6 @@ public class Stamp
         this.sentence = this_sentence;
         this.evidential_base = new EvidentialBase(this_sentence);
         this.derived_by = null; // none if input task
-        this.parent_premises = new Sentence[0];
         this.from_one_premise_inference = false; // == this sentence derived from one-premise inference?
         this.is_eternal = (occurrence_time == null);
 

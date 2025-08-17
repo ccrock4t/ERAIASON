@@ -446,15 +446,6 @@ public class NARS : Mind
         Judgment current_belief = statement_concept.belief_table.peek();
         this.process_judgment_continued(current_belief);
 
-        if (this.config.DEBUG)
-        {
-            string str = "Integrated new BELIEF Task: " + j.ToString() + "from ";
-            foreach (Sentence premise in j.stamp.parent_premises)
-            {
-                str += premise.ToString() + ",";
-            }
-            Debug.Log(str);
-        }
 
     }
 
@@ -544,15 +535,7 @@ public class NARS : Mind
 
         statement_concept.desire_table.put(current_desire);
 
-        if (this.config.DEBUG)
-        {
-            string str = "Integrated new GOAL Task: " + j.ToString() + "from ";
-            foreach (Sentence premise in j.stamp.parent_premises)
-            {
-                str += premise.ToString() + ",";
-            }
-            Debug.Log(str);
-        }
+
     }
 
     public void process_goal_continued(Goal j)
@@ -837,12 +820,7 @@ public class NARS : Mind
 
         if (this.config.DEBUG) Debug.Log("Queueing operation: " + this.helperFunctions.sentence_to_string(operation_goal));
 
-        List<string> parent_strings = new List<string>();
-        // create an anticipation if this goal was based on a higher-order implication
-        foreach (Sentence parent in operation_goal.stamp.parent_premises)
-        {
-            parent_strings.Add(this.helperFunctions.sentence_to_string(parent));
-        }
+ 
 
        // ConcurrentBag<Sentence> derived_from = new();
        // Parallel.For(0,
@@ -854,7 +832,7 @@ public class NARS : Mind
         {
             // atomic op
             this.current_operation_goal_sequence = operation_goal;
-            this.operation_queue.Add((0, (StatementTerm)operation_statement, desirability, parent_strings));
+            this.operation_queue.Add((0, (StatementTerm)operation_statement, desirability, null));
         }
         else if (operation_statement is CompoundTerm)
         {
@@ -870,7 +848,7 @@ public class NARS : Mind
             {
                 // insert the atomic subterm operations and their working cycle delays
                 subterm = subterms[i];
-                this.operation_queue.Add((working_cycles, (StatementTerm)subterm, desirability, parent_strings));
+                this.operation_queue.Add((working_cycles, (StatementTerm)subterm, desirability, null));
                 if (i < num_of_ops - 1)
                 {
                     working_cycles += this.helperFunctions.convert_from_interval(((CompoundTerm)operation_statement).intervals[i]);

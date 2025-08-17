@@ -101,7 +101,7 @@ public class GlobalConfig : MonoBehaviour
     // === Animat ===
 
     // === Animat brain ===
-    public static BrainProcessingMethod BRAIN_PROCESSING_METHOD = BrainProcessingMethod.NeuralNetworkCPU;
+    public static BrainProcessingMethod BRAIN_PROCESSING_METHOD = BrainProcessingMethod.NARSCPU;
     public static bool USE_HEBBIAN = false;
     public const NeuralLearningMethod HEBBIAN_METHOD = NeuralLearningMethod.HebbABCD;
     public static Brain.Neuron.NeuronClass NEURAL_NETWORK_METHOD = Brain.Neuron.NeuronClass.SumAndSquash;
@@ -116,7 +116,7 @@ public class GlobalConfig : MonoBehaviour
 
     // === Animat body ===
 
-    public static BodyMethod BODY_METHOD = BodyMethod.ArticulatedRobot;
+    public static BodyMethod BODY_METHOD = BodyMethod.WheeledRobot;
     public static BodyGenome custom_genome = null;
 
     // wheeled robot config
