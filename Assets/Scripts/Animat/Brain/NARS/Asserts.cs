@@ -3,15 +3,15 @@ public static class Asserts
 
     public static void assert(bool expression, string errorMessage)
     {
-       // try
-       // {
+        try
+        {
             UnityEngine.Assertions.Assert.IsTrue(expression);
-      //  }
-       // catch
-       // { 
-            //print message if expression is false
-          //  Debug.LogError(errorMessage);
-       // }
+        }
+         catch
+         { 
+                //print message if expression is false
+            UnityEngine.Debug.LogError(errorMessage);
+         }
     }
 
     public static void assert_sentence_forward_implication(Sentence j)

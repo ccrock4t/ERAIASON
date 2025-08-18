@@ -33,7 +33,7 @@ public class ImmediateRules
 
              Returns:
         */
-        CompoundTerm result_statement = new CompoundTerm(new List<Term>() { j.statement }, TermConnector.Negation);
+        CompoundTerm result_statement = TermHelperFunctions.TryGetCompoundTerm(new List<Term>() { j.statement }, TermConnector.Negation);
         return this.nars.helperFunctions.create_resultant_sentence_one_premise(j, result_statement, this.nars.inferenceEngine.truthValueFunctions.F_Negation);
     }
 
@@ -84,8 +84,8 @@ public class ImmediateRules
         Asserts.assert_sentence_forward_implication(j);
         // Statement
         StatementTerm j_statement = (StatementTerm)j.get_statement_term();
-        CompoundTerm negated_predicate_term = new CompoundTerm(new List<Term>{ j_statement.get_predicate_term() }, TermConnector.Negation);
-        CompoundTerm negated_subject_term = new CompoundTerm(new List<Term> { j_statement.get_subject_term() }, TermConnector.Negation);
+        CompoundTerm negated_predicate_term = TermHelperFunctions.TryGetCompoundTerm(new List<Term>{ j_statement.get_predicate_term() }, TermConnector.Negation);
+        CompoundTerm negated_subject_term = TermHelperFunctions.TryGetCompoundTerm(new List<Term> { j_statement.get_subject_term() }, TermConnector.Negation);
 
         StatementTerm result_statement = new StatementTerm(negated_predicate_term,
                                             negated_subject_term,
@@ -158,7 +158,7 @@ public class ImmediateRules
                 }
             }
 
-            CompoundTerm image_term = new CompoundTerm(image_subterms, TermConnector.ExtensionalImage);
+            CompoundTerm image_term = TermHelperFunctions.TryGetCompoundTerm(image_subterms, TermConnector.ExtensionalImage);
             StatementTerm result_statement = new StatementTerm(subterm, image_term, Copula.Inheritance);
 
             Sentence result = this.nars.helperFunctions.create_resultant_sentence_one_premise(j, result_statement, null);

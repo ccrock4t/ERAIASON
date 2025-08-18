@@ -5,7 +5,11 @@
 */
 
 
+using System;
+using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -39,6 +43,12 @@ public class NARS : Mind
     int last_working_cycle = 0;
 
     public System.Random random;
+
+
+    private readonly BlockingCollection<(Action action, TaskCompletionSource<bool> tcs)> _queue
+        = new();
+    private readonly System.Threading.Tasks.Task _thread;
+
     public NARS(NARSGenome nars_genome)
     {
         this.random = new System.Random();
@@ -54,6 +64,12 @@ public class NARS : Mind
 
 
         this.operation_queue = new List<(int, StatementTerm, float, List<string>)>(); // operations the system has queued to executed
+
+        // threading
+        _thread = Task.Run(() =>
+        {
+            Run();
+        });
 
 
         SetupUsingGenome(nars_genome);
@@ -929,14 +945,37 @@ public class NARS : Mind
 
     public Dictionary<string, float> term_to_NARS_activation = new();
 
-    public Task task;
-    public override void ScheduleWorkingCycle()
+
+    private void Run()
     {
-        task = Task.Run(() => {
-            this.do_working_cycle();
-        });
+        foreach (var (action, tcs) in _queue.GetConsumingEnumerable())
+        {
+            try
+            {
+                action();
+                tcs.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                tcs.TrySetException(ex);
+            }
+        }
     }
 
+
+    public void Dispose()
+    {
+        _queue.CompleteAdding();
+        _queue.Dispose();
+    }
+
+    public System.Threading.Tasks.Task task;
+    public override void ScheduleWorkingCycle()
+    {
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _queue.Add((do_working_cycle, tcs));
+        task = tcs.Task;
+    }
     public override void SaveToDisk()
     {
         Debug.LogWarning("Saving NARS not yet implemented");

@@ -20,22 +20,22 @@ public class NARSGenome : BrainGenome
         }
     }
 
+    public static bool sensorymotor_statements_initialized = false;
+    public static StatementTerm move_op;
+    public static StatementTerm rotate_op;
+    public static StatementTerm eat_op;
+    public static StatementTerm fight_op;
+    public static StatementTerm mate_op;
+    public static StatementTerm asexual_op;
 
-    public static StatementTerm move_op = (StatementTerm)Term.from_string("((*,{SELF}) --> move)");
-    public static StatementTerm rotate_op = (StatementTerm)Term.from_string("((*,{SELF}) --> turn)");
-    public static StatementTerm eat_op = (StatementTerm)Term.from_string("((*,{SELF}) --> eat)");
-    public static StatementTerm fight_op = (StatementTerm)Term.from_string("((*,{SELF}) --> fight)");
-    public static StatementTerm mate_op = (StatementTerm)Term.from_string("((*,{SELF}) --> mate)");
-    public static StatementTerm asexual_op = (StatementTerm)Term.from_string("((*,{SELF}) --> asexual)");
-
-    public static StatementTerm food_far = (StatementTerm)Term.from_string("({food} --> [far])");
-    public static StatementTerm food_near = (StatementTerm)Term.from_string("({food} --> [near])");
-    public static StatementTerm food_unseen = (StatementTerm)Term.from_string("({food} --> [unseen])");
-    public static StatementTerm animat_far = (StatementTerm)Term.from_string("({animat} --> [far])");
-    public static StatementTerm animat_near = (StatementTerm)Term.from_string("({animat} --> [near])");
-    public static StatementTerm animat_unseen = (StatementTerm)Term.from_string("({animat} --> [unseen])");
-    public static StatementTerm energy_full = (StatementTerm)Term.from_string("({ENERGY} --> [FULL])");
-    public static StatementTerm self_mated = (StatementTerm)Term.from_string("({SELF} --> [mated])");
+    public static StatementTerm food_far;
+    public static StatementTerm food_near;
+    public static StatementTerm food_unseen;
+    public static StatementTerm animat_far;
+    public static StatementTerm animat_near;
+    public static StatementTerm animat_unseen;
+    public static StatementTerm energy_full;
+    public static StatementTerm self_mated;
 
 
     public static StatementTerm[] SENSORY_TERM_SET;
@@ -86,6 +86,25 @@ public class NARSGenome : BrainGenome
         PersonalityParameters? personality_to_clone = null
         )
     {
+        if (!sensorymotor_statements_initialized)
+        {
+            move_op = (StatementTerm)Term.from_string("((*,{SELF}) --> move)");
+            rotate_op = (StatementTerm)Term.from_string("((*,{SELF}) --> turn)");
+            eat_op = (StatementTerm)Term.from_string("((*,{SELF}) --> eat)");
+            fight_op = (StatementTerm)Term.from_string("((*,{SELF}) --> fight)");
+            mate_op = (StatementTerm)Term.from_string("((*,{SELF}) --> mate)");
+            asexual_op = (StatementTerm)Term.from_string("((*,{SELF}) --> asexual)");
+
+            food_far = (StatementTerm)Term.from_string("({food} --> [far])");
+            food_near = (StatementTerm)Term.from_string("({food} --> [near])");
+            food_unseen = (StatementTerm)Term.from_string("({food} --> [unseen])");
+            animat_far = (StatementTerm)Term.from_string("({animat} --> [far])");
+            animat_near = (StatementTerm)Term.from_string("({animat} --> [near])");
+            animat_unseen = (StatementTerm)Term.from_string("({animat} --> [unseen])");
+            energy_full = (StatementTerm)Term.from_string("({ENERGY} --> [FULL])");
+            self_mated = (StatementTerm)Term.from_string("({SELF} --> [mated])");
+            sensorymotor_statements_initialized = true;
+        }
 
 
         if(SENSORY_TERM_SET == null)

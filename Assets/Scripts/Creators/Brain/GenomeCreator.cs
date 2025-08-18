@@ -201,7 +201,7 @@ public class GenomeCreator : MonoBehaviour
                 OptionData x = GUI_node.dropdown.options[k];
                 try
                 {
-                    int instruction = (int)SyntaxUtils.enumValueOf(x.text, typeof(CPPNFunction));
+                    int instruction = (int)SyntaxUtils.enumValueOf<CPPNFunction>(x.text);
           
 
                     if (instruction == (int)cppn_node.function)

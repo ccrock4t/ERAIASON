@@ -8,6 +8,7 @@
 Helper Functions
 */
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -20,7 +21,97 @@ public static class TermHelperFunctions
     }
 
 
-    public static Dictionary<string, Term> created_terms = new();
+    public static ConcurrentDictionary<string, Term> created_terms = new();
+
+    public static CompoundTerm TryGetCompoundTerm(List<Term> sub_terms, TermConnector term_connector, List<int>? interval_list = null)
+    {
+        var subterms = sub_terms;
+        var connector = term_connector;
+        List<int> intervals = null;
+        bool is_an_extensional_set = (term_connector == TermConnector.ExtensionalSetStart);
+        bool is_an_intensional_set = (term_connector == TermConnector.IntensionalSetStart);
+        bool is_a_set = is_an_extensional_set || is_an_intensional_set;
+    
+        bool is_operation = false;
+        if (sub_terms.Count > 1)
+        {
+            // handle interval_list for the relevant temporal connectors.
+            if (term_connector == TermConnector.SequentialConjunction)
+            {
+                // (A &/ B ...)
+                if (interval_list != null && interval_list.Count > 0)
+                {
+                    intervals = interval_list;
+                }
+                else
+                {
+                    // if generic conjunction from input, assume interval of 1
+                    // todo accept interval_list from input
+                    intervals = Enumerable.Repeat(1, sub_terms.Count - 1).ToList();
+                }
+
+                // this.string_with_interval = this._create_term_string_with_interval()
+            }
+            else if (term_connector == TermConnector.ParallelConjunction)
+            {
+                // (A &| B ...)
+                // interval of 0
+                intervals = Enumerable.Repeat(0, sub_terms.Count - 1).ToList();
+            }
+
+            // decide if we need to maintain the ordering
+            if (TermConnectorMethods.is_order_invariant((TermConnector)term_connector))
+            {
+                // order doesn't matter, alphabetize so the system can recognize the same term
+                sub_terms.Sort((x, y) => x.ToString().CompareTo(y.ToString()));
+            }
+
+            // check if it's a set
+
+            // handle multi-component sets
+            if (is_a_set)
+            {
+                // todo handle multi-component sets better
+                List<Term> singleton_set_subterms = new List<Term>();
+
+                foreach (Term subterm in sub_terms)
+                {
+                    // decompose the set into an intersection of singleton sets
+                    CompoundTerm singleton_set_subterm = TermHelperFunctions.TryGetCompoundTerm(new List<Term> { subterm }, TermConnectorMethods.get_set_end_connector_from_set_start_connector((TermConnector)term_connector));
+
+                    singleton_set_subterms.Add(singleton_set_subterm);
+                }
+
+
+                subterms = singleton_set_subterms;
+
+                // set new term connector as intersection
+                if (is_a_set)
+                {
+                    connector = TermConnector.IntensionalIntersection;
+                }
+                else if (is_an_intensional_set)
+                {
+                    connector = TermConnector.ExtensionalIntersection;
+                }
+
+            }
+
+            // store if this == an operation (meaning all of its components are)
+            is_operation = true;
+            for (int i = 0; i < subterms.Count; i++)
+            {
+                Term subterm = sub_terms[i];
+                is_operation = is_operation && subterm.is_op();
+            }
+        }
+        string term_string = CompoundTerm._create_term_string(is_a_set,connector,subterms);
+
+        if (created_terms.ContainsKey(term_string)) return (CompoundTerm)created_terms[term_string];
+
+        var compound = new CompoundTerm(subterms, connector, term_string, is_operation, intervals);
+        return compound;
+    }
     public static Term from_string(string term_string)
     {
         /*
@@ -90,7 +181,7 @@ public static class TermHelperFunctions
             term = new AtomicTerm(term_string);
         }
 
-        created_terms.Add(term_string,term);
+        created_terms.TryAdd(term_string,term);
 
         return term;
     }
@@ -99,7 +190,7 @@ public static class TermHelperFunctions
     public static Term simplify(Term term)
     {
         /*
-            Simplifies a term && its subterms,
+            Simplifies a term && its sub_terms,
             using NAL Theorems.
 
             :returns The simplified term
@@ -114,29 +205,29 @@ public static class TermHelperFunctions
                                                     interval = term.interval)
             } else if(isinstance(term, CompoundTerm)){
                         if term.connector == NALSyntax.TermConnector.Negation && \
-                        len(term.subterms) == 1 && \
-                        isinstance(term.subterms[0], CompoundTerm) && \
-                        term.subterms[0].connector == NALSyntax.TermConnector.Negation:
+                        len(term.sub_terms) == 1 && \
+                        isinstance(term.sub_terms[0], CompoundTerm) && \
+                        term.sub_terms[0].connector == NALSyntax.TermConnector.Negation:
                     // (--,(--,(S --> P)) <====> (S --> P)
                     // Double negation theorem. 2 Negations cancel out
-                    simplified_term = simplify(term.subterms[0].subterms[0])  // get the inner statement
+                    simplified_term = simplify(term.sub_terms[0].sub_terms[0])  // get the inner statement
                 // else if TermConnectorMethods.is_conjunction(term.connector){
                 //         #(&&,A,B..C)
                 //         new_subterms = []
                 //         new_intervals = []
-                //         for i in range(len(term.subterms)){
-                //             subterm = simplify(term.subterms[i])
-                //             if i < len(term.intervals){ new_intervals.append(term.intervals[i])
+                //         for i in range(len(term.sub_terms)){
+                //             subterm = simplify(term.sub_terms[i])
+                //             if i < len(term.interval_list){ new_intervals.append(term.interval_list[i])
                 //             if isinstance(subterm, CompoundTerm) && subterm.connector == term.connector:
                 //                 // inner conjunction
-                //                 new_subterms.extend(subterm.subterms)
-                //                 new_intervals.extend(subterm.intervals)
+                //                 new_subterms.extend(subterm.sub_terms)
+                //                 new_intervals.extend(subterm.interval_list)
                 //             else:
                 //                 new_subterms.append(subterm)
         #
-                    //         simplified_term = CompoundTerm(subterms=new_subterms,
+                    //         simplified_term = CompoundTerm(sub_terms=new_subterms,
                     //                             term_connector=term.connector,
-                    //                                        intervals=new_intervals)
+                    //                                        interval_list=new_intervals)
                     else if term.connector == NALSyntax.TermConnector.ExtensionalDifference:
                     pass
                 else if term.connector == NALSyntax.TermConnector.IntensionalDifference:
@@ -396,7 +487,7 @@ public class AtomicTerm : Term
 public class CompoundTerm : Term
 {
     /*
-        A term that contains multiple atomic subterms connected by a connector.
+        A term that contains multiple atomic sub_terms connected by a connector.
 
         (Connector T1, T2, ..., Tn)
     */
@@ -405,96 +496,26 @@ public class CompoundTerm : Term
     public List<int> intervals;
     public bool is_operation;
 
-    public CompoundTerm(List<Term> subterms, TermConnector term_connector, List<int>? intervals = null) : base()
+    public CompoundTerm(List<Term> subterms,
+        TermConnector term_connector,
+        string term_str,
+        bool is_op,
+        List<int>? intervals = null) : base()
     {
         /*
         Input:
-            subterms: array of immediate subterms
+            sub_terms: array of immediate sub_terms
 
             term_connector: subterm connector (can be first-order || higher-order).
                             sets are represented with the opening bracket as the connector, { || [
 
-            intervals: array of time intervals between statements (only used for sequential conjunction)
+            interval_list: array of time interval_list between statements (only used for sequential conjunction)
         */
         this.subterms = subterms;
         this.connector = term_connector;
-
-        if (subterms.Count > 1)
-        {
-            // handle intervals for the relevant temporal connectors.
-            if (term_connector == TermConnector.SequentialConjunction)
-            {
-                // (A &/ B ...)
-                if (intervals != null && intervals.Count > 0)
-                {
-                    this.intervals = intervals;
-                }
-                else
-                {
-                    // if generic conjunction from input, assume interval of 1
-                    // todo accept intervals from input
-                    this.intervals = Enumerable.Repeat(1, subterms.Count - 1).ToList();
-                }
-
-                // this.string_with_interval = this._create_term_string_with_interval()
-            }
-            else if (term_connector == TermConnector.ParallelConjunction)
-            {
-                // (A &| B ...)
-                // interval of 0
-                this.intervals = Enumerable.Repeat(0, subterms.Count - 1).ToList();
-            }
-
-            // decide if we need to maintain the ordering
-            if (TermConnectorMethods.is_order_invariant((TermConnector)term_connector))
-            {
-                // order doesn't matter, alphabetize so the system can recognize the same term
-                subterms.Sort((x, y) => x.ToString().CompareTo(y.ToString()));
-            }
-
-            // check if it's a set
-            bool is_an_extensional_set = (term_connector == TermConnector.ExtensionalSetStart);
-            bool is_an_intensional_set = (term_connector == TermConnector.IntensionalSetStart);
-            bool is_a_set = is_an_extensional_set || is_an_intensional_set;
-
-            // handle multi-component sets
-            if (is_a_set)
-            {
-                // todo handle multi-component sets better
-                List<Term> singleton_set_subterms = new List<Term>();
-
-                foreach (Term subterm in subterms)
-                {
-                    // decompose the set into an intersection of singleton sets
-                    CompoundTerm singleton_set_subterm = new CompoundTerm(new List<Term> { subterm }, TermConnectorMethods.get_set_end_connector_from_set_start_connector((TermConnector)term_connector));
-
-                    singleton_set_subterms.Add(singleton_set_subterm);
-                }
-
-
-                this.subterms = singleton_set_subterms;
-
-                // set new term connector as intersection
-                if (is_a_set)
-                {
-                    this.connector = TermConnector.IntensionalIntersection;
-                }
-                else if (is_an_intensional_set)
-                {
-                    this.connector = TermConnector.ExtensionalIntersection;
-                }
-
-            }
-
-            // store if this == an operation (meaning all of its components are)
-            this.is_operation = true;
-            for (int i = 0; i < this.subterms.Count; i++)
-            {
-                Term subterm = subterms[i];
-                this.is_operation = this.is_operation && subterm.is_op();
-            }
-        }
-        this._create_term_string();
+        this.intervals = intervals;
+        this.is_operation = is_op;
+        this.term_string = term_str;
     }
 
     public override bool is_op()
@@ -541,11 +562,11 @@ public class CompoundTerm : Term
         string str;
         if (this.is_set())
         {
-            str = SyntaxUtils.stringValueOf(this.connector);
+            str = SyntaxUtils.stringValueOf(this.connector.Value);
         }
         else
         {
-            str = SyntaxUtils.stringValueOf(this.connector) + SyntaxUtils.stringValueOf(StatementSyntax.TermDivider);
+            str = SyntaxUtils.stringValueOf(this.connector.Value) + SyntaxUtils.stringValueOf(StatementSyntax.TermDivider);
         }
 
         for (int i = 0; i < this.subterms.Count; i++)
@@ -571,45 +592,49 @@ public class CompoundTerm : Term
     }
 
 
-    public string _create_term_string()
+    public static string _create_term_string(bool is_set,
+        TermConnector connector,
+        List<Term> subterms)
     {
         string str;
-        if (this.is_set())
+        if (is_set)
         {
-            str = SyntaxUtils.stringValueOf(this.connector);
+            str = SyntaxUtils.stringValueOf(connector);
         }
         else
         {
-            str = SyntaxUtils.stringValueOf(this.connector) + SyntaxUtils.stringValueOf(StatementSyntax.TermDivider);
+            str = SyntaxUtils.stringValueOf(connector) + SyntaxUtils.stringValueOf(StatementSyntax.TermDivider);
         }
 
-        for (int i = 0; i < this.subterms.Count; i++)
+        for (int i = 0; i < subterms.Count; i++)
         {
-            Term subterm = this.subterms[i];
+            Term subterm = subterms[i];
             var term_string = subterm.get_term_string();
             str += term_string + SyntaxUtils.stringValueOf(StatementSyntax.TermDivider);
         }
 
         str = str[0..^1];  // remove the final term divider
 
-        if (this.is_set())
+        if (is_set)
         {
-            str += SyntaxUtils.stringValueOf(TermConnectorMethods.get_set_end_connector_from_set_start_connector((TermConnector)this.connector));
+            str += SyntaxUtils.stringValueOf(TermConnectorMethods.get_set_end_connector_from_set_start_connector((TermConnector)connector));
         }
         else
         {
             str = SyntaxUtils.stringValueOf(StatementSyntax.Start) + str + SyntaxUtils.stringValueOf(StatementSyntax.End);
         }
-        this.term_string = str;
-        return this.term_string;
+
+        return str;
     }
+
+
 
     public int _calculate_syntactic_complexity()
     {
         /*
             Recursively calculate the syntactic complexity of
             the compound term. The connector adds 1 complexity,
-            && the subterms syntactic complexities are summed as well.
+            && the sub_terms syntactic complexities are summed as well.
         */
         if (this.syntactic_complexity != null) return (int)this.syntactic_complexity;
         int count = 0;
@@ -631,13 +656,13 @@ public class CompoundTerm : Term
         */
         compound_term_string = compound_term_string.Replace(" ", "");
         (List<Term> subterms, TermConnector connector, List<int>? intervals) = CompoundTerm.parse_toplevel_subterms_and_connector(compound_term_string);
-        return new CompoundTerm(subterms, connector, intervals);
+        return TermHelperFunctions.TryGetCompoundTerm(subterms, connector, intervals);
     }
 
     public static (List<Term>, TermConnector, List<int>?) parse_toplevel_subterms_and_connector(string compound_term_string)
     {
         /*
-            Parse out all top-level subterms from a string representing a compound term
+            Parse out all top-level sub_terms from a string representing a compound term
 
             compound_term_string - a string representing a compound term
         */
@@ -648,7 +673,7 @@ public class CompoundTerm : Term
 
         // check the first char for intensional/extensional set [a,b], {a,b}
         // also check for array @
-        TermConnector? connector = (TermConnector?)SyntaxUtils.enumValueOf(Char.ToString(compound_term_string[0]), typeof(TermConnector));
+        TermConnector? connector = (TermConnector?)SyntaxUtils.enumValueOf<TermConnector>(Char.ToString(compound_term_string[0]));
         string connector_string;
         if (connector == null)
         {
@@ -661,7 +686,7 @@ public class CompoundTerm : Term
             {
                 connector_string = internal_string[0..2];  // Statement connector
             }
-            connector = (TermConnector?)SyntaxUtils.enumValueOf(connector_string, typeof(TermConnector));
+            connector = (TermConnector?)SyntaxUtils.enumValueOf<TermConnector>(connector_string);
             Asserts.assert(internal_string[connector_string.Length].ToString() == SyntaxUtils.stringValueOf(StatementSyntax.TermDivider), "Connector not followed by comma in CompoundTerm string " + compound_term_string);
             internal_string = internal_string[(connector_string.Length + 1)..];
         }
@@ -713,7 +738,7 @@ public class CompoundTerm : Term
         }
         else
         {
-            return new CompoundTerm(new List<Term> { this }, TermConnector.Negation);
+            return TermHelperFunctions.TryGetCompoundTerm(new List<Term> { this }, TermConnector.Negation);
         }
     }
 }
@@ -784,7 +809,7 @@ public class StatementTerm : Term
 
         (Copula? copula, int copula_idx) = CopulaMethods.get_top_level_copula(statement_string);
         Asserts.assert(copula != null, "Copula not found but need a copula. Exiting..");
-        string copula_string = SyntaxUtils.stringValueOf(copula);
+        string copula_string = SyntaxUtils.stringValueOf(copula.Value);
 
         string subject_str = statement_string[1..copula_idx];  // get subject string
         string predicate_str = statement_string[(copula_idx + copula_string.Length)..^1];  // get predicate string
@@ -808,7 +833,7 @@ public class StatementTerm : Term
         /*
             Recursively calculate the syntactic complexity of
             the compound term. The connector adds 1 complexity,
-            && the subterms syntactic complexities are summed as well.
+            && the sub_terms syntactic complexities are summed as well.
         */
         if (this.syntactic_complexity != null) return (int)this.syntactic_complexity;
         int count = 1;  // the copula
@@ -848,7 +873,7 @@ public class StatementTerm : Term
     public string _create_term_string_with_interval()
     {
         /*
-            Returns the term's string with intervals.
+            Returns the term's string with interval_list.
 
             returns: (Subject copula Predicate)
         */
@@ -926,7 +951,7 @@ public class StatementTerm : Term
 
     public Term get_negated_term()
     {
-        return new CompoundTerm(new List<Term> { this }, TermConnector.Negation);
+        return TermHelperFunctions.TryGetCompoundTerm(new List<Term> { this }, TermConnector.Negation);
     }
 
 }

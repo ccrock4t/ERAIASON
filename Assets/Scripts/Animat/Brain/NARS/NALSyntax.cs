@@ -5,6 +5,7 @@
 */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -113,7 +114,7 @@ public static class TermConnectorMethods
         string[] names = Enum.GetNames(typeof(TermConnector));
         foreach (string name in names)
         {
-            TermConnector connector = (TermConnector)SyntaxUtils.enumValueOf(name, typeof(TermConnector));
+            TermConnector connector = (TermConnector)SyntaxUtils.enumValueOf<TermConnector>(name);
             if (!is_first_order(connector)) {
                 // higher order connector
                 if (str.Contains(name)) return true;
@@ -140,7 +141,7 @@ public static class TermConnectorMethods
         :param bracket:
         :return:
         */
-        TermConnector? bracketConnector = (TermConnector?)SyntaxUtils.enumValueOf(bracketChar, typeof(TermConnector));
+        TermConnector? bracketConnector = (TermConnector?)SyntaxUtils.enumValueOf<TermConnector>(bracketChar);
         return (bracketConnector == TermConnector.IntensionalSetStart) ||
                 (bracketConnector == TermConnector.ExtensionalSetStart);
     }
@@ -153,7 +154,7 @@ public static class TermConnectorMethods
         :param bracket:
         :return:
         */
-        TermConnector? bracketConnector = (TermConnector?)SyntaxUtils.enumValueOf(bracketChar, typeof(TermConnector));
+        TermConnector? bracketConnector = (TermConnector?)SyntaxUtils.enumValueOf<TermConnector>(bracketChar);
         return (bracketConnector == TermConnector.IntensionalSetEnd) ||
                 (bracketConnector == TermConnector.ExtensionalSetEnd);
     }
@@ -216,7 +217,7 @@ public static class CopulaMethods
 
 
     public static bool is_string_a_copula(string value) {
-        return SyntaxUtils.enumValueOf(value, typeof(Copula)) != null;
+        return SyntaxUtils.enumValueOf<Copula>(value) != null;
     }
 
 
@@ -224,7 +225,7 @@ public static class CopulaMethods
         string[] names = Enum.GetNames(typeof(Copula));
         foreach (string name in names)
         {
-            TermConnector connector = (TermConnector)SyntaxUtils.enumValueOf(name, typeof(TermConnector));
+            TermConnector connector = (TermConnector)SyntaxUtils.enumValueOf<TermConnector>(name);
             // higher order connector
             if (str.Contains(name)) return true;
         }
@@ -267,7 +268,7 @@ public static class CopulaMethods
             else if(depth == 1 && i + 3 <= str.Length && CopulaMethods.is_string_a_copula(str[i..(i + 3)])){
                 copula_idx = i;
                 string copula_string = str[i..(i + 3)];
-                copula = (Copula)SyntaxUtils.enumValueOf(copula_string, typeof(Copula));
+                copula = (Copula)SyntaxUtils.enumValueOf<Copula>(copula_string);
             }
         }
 
@@ -290,13 +291,13 @@ public static class PunctuationMethods
 
     public static bool is_punctuation(string value)
     {
-        return SyntaxUtils.enumValueOf(value, typeof(Punctuation)) != null;
+        return SyntaxUtils.enumValueOf<Punctuation>(value) != null;
     }
 
 
     public static Punctuation get_punctuation_from_string(string value)
     {
-        return (Punctuation)SyntaxUtils.enumValueOf(value, typeof(Punctuation));
+        return (Punctuation)SyntaxUtils.enumValueOf<Punctuation>(value);
     }
 
     public static string get_string_from_punctuation(Punctuation value)
@@ -348,34 +349,40 @@ public static class SyntaxUtils
         return true;
     }
 
-    public static string stringValueOf(Enum value)
+    private static ConcurrentDictionary<Type, IReadOnlyDictionary<ulong, string>> _cache;
+
+    public static string stringValueOf<TEnum>(TEnum value) where TEnum : struct, Enum
     {
-        FieldInfo fi = value.GetType().GetField(value.ToString());
-        DescriptionAttribute[] attributes = (DescriptionAttribute[])fi.GetCustomAttributes(typeof(DescriptionAttribute), false);
-        if (attributes.Length > 0)
-        {
-            return attributes[0].Description;
-        }
-        else
-        {
-            return value.ToString();
-        }
+        if(_cache == null ) _cache = new ConcurrentDictionary<Type, IReadOnlyDictionary<ulong, string>>();
+        var type = typeof(TEnum);
+        var map = _cache.GetOrAdd(type, _ => BuildMap<TEnum>());
+        var key = Convert.ToUInt64(value);
+        return map.TryGetValue(key, out var s) ? s : value.ToString();
     }
+
+    private static IReadOnlyDictionary<ulong, string> BuildMap<TEnum>() where TEnum : struct, Enum
+    {
+        var type = typeof(TEnum);
+        var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static);
+        var dict = new Dictionary<ulong, string>(fields.Length);
+        foreach (var f in fields)
+        {
+            var key = Convert.ToUInt64(f.GetRawConstantValue());
+            var desc = f.GetCustomAttribute<DescriptionAttribute>(false)?.Description;
+            dict[key] = string.IsNullOrEmpty(desc) ? f.Name : desc;
+        }
+        return dict;
+    }
+
 
     // given the "description" or string value, get the corresponding enum.
-    public static object? enumValueOf(string value, Type enumType)
+    public static TEnum? enumValueOf<TEnum>(string description) where TEnum : struct, Enum
     {
-        string[] names = System.Enum.GetNames(enumType);
-        foreach (string name in names)
+        foreach (var value in Enum.GetValues(typeof(TEnum)).Cast<TEnum>())
         {
-            if (stringValueOf((Enum)Enum.Parse(enumType, name)).Equals(value))
-            {
-                return Enum.Parse(enumType, name);
-            }
+            if (stringValueOf(value).Equals(description))
+                return value;
         }
-
-        return null; // not found
+        return null;
     }
-
-
 }

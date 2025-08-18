@@ -62,7 +62,7 @@ public class LocalRules
                                                           j2.evidential_value.confidence);
                 new_intervals.Add(new_interval);
             }
-            result_statement = new CompoundTerm(j1_compound.subterms, (TermConnector)j1_compound.connector, new_intervals);
+            result_statement = TermHelperFunctions.TryGetCompoundTerm(j1_compound.subterms, (TermConnector)j1_compound.connector, new_intervals);
         }
         else
         {
@@ -174,12 +174,12 @@ public class LocalRules
         if (j is Judgment)
         {
             EvidentialValue result_truth = this.nars.inferenceEngine.truthValueFunctions.F_Eternalization(j.evidential_value.frequency, j.evidential_value.confidence);
-            result = new Judgment(j.statement, result_truth, null);
+            result = new Judgment(j.statement, result_truth);
         }
         else if (j is Goal)
         {
             EvidentialValue result_truth = this.nars.inferenceEngine.truthValueFunctions.F_Eternalization(j.evidential_value.frequency, j.evidential_value.confidence);
-            result = new Goal(j.statement, result_truth, null);
+            result = new Goal(j.statement, result_truth);
         }
         else
         {

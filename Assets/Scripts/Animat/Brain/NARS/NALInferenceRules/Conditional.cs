@@ -220,7 +220,7 @@ public class ConditionalRules
                 new_intervals.RemoveAt(found_idx);
             }
            
-            result_statement = new CompoundTerm(remaining_subterms, (TermConnector)compound_statement.connector, new_intervals);
+            result_statement = TermHelperFunctions.TryGetCompoundTerm(remaining_subterms, (TermConnector)compound_statement.connector, new_intervals);
         }
 
         return this.nars.helperFunctions.create_resultant_sentence_two_premise(j1, j2, result_statement, this.nars.inferenceEngine.truthValueFunctions.F_Deduction);
@@ -256,7 +256,7 @@ public class ConditionalRules
         Term result_statement;
         if (remaining_subterms.Count == 1)
         {
-            result_statement = new CompoundTerm(remaining_subterms, (TermConnector)j1_statement.connector);
+            result_statement = TermHelperFunctions.TryGetCompoundTerm(remaining_subterms, (TermConnector)j1_statement.connector);
         }
         else
         {
@@ -267,7 +267,7 @@ public class ConditionalRules
                 new_intervals = new List<int>(j1_statement.intervals);
                 new_intervals.RemoveAt(found_idx);
             }
-            result_statement = new CompoundTerm(remaining_subterms, (TermConnector)j1_statement.connector, new_intervals);
+            result_statement = TermHelperFunctions.TryGetCompoundTerm(remaining_subterms, (TermConnector)j1_statement.connector, new_intervals);
         }
 
         return this.nars.helperFunctions.create_resultant_sentence_two_premise(j1, j2, result_statement, this.nars.inferenceEngine.truthValueFunctions.F_Induction);
@@ -325,7 +325,7 @@ public class ConditionalRules
         if (new_subterms.Count > 1)
         {
             // recreate the conjunctional compound with the new subterms
-            new_compound_subject_term = new CompoundTerm(new_subterms, (TermConnector)subject_term.connector);
+            new_compound_subject_term = TermHelperFunctions.TryGetCompoundTerm(new_subterms, (TermConnector)subject_term.connector);
         }
         else if (new_subterms.Count == 1)
         {
@@ -339,7 +339,7 @@ public class ConditionalRules
             {
                 new_subterms = new List<Term>(subject_term.subterms);
                 new_subterms.RemoveAt(new_subterms.Count - 1);
-                new_compound_subject_term = new CompoundTerm(new_subterms, (TermConnector)subject_term.connector);
+                new_compound_subject_term = TermHelperFunctions.TryGetCompoundTerm(new_subterms, (TermConnector)subject_term.connector);
             }
             else
             {

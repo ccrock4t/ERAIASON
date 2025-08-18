@@ -543,7 +543,7 @@ public class Animat : MonoBehaviour
         }else if (this.mind is NARS nar){
             if (nar.task != null)
             {
-                nar.task.Wait();
+                nar.task.GetAwaiter().GetResult();   // or: await nar.task;
             }
             nar.SetStoredActivation(NARSGenome.eat_op);
             nar.SetStoredActivation(NARSGenome.mate_op);
@@ -686,6 +686,10 @@ public class Animat : MonoBehaviour
 
     public void Kill()
     {
+        if (this.mind is NARS nar)
+        {
+            nar.Dispose();
+        }
         this.DiposeOfAllocatedMemory();
         Destroy(this.gameObject);
     }
