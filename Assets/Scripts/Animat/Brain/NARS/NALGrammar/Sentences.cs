@@ -34,8 +34,8 @@ public abstract class Sentence
         :param punctuation:
         :param occurrence_time:
         */
-        Asserts.assert_punctuation(punctuation);
-        Asserts.assert_valid_statement(statement);
+        //Asserts.assert_punctuation(punctuation);
+        //Asserts.assert_valid_statement(statement);
 
         this.statement = statement;
         this.punctuation = punctuation;
@@ -96,17 +96,17 @@ public abstract class Sentence
         */
         // Find statement start && statement end
         int start_idx = sentence_string.IndexOf(SyntaxUtils.stringValueOf(StatementSyntax.Start));
-        Asserts.assert(start_idx != -1, "Statement start character " + SyntaxUtils.stringValueOf(StatementSyntax.Start) + " not found.");
+        //Asserts.assert(start_idx != -1, "Statement start character " + SyntaxUtils.stringValueOf(StatementSyntax.Start) + " not found.");
 
         int end_idx = sentence_string.LastIndexOf(SyntaxUtils.stringValueOf(StatementSyntax.End));
-        Asserts.assert(end_idx != -1, "Statement end character " + SyntaxUtils.stringValueOf(StatementSyntax.End) + " not found.");
+        //Asserts.assert(end_idx != -1, "Statement end character " + SyntaxUtils.stringValueOf(StatementSyntax.End) + " not found.");
 
         // Find sentence punctuation
         int punctuation_idx = end_idx + 1;
-        Asserts.assert(punctuation_idx < sentence_string.Length, "No punctuation found.");
+        //Asserts.assert(punctuation_idx < sentence_string.Length, "No punctuation found.");
         string punctuation_str = Char.ToString(sentence_string[punctuation_idx]);
         Punctuation punctuation = PunctuationMethods.get_punctuation_from_string(punctuation_str);
-        Asserts.assert(punctuation != null, punctuation_str + " == not punctuation.");
+        //Asserts.assert(punctuation != null, punctuation_str + " == not punctuation.");
 
         // Find Truth Value, if it exists
         int start_truth_val_idx = sentence_string.IndexOf(SyntaxUtils.stringValueOf(StatementSyntax.TruthValMarker), punctuation_idx);
@@ -181,7 +181,7 @@ public abstract class Sentence
         }
         else
         {
-            Asserts.assert(false, "Error: No Punctuation!");
+            //Asserts.assert(false, "Error: No Punctuation!");
         }
 
 

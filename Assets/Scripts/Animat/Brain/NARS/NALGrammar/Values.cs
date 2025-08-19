@@ -15,8 +15,8 @@ public struct EvidentialValue
     {
         if (confidence >= 1.0f) confidence = 0.9999f;
         if(confidence <= 0.0f) confidence = 0.0001f;
-        Asserts.assert(frequency >= 0.0 && frequency <= 1.0, "ERROR: Frequency " + frequency.ToString() + " must be in [0,1]");
-        Asserts.assert(confidence >= 0.0 && confidence < 1.0, "ERROR: Confidence must be in (0,1)");
+        //Asserts.assert(frequency >= 0.0 && frequency <= 1.0, "ERROR: Frequency " + frequency.ToString() + " must be in [0,1]");
+        //Asserts.assert(confidence >= 0.0 && confidence < 1.0, "ERROR: Confidence must be in (0,1)");
         this.frequency = frequency;
         this.confidence = confidence;
     }

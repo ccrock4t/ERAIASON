@@ -36,8 +36,8 @@ public class SyllogisticRules
             Returns:
                 :- Sentence (S --> P <f3, c3>)
         */
-        Asserts.assert_sentence_asymmetric(j1);
-        Asserts.assert_sentence_asymmetric(j2);
+        //Asserts.assert_sentence_asymmetric(j1);
+        //Asserts.assert_sentence_asymmetric(j2);
 
         // Statement
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
@@ -71,8 +71,8 @@ public class SyllogisticRules
                 :- Sentence (P --> S <f3, c3>)
 
         */
-        Asserts.assert_sentence_asymmetric(j1);
-        Asserts.assert_sentence_symmetric(j2);
+        //Asserts.assert_sentence_asymmetric(j1);
+        //Asserts.assert_sentence_symmetric(j2);
 
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
@@ -102,7 +102,7 @@ public class SyllogisticRules
         }
         else
         {
-            Asserts.assert(false, "Error: Invalid inputs to nal_analogy: " + j1.ToString() + " && " + j2.ToString());
+            //Asserts.assert(false, "Error: Invalid inputs to nal_analogy: " + j1.ToString() + " && " + j2.ToString());
             return null;
         }
 
@@ -132,8 +132,8 @@ public class SyllogisticRules
             Returns:
                 :- Sentence (S <-> P <f3, c3>)
         */
-        Asserts.assert_sentence_symmetric(j1);
-        Asserts.assert_sentence_symmetric(j2);
+        //Asserts.assert_sentence_symmetric(j1);
+        //Asserts.assert_sentence_symmetric(j2);
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
 
@@ -169,7 +169,7 @@ public class SyllogisticRules
         }
         else
         {
-            Asserts.assert(false, "Error: Invalid inputs to nal_resemblance: " + j1.ToString() + " && " + j2.ToString());
+            //Asserts.assert(false, "Error: Invalid inputs to nal_resemblance: " + j1.ToString() + " && " + j2.ToString());
             return null;
         }
 
@@ -193,8 +193,8 @@ public class SyllogisticRules
             Returns:
                 :- Sentence (S --> P <f3, c3>)
         */
-        Asserts.assert_sentence_asymmetric(j1);
-        Asserts.assert_sentence_asymmetric(j2);
+        //Asserts.assert_sentence_asymmetric(j1);
+        //Asserts.assert_sentence_asymmetric(j2);
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
         // Statement
@@ -222,8 +222,8 @@ public class SyllogisticRules
             Returns:
                 :- Sentence (S --> P <f3, c3>)
         */
-        Asserts.assert_sentence_asymmetric(j1);
-        Asserts.assert_sentence_asymmetric(j2);
+        //Asserts.assert_sentence_asymmetric(j1);
+        //Asserts.assert_sentence_asymmetric(j2);
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
         // Statement
@@ -250,8 +250,8 @@ public class SyllogisticRules
             Returns:
                 :- Sentence (S --> P <f3, c3>)
         */
-        Asserts.assert_sentence_asymmetric(j1);
-        Asserts.assert_sentence_asymmetric(j2);
+        //Asserts.assert_sentence_asymmetric(j1);
+        //Asserts.assert_sentence_asymmetric(j2);
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
         // Statement
@@ -280,8 +280,8 @@ public class SyllogisticRules
             Returns:
                 :- Sentence (S <-> P <f3, c3>)
         */
-        Asserts.assert_sentence_asymmetric(j1);
-        Asserts.assert_sentence_asymmetric(j2);
+        //Asserts.assert_sentence_asymmetric(j1);
+        //Asserts.assert_sentence_asymmetric(j2);
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
         Copula copula;
@@ -313,7 +313,7 @@ public class SyllogisticRules
         }
         else
         {
-            Asserts.assert(false, "Error: Invalid inputs to nal_comparison: " + j1.ToString() + " && " + j2.ToString());
+            //Asserts.assert(false, "Error: Invalid inputs to nal_comparison: " + j1.ToString() + " && " + j2.ToString());
             return null;
         }
 

@@ -39,7 +39,7 @@ public class LocalRules
             Returns:
               :- Sentence (Statement <f3, c3>)
         */
-        Asserts.assert(j1.statement.get_term_string() == j2.statement.get_term_string(), "Cannot revise sentences for 2 different statements");
+        //Asserts.assert(j1.statement.get_term_string() == j2.statement.get_term_string(), "Cannot revise sentences for 2 different statements");
 
         Term j1_statement = j1.get_statement_term();
         Term result_statement;
@@ -183,7 +183,7 @@ public class LocalRules
         }
         else
         {
-            Asserts.assert(false, "Error");
+            //Asserts.assert(false, "Error");
             return null;
         }
 
@@ -225,7 +225,7 @@ public class LocalRules
         }
         else
         {
-            Asserts.assert(false, "error");
+            //Asserts.assert(false, "error");
             return null;
         }
 

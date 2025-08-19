@@ -222,7 +222,7 @@ public class Bag<T> : ItemContainer<T>
         :param key: key of the item to remove from the Bag
         :return: the item which was removed from the bucket
         */
-        Asserts.assert(this.item_lookup_dict.ContainsKey(key), "Given key does not exist in this bag");
+        //Asserts.assert(this.item_lookup_dict.ContainsKey(key), "Given key does not exist in this bag");
         Item<T> item = this._take_from_lookup_dict(key);
         this.remove_item_from_its_bucket(item);
         //this.remove_item_from_its_quality_bucket(item);
@@ -239,7 +239,7 @@ public class Bag<T> : ItemContainer<T>
         try
         {
             item = this._peek_probabilistically(this.priority_buckets);
-            Asserts.assert(this.item_lookup_dict.ContainsKey(item.key), "Given key does not exist in this bag");
+            //Asserts.assert(this.item_lookup_dict.ContainsKey(item.key), "Given key does not exist in this bag");
             item = _take_from_lookup_dict(item.key);
             this.remove_item_from_its_bucket(item);
             //sthis.remove_item_from_its_quality_bucket(item);

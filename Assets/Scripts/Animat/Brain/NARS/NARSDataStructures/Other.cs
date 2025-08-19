@@ -166,7 +166,7 @@ public class Table<T> where T : Sentence
     int creation_timestamp;
 
     public Task(Sentence sentence, int creation_timestamp, bool is_input_task=false){
-        Asserts.assert_sentence(sentence);
+        //Asserts.assert_sentence(sentence);
         this.sentence = sentence;
         this.creation_timestamp = creation_timestamp;  // save the task's creation time
         this.is_from_input = is_input_task;

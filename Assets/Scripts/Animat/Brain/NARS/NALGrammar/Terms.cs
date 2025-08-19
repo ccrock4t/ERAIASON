@@ -122,7 +122,7 @@ public static class TermHelperFunctions
             :returns Term constructed using the string
         */
         term_string = term_string.Replace(" ", "");
-        Asserts.assert(term_string.Length > 0, "ERROR: Cannot convert empty string to a Term.");
+        //Asserts.assert(term_string.Length > 0, "ERROR: Cannot convert empty string to a Term.");
 
         if(created_terms.ContainsKey(term_string)) return created_terms[term_string];
 
@@ -136,7 +136,7 @@ public static class TermHelperFunctions
             /*
                 Compound or Statement Term
             */
-            Asserts.assert(Char.ToString(term_string[term_string.Length - 1]) == statementEndString, "Compound/Statement term must have ending parenthesis: " + term_string);
+            //Asserts.assert(Char.ToString(term_string[term_string.Length - 1]) == statementEndString, "Compound/Statement term must have ending parenthesis: " + term_string);
 
             (Copula? copula, int copula_idx) = CopulaMethods.get_top_level_copula(term_string);
             if (copula == null)
@@ -301,7 +301,7 @@ public abstract class Term
 
     public virtual int _calculate_syntactic_complexity()
     {
-        Asserts.assert(false, "Complexity not defined for Term base class");
+        //Asserts.assert(false, "Complexity not defined for Term base class");
         return -1;
     }
 
@@ -428,7 +428,7 @@ public class VariableTerm : Term
         }
         else
         {
-            Asserts.assert(false, "Error: Variable type symbol invalid");
+            //Asserts.assert(false, "Error: Variable type symbol invalid");
         }
 
         return new VariableTerm(variable_name, (VariableTerm.VariableType)type, dependency_list.ToArray());
@@ -466,7 +466,7 @@ public class AtomicTerm : Term
         Input:
             term_string = name of the term
         */
-        Asserts.assert(SyntaxUtils.is_valid_term(term_string), term_string + " is not a valid Atomic Term name.");
+        //Asserts.assert(SyntaxUtils.is_valid_term(term_string), term_string + " is not a valid Atomic Term name.");
         this.term_string = term_string;
     }
 
@@ -687,11 +687,11 @@ public class CompoundTerm : Term
                 connector_string = internal_string[0..2];  // Statement connector
             }
             connector = (TermConnector?)SyntaxUtils.enumValueOf<TermConnector>(connector_string);
-            Asserts.assert(internal_string[connector_string.Length].ToString() == SyntaxUtils.stringValueOf(StatementSyntax.TermDivider), "Connector not followed by comma in CompoundTerm string " + compound_term_string);
+            //Asserts.assert(internal_string[connector_string.Length].ToString() == SyntaxUtils.stringValueOf(StatementSyntax.TermDivider), "Connector not followed by comma in CompoundTerm string " + compound_term_string);
             internal_string = internal_string[(connector_string.Length + 1)..];
         }
 
-        Asserts.assert(connector != null, "Connector could not be parsed from CompoundTerm string.");
+        //Asserts.assert(connector != null, "Connector could not be parsed from CompoundTerm string.");
 
         int depth = 0;
         string subterm_string = "";
@@ -773,8 +773,8 @@ public class StatementTerm : Term
                         If higher-order (predictive implication)
                             the number of working cycles, i.e. the interval, between the subject && predicate events
         */
-        Asserts.assert_term(subject_term);
-        Asserts.assert_term(predicate_term);
+        //Asserts.assert_term(subject_term);
+        //Asserts.assert_term(predicate_term);
 
         this.subterms = new List<Term> { subject_term, predicate_term };
         this.interval = interval;
@@ -808,7 +808,7 @@ public class StatementTerm : Term
         // get copula
 
         (Copula? copula, int copula_idx) = CopulaMethods.get_top_level_copula(statement_string);
-        Asserts.assert(copula != null, "Copula not found but need a copula. Exiting..");
+        //Asserts.assert(copula != null, "Copula not found but need a copula. Exiting..");
         string copula_string = SyntaxUtils.stringValueOf(copula.Value);
 
         string subject_str = statement_string[1..copula_idx];  // get subject string

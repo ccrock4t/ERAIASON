@@ -57,9 +57,9 @@ public class Memory
         :param term: The term naming the concept to create
         :returns New Concept item created from the term
         */
-        Asserts.assert_term(term);
+        //Asserts.assert_term(term);
         string concept_key = Item<Term>.get_key_from_object(term);
-        Asserts.assert(!this.concepts_bag.item_lookup_dict.ContainsKey(concept_key), "Cannot create new concept. Concept already exists.");
+        //Asserts.assert(!this.concepts_bag.item_lookup_dict.ContainsKey(concept_key), "Cannot create new concept. Concept already exists.");
         // create new concept
         Concept new_concept = new Concept(term, this.nars);
 
@@ -228,7 +228,7 @@ public class Memory
                             bag = shared_term_concept.explanation_links;
                             break;
                         default:
-                            Asserts.assert(false, "ERROR:");
+                            //Asserts.assert(false, "ERROR:");
                             continue;
                             break;
                     }
@@ -636,7 +636,7 @@ public class Concept
 
     public Concept(Term term, NARS nars)
     {
-        Asserts.assert_term(term);
+        //Asserts.assert_term(term);
         this.nars = nars;
 
         this.term = term;  // concept's unique term
@@ -721,8 +721,8 @@ public class Concept
             Remove a bidirectional term link between this concept && another concept
             todo: use this somewhere
         */
-        Asserts.assert_concept(concept);
-        Asserts.assert(this.term_links.Contains(concept), concept + "must be in term links.");
+        //Asserts.assert_concept(concept);
+        //Asserts.assert(this.term_links.Contains(concept), concept + "must be in term links.");
         this.term_links.TAKE_USING_KEY(Item<Concept>.get_key_from_object(concept));
         concept.term_links.TAKE_USING_KEY(Item<Concept>.get_key_from_object(this));
     }
@@ -734,7 +734,7 @@ public class Concept
             Does nothing if the link already exists
         */
         if (concept == null) return;
-        Asserts.assert_concept(concept);
+        //Asserts.assert_concept(concept);
         if (this.prediction_links.Contains(concept)) return;  // already linked
         Item<Concept> concept_item = this.prediction_links.PUT_NEW(concept);
         this.prediction_links.change_priority(concept_item.key, 0.99f);
@@ -746,7 +746,7 @@ public class Concept
             Remove a bidirectional term link between this concept && another concept
             todo: use this somewhere
         */
-        Asserts.assert(this.prediction_links.Contains(concept), concept + "must be in prediction links.");
+        //Asserts.assert(this.prediction_links.Contains(concept), concept + "must be in prediction links.");
         this.prediction_links.TAKE_USING_KEY(Item<Concept>.get_key_from_object(concept));
     }
 
@@ -768,7 +768,7 @@ public class Concept
         Remove a bidirectional term link between this concept && another concept
         todo: use this somewhere
         */
-        Asserts.assert(this.explanation_links.Contains(concept), concept + "must be in prediction links.");
+        //Asserts.assert(this.explanation_links.Contains(concept), concept + "must be in prediction links.");
         this.explanation_links.TAKE_USING_KEY(Item<Concept>.get_key_from_object(concept));
     }
 

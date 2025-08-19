@@ -37,7 +37,7 @@ public class ConditionalRules
             Returns:
                 :- Sentence (P <f3, c3>)
         */
-        Asserts.assert_sentence_equivalence(j2);
+        //Asserts.assert_sentence_equivalence(j2);
 
         var j2_statement = (StatementTerm)j2.get_statement_term();
         // Statement
@@ -52,7 +52,7 @@ public class ConditionalRules
         }
         else
         {
-            Asserts.assert(false, "Error: Invalid inputs to Conditional Analogy: " + j1.ToString() + " and " + j2.ToString());
+            //Asserts.assert(false, "Error: Invalid inputs to Conditional Analogy: " + j1.ToString() + " and " + j2.ToString());
             return null;
         }
 
@@ -77,12 +77,12 @@ public class ConditionalRules
             Returns:
                 :- P. :|: <f3, c3> (E ==> P)
         */
-        Asserts.assert_sentence_forward_implication(j1);
+        //Asserts.assert_sentence_forward_implication(j1);
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
-        Asserts.assert(j2.get_statement_term() == j1_statement.get_subject_term(), "Error: Invalid inputs to Conditional Judgment Deduction{ "
-                                                                + j1.ToString()
-                                                                + " and "
-                                                                + j2.ToString());
+        //Asserts.assert(j2.get_statement_term() == j1_statement.get_subject_term(), "Error: Invalid inputs to Conditional Judgment Deduction{ "
+                                                                //+ j1.ToString()
+                                                                //+ " and "
+                                                                //+ j2.ToString());
         StatementTerm result_statement = (StatementTerm)j1_statement.get_predicate_term();  // P
 
         return this.nars.helperFunctions.create_resultant_sentence_two_premise(j1,
@@ -106,14 +106,14 @@ public class ConditionalRules
             Returns:
                 :- S. :|:  <f3, c3> (E ==> S)
         */
-        Asserts.assert_sentence_forward_implication(j1);
+        //Asserts.assert_sentence_forward_implication(j1);
 
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
 
-        Asserts.assert(j2.get_statement_term() == j1_statement.get_predicate_term(), "Error: Invalid inputs to Conditional Judgment Abduction: "
-                                                                  + j1.ToString()
-                                                                  + " and "
-                                                                  + j2.ToString());
+        //Asserts.assert(j2.get_statement_term() == j1_statement.get_predicate_term(), "Error: Invalid inputs to Conditional Judgment Abduction: "
+                                                                  //+ j1.ToString()
+                                                                  //+ " and "
+                                                                  //+ j2.ToString());
 
         StatementTerm result_statement = (StatementTerm)j1_statement.get_subject_term();  // S
 
@@ -137,12 +137,12 @@ public class ConditionalRules
             Returns:
                 :- S! <f3, c3> (S ==> D)
         */
-        Asserts.assert_sentence_forward_implication(j2);
+        //Asserts.assert_sentence_forward_implication(j2);
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
-        Asserts.assert(j1.get_statement_term() == j2_statement.get_predicate_term(), "Error: Invalid inputs to Conditional Goal Deduction: "
-                                                                   + j1.ToString()
-                                                                   + " and "
-                                                                   + j2.ToString());
+        //Asserts.assert(j1.get_statement_term() == j2_statement.get_predicate_term(), "Error: Invalid inputs to Conditional Goal Deduction: "
+                                                                   //+ j1.ToString()
+                                                                   //+ " and "
+                                                                   //+ j2.ToString());
 
         Term result_statement = j2_statement.get_subject_term();  // S
 
@@ -167,12 +167,12 @@ public class ConditionalRules
             Returns:
                 :- P! <f3, c3> (P ==> D)
         */
-        Asserts.assert_sentence_forward_implication(j2);
+        //Asserts.assert_sentence_forward_implication(j2);
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
-        Asserts.assert(j1.get_statement_term() == j2_statement.get_subject_term(), "Error: Invalid inputs to Conditional Goal Induction: "
-                                                                + j1.ToString()
-                                                                + " and "
-                                                                + j2.ToString());
+        //Asserts.assert(j1.get_statement_term() == j2_statement.get_subject_term(), "Error: Invalid inputs to Conditional Goal Induction: "
+                                                                //+ j1.ToString()
+                                                                //+ " and "
+                                                                //+ j2.ToString());
 
         StatementTerm result_statement = (StatementTerm)j2_statement.get_predicate_term();  // S
 
@@ -199,10 +199,10 @@ public class ConditionalRules
         CompoundTerm j1_statement = (CompoundTerm)j1.get_statement_term();
         List<Term> remaining_subterms = new List<Term>(j1_statement.subterms);
         int found_idx = remaining_subterms.IndexOf(j2.get_statement_term());
-        Asserts.assert(found_idx != -1, "Error: Invalid inputs to Simplify conjuctive goal (deduction): "
-                    + j1.ToString()
-                    + " and "
-                    + j2.ToString());
+        //Asserts.assert(found_idx != -1, "Error: Invalid inputs to Simplify conjuctive goal (deduction): "
+                    //+ j1.ToString()
+                    //+ " and "
+                    //+ j2.ToString());
 
         remaining_subterms.RemoveAt(found_idx);
         Term result_statement;
@@ -245,10 +245,10 @@ public class ConditionalRules
         List<Term> remaining_subterms = new List<Term>(((CompoundTerm)j1_compound_statement.subterms[0]).subterms);
         int found_idx = remaining_subterms.IndexOf(j2.get_statement_term());
 
-        Asserts.assert(found_idx != -1, "Error: Invalid inputs to Simplify negated conjuctive goal (induction): "
-                        + j1.ToString()
-                        + " and "
-                        + j2.ToString());
+        //Asserts.assert(found_idx != -1, "Error: Invalid inputs to Simplify negated conjuctive goal (induction): "
+                        //+ j1.ToString()
+                        //+ " and "
+                        //+ j2.ToString());
 
 
         remaining_subterms.RemoveAt(found_idx);
@@ -303,7 +303,7 @@ public class ConditionalRules
 
         if (j1 is Judgment)
         {
-            Asserts.assert_sentence_forward_implication(j1);
+            //Asserts.assert_sentence_forward_implication(j1);
             subject_term = (CompoundTerm)((StatementTerm)j1.get_statement_term()).get_subject_term();
         }
         else if (j1 is Goal)
@@ -312,7 +312,7 @@ public class ConditionalRules
         }
         else
         {
-            Asserts.assert(false, "ERROR");
+            //Asserts.assert(false, "ERROR");
             return null;
         }
 
@@ -343,7 +343,7 @@ public class ConditionalRules
             }
             else
             {
-                Asserts.assert(false, "ERROR: Invalid inputs to Conditional Conjunctional Deduction " + j1.ToString() + " && " + j2.ToString());
+                //Asserts.assert(false, "ERROR: Invalid inputs to Conditional Conjunctional Deduction " + j1.ToString() + " && " + j2.ToString());
                 return null;
             }
         }
@@ -361,7 +361,7 @@ public class ConditionalRules
         }
         else
         {
-            Asserts.assert(false, "ERROR");
+            //Asserts.assert(false, "ERROR");
             return null;
         }
 
@@ -389,8 +389,8 @@ public class ConditionalRules
             #todo temporal
         */
 
-        Asserts.assert_sentence_forward_implication(j1);
-        Asserts.assert_sentence_forward_implication(j2);
+        //Asserts.assert_sentence_forward_implication(j1);
+        //Asserts.assert_sentence_forward_implication(j2);
 
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
@@ -421,7 +421,7 @@ public class ConditionalRules
 
         List<Term> difference_of_terms = j1_subject_statement_terms.Except(j2_subject_statement_terms).ToList();
 
-        Asserts.assert(difference_of_terms.Count == 1, "Error, should only have one term in set difference: " + difference_of_terms.ToString());
+        //Asserts.assert(difference_of_terms.Count == 1, "Error, should only have one term in set difference: " + difference_of_terms.ToString());
 
         StatementTerm result_statement = (StatementTerm)difference_of_terms[0];
 

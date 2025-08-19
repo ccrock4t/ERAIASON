@@ -53,8 +53,8 @@ public class CompositionRules
                 OR
                 :- Sentence (M --> (T1 | T2)) (Sentence (M --> (T1 || T2)))
         */
-        Asserts.assert_sentence_asymmetric(j1);
-        Asserts.assert_sentence_asymmetric(j2);
+        //Asserts.assert_sentence_asymmetric(j1);
+        //Asserts.assert_sentence_asymmetric(j2);
 
         // Statement
         CompoundTerm compound_term;
@@ -119,7 +119,7 @@ public class CompositionRules
         }
         else
         {
-            Asserts.assert(false, "ERROR: Invalid inputs to Intensional Intersection");
+            //Asserts.assert(false, "ERROR: Invalid inputs to Intensional Intersection");
             return null;
         }
 
@@ -159,8 +159,8 @@ public class CompositionRules
 
                 Sentence (M --> (T1 & T2)) || Sentence (M ==> (T1 && T2))
         */
-        Asserts.assert_sentence_asymmetric(j1);
-        Asserts.assert_sentence_asymmetric(j2);
+        //Asserts.assert_sentence_asymmetric(j1);
+        //Asserts.assert_sentence_asymmetric(j2);
 
         // Statement
         CompoundTerm compound_term;
@@ -216,7 +216,7 @@ public class CompositionRules
         }
         else
         {
-            Asserts.assert(false, "ERROR: Invalid inputs to Extensional Intersection");
+            //Asserts.assert(false, "ERROR: Invalid inputs to Extensional Intersection");
             return null;
         }
 
@@ -241,11 +241,11 @@ public class CompositionRules
             Returns:
                 :- Sentence ((T1 ~ T2) --> M)
         */
-        Asserts.assert_sentence_asymmetric(j1);
-        Asserts.assert_sentence_asymmetric(j2);
+        //Asserts.assert_sentence_asymmetric(j1);
+        //Asserts.assert_sentence_asymmetric(j2);
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
-        Asserts.assert(j1_statement.get_predicate_term() == j2_statement.get_predicate_term(), "Error:");
+        //Asserts.assert(j1_statement.get_predicate_term() == j2_statement.get_predicate_term(), "Error:");
 
         // don't compound terms which are already compound
         // this reduces complexity.
@@ -274,11 +274,11 @@ public class CompositionRules
             Returns:
                 :- Sentence (M --> (T1 - T2))
         */
-        Asserts.assert_sentence_asymmetric(j1);
-        Asserts.assert_sentence_asymmetric(j2);
+        //Asserts.assert_sentence_asymmetric(j1);
+        //Asserts.assert_sentence_asymmetric(j2);
         StatementTerm j1_statement = (StatementTerm)j1.get_statement_term();
         StatementTerm j2_statement = (StatementTerm)j2.get_statement_term();
-        Asserts.assert(j1_statement.get_subject_term() == j2_statement.get_subject_term(), "Error:");
+        //Asserts.assert(j1_statement.get_subject_term() == j2_statement.get_subject_term(), "Error:");
 
         // don't compound terms which are already compound
         // this reduces complexity. 

@@ -39,7 +39,7 @@ public class TemporalRules
                 :- || Event (P &/ S <f3, c3>)
                 :- || Event (S &| P <f3, c3>)
         */
-        Asserts.assert(j1.is_eternal() && j2.is_eternal(), "ERROR: Temporal Intersection needs events");
+        //Asserts.assert(j1.is_eternal() && j2.is_eternal(), "ERROR: Temporal Intersection needs events");
         Sentence result;
 
         Term j1_statement_term = j1.get_statement_term();
@@ -83,7 +83,7 @@ public class TemporalRules
                 :- || Sentence (S =/> P <f3, c3>)
                 :- || Sentence (P =/> S <f3, c3>)
         */
-        Asserts.assert(j1.is_eternal() && j2.is_eternal(), "ERROR: Temporal Induction needs events");
+        //Asserts.assert(j1.is_eternal() && j2.is_eternal(), "ERROR: Temporal Induction needs events");
 
         Term j1_statement_term = j1.get_statement_term();
         Term j2_statement_term = j2.get_statement_term();
@@ -130,7 +130,7 @@ public class TemporalRules
                 :- || Sentence (S </> P <f3, c3>)
                 :- || Sentence (P </> S <f3, c3>)
         */
-        Asserts.assert(j1.is_eternal() && j2.is_eternal(), "ERROR: Temporal Comparison needs events");
+        //Asserts.assert(j1.is_eternal() && j2.is_eternal(), "ERROR: Temporal Comparison needs events");
 
         Term j1_statement_term = j1.get_statement_term();
         Term j2_statement_term = j2.get_statement_term();

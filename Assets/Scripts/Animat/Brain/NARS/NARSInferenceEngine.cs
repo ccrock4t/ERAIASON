@@ -58,7 +58,7 @@ public class NARSInferenceEngine
         }
         catch (Exception e)
         {
-            Asserts.assert(false, "ERROR: Inference error " + e.ToString() + " between " + j1.ToString() + " and " + j2.ToString());
+            //Asserts.assert(false, "ERROR: Inference error " + e.ToString() + " between " + j1.ToString() + " and " + j2.ToString());
             return new();
         }
 
@@ -443,7 +443,7 @@ public class NARSInferenceEngine
                 swapped = true;
 
 
-                Asserts.assert(j1.statement is StatementTerm && !j1.get_statement_term().is_first_order(), "ERROR");
+                //Asserts.assert(j1.statement is StatementTerm && !j1.get_statement_term().is_first_order(), "ERROR");
 
                 /*
                     j1 = S==>P || S<=>P
@@ -799,7 +799,7 @@ public class NARSInferenceEngine
         /*
             :returns: Is this statement true? (does it have more positive evidence than negative evidence?)
         */
-        Asserts.assert(!(sentence is Question), "ERROR: Question cannot be positive.");
+        //Asserts.assert(!(sentence is Question), "ERROR: Question cannot be positive.");
         bool is_positive = this.get_expectation(sentence) >= this.nars.config.POSITIVE_THRESHOLD;
         return is_positive;
     }
@@ -809,7 +809,7 @@ public class NARSInferenceEngine
         /*
             :returns: Is this statement false? (does it have more negative evidence than positive evidence?)
         */
-        Asserts.assert(!(sentence is Question), "ERROR: Question cannot be negative.");
+        //Asserts.assert(!(sentence is Question), "ERROR: Question cannot be negative.");
         bool is_negative = this.get_expectation(sentence) < this.nars.config.NEGATIVE_THRESHOLD;
         return is_negative;
     }

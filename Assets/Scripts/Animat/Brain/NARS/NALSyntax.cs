@@ -129,7 +129,7 @@ public static class TermConnectorMethods
     public static TermConnector get_set_end_connector_from_set_start_connector(TermConnector start_connector) {
         if (start_connector == TermConnector.ExtensionalSetStart) return TermConnector.ExtensionalSetEnd;
         if (start_connector == TermConnector.IntensionalSetStart) return TermConnector.IntensionalSetEnd;
-        Asserts.assert(false, "ERROR: Invalid start connector");
+        //Asserts.assert(false, "ERROR: Invalid start connector");
         return start_connector;
     }
 

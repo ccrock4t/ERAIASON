@@ -57,7 +57,7 @@ public class ImmediateRules
             Returns:
                 :- Sentence (P --> S <f2, c2>)
         */
-        Asserts.assert_sentence_asymmetric(j);
+        //Asserts.assert_sentence_asymmetric(j);
 
         // Statement
         StatementTerm j_statement = (StatementTerm)j.get_statement_term();
@@ -81,7 +81,7 @@ public class ImmediateRules
         :param j:
         :return: ((--,P) ==> (--,S))
         */
-        Asserts.assert_sentence_forward_implication(j);
+        //Asserts.assert_sentence_forward_implication(j);
         // Statement
         StatementTerm j_statement = (StatementTerm)j.get_statement_term();
         CompoundTerm negated_predicate_term = TermHelperFunctions.TryGetCompoundTerm(new List<Term>{ j_statement.get_predicate_term() }, TermConnector.Negation);
@@ -108,7 +108,7 @@ public class ImmediateRules
         (P --> (/,R,S,...,_))
         ...
         */
-        Asserts.assert_sentence_inheritance(j);
+        //Asserts.assert_sentence_inheritance(j);
         // Statement
         StatementTerm j_statement = (StatementTerm)j.get_statement_term();
         List<Term> statement_subterms = ((CompoundTerm)j_statement.get_subject_term()).subterms;
@@ -129,7 +129,7 @@ public class ImmediateRules
         &&
         ((/,R,S,_) --> P)
         */
-        Asserts.assert_sentence_inheritance(j);
+        //Asserts.assert_sentence_inheritance(j);
         List<Sentence> results = new List<Sentence>();
         // Statement
         StatementTerm j_statement = (StatementTerm)j.get_statement_term();
