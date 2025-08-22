@@ -9,6 +9,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -24,7 +25,7 @@ public class NARS : Mind
     public NARSInferenceEngine inferenceEngine;
     public Memory memory;
     public Buffer<Sentence> global_buffer;
-    public TemporalModule<Judgment> temporal_module;
+    public TemporalModule temporal_module;
 
     public HelperFunctions helperFunctions;
 
@@ -45,9 +46,6 @@ public class NARS : Mind
     public System.Random random;
 
 
-    private readonly BlockingCollection<(Action action, TaskCompletionSource<bool> tcs)> _queue
-        = new();
-    private readonly System.Threading.Tasks.Task _thread;
 
     public NARS(NARSGenome nars_genome)
     {
@@ -59,17 +57,10 @@ public class NARS : Mind
         this.helperFunctions = new HelperFunctions(this);
 
         this.global_buffer = new Buffer<Sentence>(this.config.GLOBAL_BUFFER_CAPACITY);
-        this.temporal_module = new TemporalModule<Judgment>(this, this.config.EVENT_BUFFER_CAPACITY);
-        //this.vision_buffer = new SpatialBuffer(dimensions = WorldConfig.VISION_DIMENSIONS)
+        this.temporal_module = new (this, this.config.EVENT_BUFFER_CAPACITY);
 
 
         this.operation_queue = new List<(int, StatementTerm, float, List<string>)>(); // operations the system has queued to executed
-
-        // threading
-        _thread = Task.Run(() =>
-        {
-            Run();
-        });
 
 
         SetupUsingGenome(nars_genome);
@@ -80,33 +71,20 @@ public class NARS : Mind
         // add the instinctual eternal beliefs
         foreach (var gene in nars_genome.beliefs)
         {
-            var belief = new Judgment(gene.statement, gene.evidence);
+            var belief = new Judgment(this, gene.statement, gene.evidence);
             SendInput(belief);
         }
 
-        this.config.k = nars_genome.getK();
-        this.config.T = nars_genome.getT();
+        this.config.k = nars_genome.personality_parameters.k;
+        this.config.T = nars_genome.personality_parameters.T;
+        this.config.ANTICIPATION_WINDOW = nars_genome.personality_parameters.Anticipation_Window;
+        this.config.FORGETTING_RATE = nars_genome.personality_parameters.Forgetting_Rate;
+        this.config.EVENT_BUFFER_CAPACITY = nars_genome.personality_parameters.Event_Buffer_Capacity;
+        this.config.TABLE_DEFAULT_CAPACITY = nars_genome.personality_parameters.Table_Capacity;
+        this.config.MAX_EVIDENTIAL_BASE_LENGTH = nars_genome.personality_parameters.Evidential_Base_Length;
+        this.config.PROJECTION_DECAY_EVENT = nars_genome.personality_parameters.Time_Projection_Event;
+        this.config.PROJECTION_DECAY_DESIRE = nars_genome.personality_parameters.Time_Projection_Goal;
     }
-
-
-    //public void run()
-    //{
-    //    /*
-    //        Infinite loop of working cycles
-    //    */
-    //    while (true)
-    //    {
-    //        // global parameters
-    //        if (this.config.paused)
-    //        {
-    //            Thread.Sleep(1000);
-    //            continue;
-    //        }
-
-    //        // time.sleep(0.2)
-    //        this.do_working_cycle();
-    //    }
-    //}
 
 
     public void do_working_cycle()
@@ -119,24 +97,8 @@ public class NARS : Mind
         //time.sleep(0.1)
         this.current_cycle_number++;
 
-
-        // process input channel && temporal module
-        //InputChannel.process_input_channel()
-
         // OBSERVE
         this.Observe();
-
-        // todo begin spatial take vvv
-
-        /*        Sentence vision_sentence = this.vision_buffer.take(pooled=false)
-                if vision_sentence == not null:
-                    this.global_buffer.PUT_NEW(NARSDataStructures.Other.Task(vision_sentence))
-
-                vision_sentence = this.vision_buffer.take(pooled=true)
-                if vision_sentence == not null:
-                    this.global_buffer.PUT_NEW(NARSDataStructures.Other.Task(vision_sentence))
-        */
-        // todo end spatial take ^^
 
         // global buffer
         int buffer_len = this.global_buffer.GetCount();
@@ -144,14 +106,25 @@ public class NARS : Mind
         while (tasks_left > 0)
         {
             Sentence buffer_item = this.global_buffer.take().obj;
+            if(buffer_item is Judgment && buffer_item.statement == NARSGenome.energy_full)
+            {
+                int j = 1;
+            }
             // process task
             this.process_sentence_initial(buffer_item);
             tasks_left--;
         }
 
 
-        // now execute operations
-        this.execute_operation_queue();
+ 
+
+
+        this.temporal_module.UpdateAnticipations();
+        Parallel.ForEach(this.memory.concepts_bag, concept_item =>
+        {
+            var concept = concept_item.obj;
+            concept.belief_table.Forget();
+        });
 
 /*                #todo this.temporal_module.process_anticipations()
 
@@ -262,134 +235,6 @@ public class NARS : Mind
 
 
 
-    /*    public void save_memory_to_disk(string filename= "memory1.nars") {
-            *//*
-                Save the NARS Memory instance to disk
-            *//*
-            int old_limit = sys.getrecursionlimit();
-            sys.setrecursionlimit(old_limit * 2);
-            with open(filename, "wb") as f:
-                Global.Global.print_to_output("SAVING SYSTEM MEMORY TO FILE: " + filename);
-            try:
-                    pickle.dump(this.memory, f, pickle.HIGHEST_PROTOCOL);
-            Global.Global.print_to_output("SAVE MEMORY SUCCESS");
-        except:
-            Global.Global.print_to_output("SAVE MEMORY FAILURE");
-            sys.setrecursionlimit(old_limit);
-            }
-
-        public void load_memory_from_disk(string filename= "memory1.nars") {
-                *//*
-                    Load a NARS Memory instance from disk.
-                    This will override the NARS' current memory
-                *//*
-                try {
-                    with open(filename, "rb") as f:
-                    Global.Global.print_to_output("LOADING SYSTEM MEMORY FILE: " + filename);
-            // load memory from file
-            this.memory = pickle.load(f);
-            // Print memory contents to internal data GUI
-            if WorldConfig.GUI_USE_INTERFACE:
-                        Global.Global.clear_output_gui(data_structure = this.memory.concepts_bag);
-            for item in this.memory.concepts_bag:
-                            if item not in this.memory.concepts_bag:
-                                Global.Global.print_to_output(msg = str(item), data_structure = this.memory.concepts_bag);
-
-            if WorldConfig.GUI_USE_INTERFACE:
-                        NARSGUI.NARSGUI.gui_total_cycles_stringvar.set("Cycle #" + str(this.memory.this.nars.current_cycle_number));
-
-            Debug.Log("LOAD MEMORY SUCCESS");
-        } except{
-            Debug.Log("LOAD MEMORY FAIL");
-            }
-                }
-    */
-    /*    def handle_gui_pipes(this){
-            if Global.Global.NARS_object_pipe == null: return;
-
-            // GUI
-            Global.Global.NARS_string_pipe.send(("cycles", "Cycle #" + str(this.memory.this.nars.current_cycle_number), null, 0));
-
-
-            while Global.Global.NARS_object_pipe.poll(){
-                // for blocking communication only, when the sender expects a result.
-                // This checks for a message request from the GUI
-                (command, key, data_structure_id) = Global.Global.NARS_object_pipe.recv();
-                if command == "getitem":
-                    data_structure = null;
-                    if data_structure_id == str(this.temporal_module){
-                    data_structure = this.temporal_module;
-                    Global.Global.NARS_object_pipe.send(null);
-                    else if data_structure_id == str(this.memory.concepts_bag){
-                        data_structure = this.memory.concepts_bag;
-                        if data_structure == not null:
-                            item: NARSDataStructures.ItemContainers.Item = data_structure.peek(key);
-                            if item == null:
-                                Global.Global.NARS_object_pipe.send(null);
-                            else:
-                                Global.Global.NARS_object_pipe.send(item.get_gui_info());
-
-                else if command == "getsentence":
-                    sentence_string = key;
-                        statement_start_idx = sentence_string.find(NALSyntax.StatementSyntax.Start.value);
-                        statement_end_idx = sentence_string.rfind(NALSyntax.StatementSyntax.End.value);
-                        statement_string = sentence_string[statement_start_idx: statement_end_idx + 1];
-                        term = from_string(statement_string);
-                        concept_item = this.memory.peek_concept_item(term);
-                    concept = concept_item.object;
-
-                    if concept == null:
-                        Global.Global.NARS_object_pipe.send(null);  // couldn't get concept, maybe it was purged
-                    else:
-                        punctuation_str = sentence_string[statement_end_idx + 1];
-                        if punctuation_str == NALSyntax.Punctuation.Judgment.value:
-                            table = concept.belief_table;
-                        else if punctuation_str == NALSyntax.Punctuation.Goal.value:
-                            table = concept.desire_table;
-                        else:
-                            assert false,"ERROR: Could not parse GUI sentence fetch";
-                        ID = sentence_string[sentence_string.find(Global.Global.MARKER_ITEM_ID) + len(
-                            Global.Global.MARKER_ITEM_ID){sentence_string.rfind(Global.Global.MARKER_ID_END)];
-                            sent = false;
-                        for knowledge_tuple in table:
-                            knowledge_sentence = knowledge_tuple[0];
-                            knowledge_sentence_str = str(knowledge_sentence);
-                            knowledge_sentence_ID = knowledge_sentence_str[knowledge_sentence_str.find(Global.Global.MARKER_ITEM_ID) + len(
-                                Global.Global.MARKER_ITEM_ID){knowledge_sentence_str.rfind(Global.Global.MARKER_ID_END)];
-                            if ID == knowledge_sentence_ID:
-                                Global.Global.NARS_object_pipe.send(("sentence", knowledge_sentence.get_gui_info()));
-                                sent = true;
-                                break
-                        if !sent: Global.Global.NARS_object_pipe.send(("concept", concept_item.get_gui_info())); // couldn't get sentence, maybe it was purged
-                                else if command == "getconcept":
-                    item = this.memory.peek_concept_item(key);
-                    if item != null:
-                        Global.Global.NARS_object_pipe.send(item.get_gui_info());
-                    else:
-                        Global.Global.NARS_object_pipe.send(null);  // couldn't get concept, maybe it was purged
-
-                                while Global.Global.NARS_string_pipe.poll(){
-                                    // this pipe can hold as many tasks as needed
-                                    (command, data) = Global.Global.NARS_string_pipe.recv()
-
-
-                if command == "userinput":
-                    InputChannel.parse_and_queue_input_string(data)
-                else if command == "visualimage":
-                    // user loaded image for visual input
-                    img = data
-                                        InputChannel.queue_visual_sensory_image_array(img)
-                else if command == "visualimagelabel":
-                    // user loaded image for visual input
-                    label = data
-                                        InputChannel.parse_and_queue_input_string("(" + label + "--> SEEN). :|:")
-                else if command == "duration":
-                    WorldConfig.TAU_WORKING_CYCLE_DURATION = data
-                else if command == "paused":
-                    Global.Global.paused = data
-                                                            }*/
-
-
     public void process_sentence_initial(Sentence j)
     {
         /*
@@ -448,21 +293,17 @@ public class NARS : Mind
 
         Concept statement_concept = task_statement_concept_item.obj;
 
-        // todo commented out immediate inference because it floods the system
-        // derived_sentences = []#NARSInferenceEngine.do_inference_one_premise(j)
-        // for derived_sentence in derived_sentences:
-        //    this.global_buffer.put_new(NARSDataStructures.Other.Task(derived_sentence))
-
-        // if j.is_event(){
-        //     // anticipate event j
-        //     pass #todo this.temporal_module.anticipate_from_event(j)
-
         statement_concept.belief_table.put(j);
 
         Judgment current_belief = statement_concept.belief_table.peek();
         this.process_judgment_continued(current_belief);
 
-
+        var j_term = j.get_statement_term();
+        if (temporal_module.DoesAnticipate(j_term))
+        {
+            // stop anticipating now the event is  confirmed
+            temporal_module.RemoveAnticipations(j_term);
+        }
     }
 
     public void process_judgment_continued(Judgment j1, bool revise = true)
@@ -625,8 +466,8 @@ public class NARS : Mind
                     return;
                 }
                 TermConnector connector = (TermConnector)statement.connector;
-                bool is_sequential_conjunction = connector == TermConnector.SequentialConjunction;
-                if (is_sequential_conjunction)
+                bool is_conjunction = TermConnectorMethods.is_conjunction(connector);
+                if (is_conjunction)
                 {
                     // if it's a conjunction (A &/ B), simplify using true beliefs (e.g. A) or derive a goal for A! if A is false
                     Term first_subterm_statement = ((CompoundTerm)statement).subterms[0];
@@ -679,51 +520,77 @@ public class NARS : Mind
             }
             else
             {
-                // process j! with random context-relevant explanation (E =/> j).
+                // process j! with random context-relevant explanation E = (P =/> j).
                 int explanation_count = statement_concept.explanation_links.GetCount();
                 if (explanation_count > 0) {
-                    var random_belief = this.memory.get_random_bag_explanation(j); // (E =/> j)
+                    var random_belief = this.memory.get_best_explanation(j); // (P =/> j)
                     if (random_belief != null)
                     {
-                        var results = this.inferenceEngine.do_semantic_inference_two_premise(j, random_belief);
+                        if (random_belief.evidential_value.frequency < 0.5f || this.inferenceEngine.get_expectation(random_belief) < 0.5f)
+                        {
+                            MotorBabble();
+                            return;
+                        }
+
+
+                        var results = this.inferenceEngine.do_semantic_inference_two_premise(j, random_belief); // {E, J!} :- P!
+
+
+
                         foreach (var result in results)
                         {
+                            if (result.statement is CompoundTerm)
+                            {
+                                bool is_conjunction = TermConnectorMethods.is_conjunction(result.statement.connector);
+                                if (is_conjunction)  // if it's a conjunction (A &/ B), 
+                                {
+
+                                    Term first_subterm_statement = ((CompoundTerm)result.statement).subterms[0];
+                                    Concept first_subterm_concept = this.memory.peek_concept(first_subterm_statement);
+                                    Judgment first_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
+
+                                    Term second_subterm_statement = ((CompoundTerm)result.statement).subterms[1];
+                                    Concept second_subterm_concept = this.memory.peek_concept(second_subterm_statement);
+                                    Judgment second_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
+
+                                    if (first_subterm_belief != null
+                                        && this.inferenceEngine.is_positive(first_subterm_belief)
+                                        && second_subterm_statement.is_op())
+                                    {
+                                        // since the contextual event is true,and the second term  is a motor op, form an anticipation for the postcondition
+                                        this.temporal_module.Anticipate(j.get_statement_term());
+                                    }
+                                }
+                            }
+
+
+
                             this.global_buffer.PUT_NEW(result);
                         }
 
                     }
 
                 }
+                else
+                {
+                    // no explanations, so babble
+                    MotorBabble();
+                }
               
             }
-
-
-
-            // if random_belief == not null:
-            //      if Config.DEBUG:Debug.Log(str(random_belief) + " == random explanation for " + str(j))
-            //      // process goal with explanation
-            //      
-            //      for result in results:
-            //          this.global_buffer.put_new(NARSDataStructures.Other.Task(result))
-
-            //      this.process_judgment_sentence(random_belief)
-
-
-            // if contextual_belief == not null:
-            //     if Config.DEBUG: Debug.Log(str(contextual_belief) + " == contextual explanation for " + str(j))
-            //     // process goal with explanation
-            //     results = NARSInferenceEngine.do_semantic_inference_two_premise(j, contextual_belief)
-            //     for result in results:
-            //         this.global_buffer.put_new(NARSDataStructures.Other.Task(result))
-
-            //     this.process_judgment_sentence(contextual_belief)
-
-            // else:
-            //     if Config.DEBUG: Debug.Log("No contextual explanations for " + str(j))
         }
     }
 
 
+
+
+    void MotorBabble()
+    {
+        var motor_terms = NARSGenome.MOTOR_TERM_SET;
+        int rnd = UnityEngine.Random.Range(0, motor_terms.Length);
+        var motor_term = motor_terms[rnd];
+        SendInput(new Goal(this, motor_term, new EvidentialValue(1.0f, this.helperFunctions.get_unit_evidence()), occurrence_time: current_cycle_number));
+    }
 
     public List<Sentence> process_sentence_semantic_inference(Sentence j1, Concept? related_concept = null)
     {
@@ -811,104 +678,7 @@ public class NARS : Mind
         OPERATIONS
     */
 
-    public void queue_operation(Goal operation_goal)
-    {
-        /*
-            Queue a desired operation.
-            Can be an atomic operation or a compound.
-        :param operation_goal: Including SELF, arguments, and Operation itself
-        :return:
-        */
-        // todo extract && use args
-        if (this.config.DEBUG) Debug.Log("Attempting queue operation: " + operation_goal.ToString());
-        // full_operation_term.get_subject_term()
-        Term operation_statement = operation_goal.statement;
-        float desirability = operation_goal.get_desirability(this);
 
-        if (this.current_operation_goal_sequence != null)
-        {
-            // in the middle of a operation sequence already
-            Goal better_goal = (Goal)this.inferenceEngine.localRules.Choice(operation_goal, this.current_operation_goal_sequence);
-            if (better_goal == this.current_operation_goal_sequence) return; // don't execute since the current sequence == more desirable
-                                                                             // else, the given operation == more desirable
-            this.operation_queue.Clear();
-        }
-
-        if (this.config.DEBUG) Debug.Log("Queueing operation: " + this.helperFunctions.sentence_to_string(operation_goal));
-
- 
-
-       // ConcurrentBag<Sentence> derived_from = new();
-       // Parallel.For(0,
-        //    )
-
-        // insert operation into queue to be execute after the interval
-        // intervals of zero will result in immediate execution (assuming the queue is processed afterwards && in the same cycle as this function)
-        if (operation_statement is StatementTerm)
-        {
-            // atomic op
-            this.current_operation_goal_sequence = operation_goal;
-            this.operation_queue.Add((0, (StatementTerm)operation_statement, desirability, null));
-        }
-        else if (operation_statement is CompoundTerm)
-        {
-            List<Term> subterms = ((CompoundTerm)operation_statement).subterms;
-            // higher-order operation like A &/ B or A &| B
-            int atomic_ops_left_to_execute = subterms.Count;
-            this.current_operation_goal_sequence = operation_goal;
-
-            int working_cycles = 0;
-            int num_of_ops = subterms.Count;
-            Term subterm;
-            for (int i = 0; i < num_of_ops; i++)
-            {
-                // insert the atomic subterm operations and their working cycle delays
-                subterm = subterms[i];
-                this.operation_queue.Add((working_cycles, (StatementTerm)subterm, desirability, null));
-                if (i < num_of_ops - 1)
-                {
-                    working_cycles += this.helperFunctions.convert_from_interval(((CompoundTerm)operation_statement).intervals[i]);
-                }
-            }
-
-        }
-
-        if(this.config.DEBUG) Debug.Log("Queued operation: " + operation_statement.ToString());
-    }
-
-
-    public void execute_operation_queue()
-    {
-        /*
-            Loop through all operations && decrement their remaining interval delay.
-            If delay is zero, execute the operation
-        :return:
-        */
-        this.last_executed = null;
-        int i = 0;
-        while (i < this.operation_queue.Count)
-        {
-            (int remaining_working_cycles, StatementTerm operation_statement, float desirability, List<string> parents) = this.operation_queue[i];
-
-            if (remaining_working_cycles == 0)
-            {
-                // operation is ready to execute
-                this.execute_atomic_operation(operation_statement, desirability, parents);
-                // now remove it from the queue
-                this.operation_queue.RemoveAt(i);
-                this.last_executed = operation_statement.ToString();
-                i -= 1;
-            }
-            else
-            {
-                // decrease remaining working cycles
-                this.operation_queue[i] = (this.operation_queue[i].Item1-1, this.operation_queue[i].Item2, this.operation_queue[i].Item3, this.operation_queue[i].Item4);
-            }
-            i += 1;
-        }
-
-        if (this.operation_queue.Count == 0) this.current_operation_goal_sequence = null;
-    }
 
 
     public void execute_atomic_operation(StatementTerm operation_statement_to_execute, float desirability, List<string> parents)
@@ -925,7 +695,7 @@ public class NARS : Mind
         //Debug.Log(str);
 
         // input the operation statement
-        Judgment operation_event = new Judgment(operation_statement_to_execute, new EvidentialValue(), this.current_cycle_number);
+        Judgment operation_event = new Judgment(this, operation_statement_to_execute, new EvidentialValue(1.0f,0.99f), this.current_cycle_number);
         this.process_judgment_initial(operation_event);
     }
 
@@ -939,43 +709,24 @@ public class NARS : Mind
             return;
         }
         input_sentence.is_from_input = true;
+
         this.global_buffer.PUT_NEW(input_sentence);
     }
 
 
-    public Dictionary<string, float> term_to_NARS_activation = new();
-
-
-    private void Run()
-    {
-        foreach (var (action, tcs) in _queue.GetConsumingEnumerable())
-        {
-            try
-            {
-                action();
-                tcs.TrySetResult(true);
-            }
-            catch (Exception ex)
-            {
-                tcs.TrySetException(ex);
-            }
-        }
-    }
 
 
     public void Dispose()
     {
-        _queue.CompleteAdding();
-        _queue.Dispose();
+
     }
 
     public System.Threading.Tasks.Task task;
     public override void ScheduleWorkingCycle()
     {
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _queue.Add((do_working_cycle, tcs));
-        task = tcs.Task;
+        do_working_cycle();
     }
+
     public override void SaveToDisk()
     {
         Debug.LogWarning("Saving NARS not yet implemented");

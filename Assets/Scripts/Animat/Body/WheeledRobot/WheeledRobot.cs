@@ -11,7 +11,7 @@ public class WheeledRobot : AnimatBody
 
     public const int TOUCH_SENSOR_NEURON_ID = 4;
 
-    const float movement_speed = 0.25f;
+    const float movement_speed = 0.5f;
     const float rotate_speed = 5f;
 
     const float JUMP_THRESHOLD = 0.5f;
@@ -107,7 +107,10 @@ public class WheeledRobot : AnimatBody
             move_activation = nar.GetGoalActivation(NARSGenome.move_op);
 
             // rotate
-            rotate_activation = nar.GetGoalActivation(NARSGenome.rotate_op);
+            rotate_activation = nar.GetGoalActivation(NARSGenome.rotate_right_op);
+
+            // rotate
+           // rotate_activation -= nar.GetGoalActivation(NARSGenome.rotate_left_op);//
         }
         else if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.Random)
         {

@@ -174,12 +174,12 @@ public class LocalRules
         if (j is Judgment)
         {
             EvidentialValue result_truth = this.nars.inferenceEngine.truthValueFunctions.F_Eternalization(j.evidential_value.frequency, j.evidential_value.confidence);
-            result = new Judgment(j.statement, result_truth);
+            result = new Judgment(nars, j.statement, result_truth);
         }
         else if (j is Goal)
         {
             EvidentialValue result_truth = this.nars.inferenceEngine.truthValueFunctions.F_Eternalization(j.evidential_value.frequency, j.evidential_value.confidence);
-            result = new Goal(j.statement, result_truth);
+            result = new Goal(nars, j.statement, result_truth);
         }
         else
         {
@@ -217,11 +217,11 @@ public class LocalRules
         Sentence result;
         if (j is Judgment)
         {
-            result = new Judgment(j.statement, result_truth, occurrence_time);
+            result = new Judgment(nars, j.statement, result_truth, occurrence_time);
         }
         else if (j is Goal)
         {
-            result = new Goal(j.statement, result_truth, occurrence_time);
+            result = new Goal(nars, j.statement, result_truth, occurrence_time);
         }
         else
         {

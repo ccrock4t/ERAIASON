@@ -554,13 +554,14 @@ public class Animat : MonoBehaviour
         this.SpendEnergy();
 
         this.body.Sense(this);
-        this.body.MotorEffect(this);
-
-
-        if(GlobalConfig.BRAIN_PROCESSING_METHOD != BrainProcessingMethod.Random)
+        if (GlobalConfig.BRAIN_PROCESSING_METHOD != BrainProcessingMethod.Random)
         {
             this.mind.ScheduleWorkingCycle();
         }
+        this.body.MotorEffect(this);
+
+
+
 
     }
 

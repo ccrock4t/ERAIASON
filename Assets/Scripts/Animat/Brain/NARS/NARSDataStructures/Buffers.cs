@@ -4,7 +4,12 @@
     Purpose: Holds data structure implementations that are specific / custom to NARS
 */
 using Priority_Queue;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
+using Unity.Entities.UniversalDelegates;
+using UnityEngine.Purchasing;
+using static BodyGenome;
 
 
 public class Buffer<T> : ItemContainer<T>
@@ -398,425 +403,237 @@ public class SpatialBuffer {
     }
 */
 
-public class TemporalModule<T>: ItemContainer<T>
+public class TemporalModule
 {
     /*
         Performs temporal composition
                 and
             anticipation (negative evidence for predictive implications)
     */
-    NARS nars;
-    List<Item<T>> temporal_chain;
-    List<T> anticipations_queue;
-    T? current_anticipation;
+    private readonly NARS nars;
+    private readonly int capacity;
+    private readonly List<Judgment> temporal_chain;
 
-    public TemporalModule(NARS nars, int capacity) : base(capacity) {
+    public TemporalModule(NARS nars, int capacity)
+    {
         this.nars = nars;
-        // temporal chaining
-        this.temporal_chain = new List<Item<T>>();
-
-        // anticipation
-
-        this.anticipations_queue = new List<T>();
+        this.capacity = capacity;
+        this.temporal_chain = new List<Judgment>(capacity);
     }
 
-    public override Item<T> PUT_NEW(T obj) {
-        /*
-            Put the newest item onto the end of the buffer.
+    /// <summary>
+    /// Inserts a new judgment, keeps list sorted by occurrence_time,
+    /// and pops the oldest if capacity is exceeded.
+    /// </summary>
+    public Judgment PUT_NEW(Judgment obj)
+    {
+        // Insert in sorted order by occurrence_time
+        int idx = temporal_chain.BinarySearch(obj, JudgmentTimeComparer.Instance);
+        if (idx < 0) idx = ~idx; // BinarySearch returns bitwise complement of insert index
+        temporal_chain.Insert(idx, obj);
 
-            Returns popped item if buffer overflow, otherwise null;
-        */
-        Item<T> item = base.PUT_NEW(obj);
-
-
-
-        // add to buffer
-        this.temporal_chain.Add(item);
-
-        Item<T> popped_item = null;
-        // update temporal chain
-        if (this.temporal_chain.Count > this.GetCount())
+        // Check capacity
+        Judgment popped = null;
+        if (temporal_chain.Count > capacity)
         {
-            popped_item = this.temporal_chain[0];
-            this.temporal_chain.RemoveAt(0); 
-            base._take_from_lookup_dict(popped_item.key);
+            // Oldest = first element (smallest occurrence_time)
+            popped = temporal_chain[0];
+            temporal_chain.RemoveAt(0);
         }
 
-        return popped_item;
+        this.process_temporal_chaining();
 
-        //this.process_temporal_chaining()
+        return popped;
+    }
+
+    public int GetCount() => temporal_chain.Count;
+
+    // Optional: expose read-only access
+    public IReadOnlyList<Judgment> Items => temporal_chain.AsReadOnly();
+
+    /// <summary>
+    /// Comparer for sorting judgments by occurrence_time
+    /// </summary>
+    private class JudgmentTimeComparer : IComparer<Judgment>
+    {
+        public static readonly JudgmentTimeComparer Instance = new JudgmentTimeComparer();
+        public int Compare(Judgment x, Judgment y)
+        {
+            return x.stamp.occurrence_time.CompareTo(y.stamp.occurrence_time);
+        }
     }
 
 
-           /*         def process_temporal_chaining(this){
-                        if len(this) > 0:
-                            this.temporal_chaining_2_conjunction()
-                            this.temporal_chaining_2_imp()
-
-                    def get_most_recent_event_task(this){
-                        return this.temporal_chain[-1]
-
-                    def temporal_chaining_2_imp(this){
-                        *//*
-                            Perform temporal chaining
-
-                            produce all possible forward implication statements using temporal induction && intersection
-                                A =/> B
-
-                            for the latest statement in the chain
-                        *//*
-                        NARS = this.NARS
-        temporal_chain = this.temporal_chain
-        num_of_events = len(temporal_chain)
-
-        event_task_B = this.get_most_recent_event_task().object
-        event_B = event_task_B.sentence
-
-        if not isinstance(event_B.statement, StatementTerm){ return #todo remove this. temporarily prevent arrays in postconditions
-
-        def process_sentence(derived_sentence){
-            if derived_sentence == not null:
-                if NARS == not null:
-                    task = Task(derived_sentence)
-                    NARS.global_buffer.PUT_NEW(task)
-
-        // produce all possible forward implication statements using temporal induction && intersection
-        // A &/ B,
-        // A =/> B
-        for i in range(0,num_of_events-1){  // && do induction with events occurring afterward
-            event_task_A = temporal_chain[i].object
-            event_A = event_task_A.sentence
-
-            if not (isinstance(event_A.statement, CompoundTerm)
-                    && TermConnectorMethods.is_conjunction(event_A.statement.connector)
-                    && isinstance(event_A.statement.subterms[0], CompoundTerm)
-                    && TermConnectorMethods.is_conjunction(event_A.statement.subterms[0].connector)){ continue
-
-            derived_sentences = NARSInferenceEngine.do_temporal_inference_two_premise(event_A, event_B)
-
-            for derived_sentence in derived_sentences:
-                if not isinstance(derived_sentence.statement, StatementTerm){ continue  // only implications
-                process_sentence(derived_sentence)*/
-
-/*    def temporal_chaining_2_conjunction(this){
-                        *//*
-                            Perform temporal chaining
-
-                            produce all possible forward implication statements using temporal induction && intersection
-                                A && B
-
-                            for the latest statement in the chain
-                        *//*
-                        NARS = this.NARS
-        temporal_chain = this.temporal_chain
-        num_of_events = len(temporal_chain)
-
-        event_task_B = this.get_most_recent_event_task().object
-        event_B = event_task_B.sentence
-
-        if not (isinstance(event_B.statement, CompoundTerm)
-                && TermConnectorMethods.is_conjunction(event_B.statement.connector)
-                && (isinstance(event_B.statement.subterms[0], SpatialTerm) || isinstance(event_B.statement.subterms[0], StatementTerm))){ return
-
-        def process_sentence(derived_sentence){
-            if derived_sentence == not null:
-                if NARS == not null:
-                    task = Task(derived_sentence)
-                    NARS.global_buffer.PUT_NEW(task)
-
-        // A &/ B
-        for i in range(0,num_of_events-1){
-            event_task_A = temporal_chain[i].object
-            event_A = event_task_A.sentence
-
-            if not (isinstance(event_A.statement, CompoundTerm)
-                    && TermConnectorMethods.is_conjunction(event_A.statement.connector)
-                    && (isinstance(event_A.statement.subterms[0], SpatialTerm) || isinstance(
-                        event_A.statement.subterms[0], StatementTerm))){ return
-
-            derived_sentences = NARSInferenceEngine.do_temporal_inference_two_premise(event_A, event_B)
-
-            for derived_sentence in derived_sentences:
-                if isinstance(derived_sentence.statement, StatementTerm){ continue  // only conjunctions
-                process_sentence(derived_sentence)
-
-    def temporal_chaining_3_conjunction(this){
-                                        *//*
-                                            Perform temporal chaining
-
-                                            produce all possible forward implication statements using temporal induction && intersection
-                                                A && B && C
-
-                                            for the latest statement in the chain
-                                        *//*
-                                        NARS = this.NARS
-        temporal_chain = this.temporal_chain
-        num_of_events = len(temporal_chain)
-
-        event_task_C = this.get_most_recent_event_task().object
-        event_C = event_task_C.sentence
-
-        if not isinstance(event_C.statement, SpatialTerm){ return
-
-        def process_sentence(derived_sentence){
-            if derived_sentence == not null:
-                if NARS == not null:
-                    task = Task(derived_sentence)
-                    NARS.global_buffer.PUT_NEW(task)
-
-
-        for i in range(0, num_of_events - 1){  // && do induction with events occurring afterward
-            event_task_A = temporal_chain[i].object
-            event_A = event_task_A.sentence
-
-            if not isinstance(event_A.statement,
-                          SpatialTerm) || event_A.statement == event_C.statement: continue
-
-            for j in range(i + 1, num_of_events - 1){
-                event_task_B = temporal_chain[j].object
-                event_B = event_task_B.sentence
-
-                if not isinstance(event_B.statement, SpatialTerm) \
-                    || event_B.statement == event_A.statement \
-                    || event_B.statement == event_C.statement: continue
-
-                result_statement = CompoundTerm([event_A.statement,
-                                                                  event_B.statement,
-                                                                  event_C.statement],
-                                                                 NALSyntax.TermConnector.Conjunction)
-
-                truth_value = this.nars.inferenceEngine.truthValueFunctions.F_Intersection(event_A.value.frequency,
-                                                                     event_A.value.confidence,
-                                                                     event_B.value.frequency,
-                                                                     event_B.value.confidence)
-
-                truth_value = this.nars.inferenceEngine.truthValueFunctions.F_Intersection(truth_value.frequency,
-                                                                     truth_value.confidence,
-                                                                     event_C.value.frequency,
-                                                                     event_C.value.confidence)
-
-                truth_value = NALGrammar.Values.EvidentialValue(frequency=truth_value.frequency,
-                                                     confidence=truth_value.confidence)
-                result = Judgment(statement=result_statement,
-                                                       value=truth_value,
-                                                       occurrence_time=Global.Global.get_current_cycle_number())
-
-                process_sentence(result)
-
-    def temporal_chaining_3(this){
-            *//*
-                Perform temporal chaining
-
-                produce all possible forward implication statements using temporal induction && intersection
-                    A &/ B,
-                    A =/> B
-                    &&
-                    (A &/ B) =/> C
-
-                for the latest statement in the chain
-            *//*
-
-            NARS = this.NARS
-        temporal_chain = this.temporal_chain
-        num_of_events = len(temporal_chain)
-
-        event_task_C = this.get_most_recent_event_task().object
-        event_C = event_task_C.sentence
-
-        def process_sentence(derived_sentence){
-            if derived_sentence == not null:
-                if NARS == not null:
-                    task = Task(derived_sentence)
-                    NARS.global_buffer.PUT_NEW(task)
-
-        // produce all possible forward implication statements using temporal induction && intersection
-        // A &/ C,
-        // A =/> C
-        // &&
-        // (A &/ B) =/> C
-
-        for i in range(0, num_of_events - 1){  // && do induction with events occurring afterward
-            event_task_A = temporal_chain[i].object
-            event_A = event_task_A.sentence
-
-            if not isinstance(event_A.statement,
-                          SpatialTerm){ continue  // todo remove this eventually. only arrays in precondition
-
-            // produce statements (A =/> C) && (A &/ C)
-            if isinstance(event_C.statement,
-                              SpatialTerm){
-                derived_sentences = NARSInferenceEngine.do_temporal_inference_two_premise(event_A, event_C)
-
-                for derived_sentence in derived_sentences:
-                    if isinstance(derived_sentence.statement, StatementTerm){ continue  // ignore simple implications
-                    process_sentence(derived_sentence) #todo A_C conjunction only
-
-
-            for j in range(i + 1, num_of_events - 1){
-                event_task_B = temporal_chain[j].object
-                event_B = event_task_B.sentence
-
-                conjunction_A_B = Temporal.TemporalIntersection(event_A,
-                                                                                  event_B)  // (A &/ B)
-
-                if conjunction_A_B == not null:
-                    Sentence derived_sentence = Temporal.TemporalInduction(conjunction_A_B,
-                                                                                    event_C)  // (A &/ B) =/> C
-                    process_sentence(derived_sentence)
-
-
-    def temporal_chaining_4(this){
-                                    *//*
-                                        Perform temporal chaining
-
-                                        produce all possible forward implication statements using temporal induction && intersection
-                                            A &/ D,
-                                            A =/> D
-                                            &&
-                                            (A &/ B) =/> D
-                                            (A &/ C) =/> D
-                                            &&
-                                            (A &/ B &/ C) =/> D
-
-                                        for the latest event D in the chain
-
-                                        todo not supported
-                                    *//*
-                                    NARS = this.NARS
-        results = []
-        temporal_chain = this.temporal_chain
-        num_of_events = len(temporal_chain)
-
-        event_task_D = this.get_most_recent_event_task()
-        event_D = event_task_D.sentence
-
-        def process_sentence(derived_sentence){
-            if derived_sentence == not null:
-                results.append(derived_sentence)
-                if NARS == not null:
-                    task = Task(derived_sentence)
-                    NARS.global_buffer.PUT_NEW(task)
-
-        // produce all possible forward implication statements using temporal induction && intersection
-        // A &/ C,
-        // A =/> C
-        // &&
-        // (A &/ B) =/> C
-        for i in range(0, num_of_events - 1){  // && do induction with events occurring afterward
-            event_task_A = temporal_chain[i].object
-            event_A = event_task_A.sentence
-
-            // produce statements (A =/> D) && (A &/ D)
-            derived_sentences = NARSInferenceEngine.do_temporal_inference_two_premise(event_A, event_D)
-
-            for derived_sentence in derived_sentences:
-                // if isinstance(derived_sentence.statement, StatementTerm){ continue
-                process_sentence(derived_sentence)
-
-            for j in range(i + 1, num_of_events - 1){
-                event_task_B = temporal_chain[j].object
-                event_B = event_task_B.sentence
-
-                conjunction_A_B = Temporal.TemporalIntersection(event_A,
-                                                                                  event_B)  // (A &/ B)
-                if conjunction_A_B == not null:
-                    Sentence derived_sentence = Temporal.TemporalInduction(conjunction_A_B,
-                                                                                    event_D)  // (A &/ B) =/> D
-                    process_sentence(derived_sentence)
-
-                for k in range(j + 1, num_of_events - 1){
-                    if conjunction_A_B == null: break
-                    event_task_C = temporal_chain[k].object
-                    event_C = event_task_C.sentence
-                    conjunction_A_B_C = Temporal.TemporalIntersection(conjunction_A_B,
-                                                                                        event_C)  // (A &/ B &/ C)
-                    Sentence derived_sentence = Temporal.TemporalInduction(conjunction_A_B_C,
-                                                                                    event_D)  // (A &/ B &/ C) =/> D
-                    process_sentence(derived_sentence)
-
-        return results
-
-/*    def anticipate_from_event(this, observed_event){
-                                                    *//*
-                                                        // form new anticipation from observed event
-                                                    *//*
-                                                    return #todo
-
-        random_prediction = this.NARS.memory.get_random_bag_prediction(observed_event)
-
-        if random_prediction == not null:
-            // something == anticipated
-            this.anticipate_from_concept(this.NARS.memory.peek_concept(random_prediction.statement),
-                                         random_prediction)*/
-
-
-                    /*    def anticipate_from_concept(this, higher_order_anticipation_concept, best_belief=null){
-                                                                        *//*
-                                                                            Form an anticipation based on a higher-order concept.
-                                                                            Uses the best belief from the belief table, unless one == provided.
-
-                                                                        :param higher_order_anticipation_concept:
-                                                                        :param best_belief:
-                                                                        :return:
-                                                                        *//*
-                                                                        return #todo
-                            if best_belief == null:
-                                best_belief = higher_order_anticipation_concept.belief_table.peek()
-
-                            expectation = best_belief.get_expectation()
-
-                            // use this for 1 anticipation only
-                            // if this.current_anticipation == not null:
-                            //     // in the middle of a operation sequence already
-                            //     current_anticipation_expectation = this.current_anticipation
-                            //     if expectation <= current_anticipation_expectation: return // don't execute since the current anticipation == more expected
-                            //     // else, the given operation == more expected
-                            //     this.anticipations_queue.clear()
-
-                            this.current_anticipation = expectation
-
-                            working_cycles = HelperFunctions.convert_from_interval(
-                                higher_order_anticipation_concept.term.interval)
-
-                            postcondition = higher_order_anticipation_concept.term.get_predicate_term()
-                            this.anticipations_queue.append([working_cycles, higher_order_anticipation_concept, postcondition])
-                            if(this.nars.config.DEBUG) Debug.Log(
-                                str(postcondition) + " IS ANTICIPATED FROM " + str(best_belief) + " Total Anticipations:" + str(
-                                    len(this.anticipations_queue)))*/
-
-                    /*    def process_anticipations(this){
-                                *//*
-
-                                    anticipation (negative evidence for predictive implications)
-                                *//*
-                                return #todo
-                            // process pending anticipations
-                            i = 0
-
-                            while i < len(this.anticipations_queue){
-                                remaining_cycles, best_prediction_concept, anticipated_postcondition = this.anticipations_queue[
-                                    i]  // event we expect to occur
-                                anticipated_postcondition_concept = this.NARS.memory.peek_concept(anticipated_postcondition)
-                                if remaining_cycles == 0:
-                                    if anticipated_postcondition_concept.is_positive(){
-                                        // confirmed
-                                        if(this.nars.config.DEBUG) Debug.Log(
-                                            str(anticipated_postcondition_concept) + " SATISFIED - CONFIRMED ANTICIPATION" + str(
-                                                best_prediction_concept.term))
-                                    else:
-                                        sentence = Judgment(statement=best_prediction_concept.term,
-                                                                                 value=NALGrammar.Values.EvidentialValue(frequency=0.0,
-                                                                                                                    confidence=WorldConfig.DEFAULT_DISAPPOINT_CONFIDENCE))
-                                        if(this.nars.config.DEBUG)
-                                            Debug.Log(str(
-                                                anticipated_postcondition_concept) + " DISAPPOINT - FAILED ANTICIPATION, NEGATIVE EVIDENCE FOR " + str(
-                                                sentence))
-                                        this.NARS.global_buffer.PUT_NEW(Task(sentence))
-                                    this.anticipations_queue.pop(i)
-                                    this.current_anticipation = null
-                                    i -= 1
-                                else:
-                                    this.anticipations_queue[i][0] -= 1
-
-                                i += 1*/
-                        }
+    void process_temporal_chaining() {
+        if (this.GetCount() >= 3)
+        {
+            this.temporal_chaining();
+            //this.temporal_chaining_2_imp();
+        }
+
+    }
+
+    public Judgment GetMostRecentEventTask()
+    {
+        if (temporal_chain == null || temporal_chain.Count == 0)
+            return null;
+
+        // Assuming Judgment.Object is actually an EventTask
+        return temporal_chain[^1];
+    }
+
+
+    public void temporal_chaining()
+    {
+        /*
+            Perform temporal chaining
+
+            Produce all possible forward implication statements using temporal induction && intersection (A && B)
+
+            for the latest statement in the chain
+        */
+
+        var temporalChain = this.temporal_chain;
+        int numOfEvents = temporalChain.Count;
+
+        if (numOfEvents == 0) return;
+
+
+        void ProcessSentence(Sentence derivedSentence)
+        {
+            if (derivedSentence != null && this.nars != null)
+            {
+                this.nars.global_buffer.PUT_NEW(derivedSentence);
+            }
+        }
+
+        // Loop over all earlier events A
+        for (int i = 0; i < numOfEvents - 2; i++)
+        {
+            var eventA = temporalChain[i];
+            if (eventA == null) continue;
+
+
+
+            // Validate
+            if (!(eventA.statement is StatementTerm))
+            {
+                continue;
+            }
+            for (int j = i + 1; j < numOfEvents - 1; j++)
+            {
+                var eventB = temporalChain[j];
+                if (eventA == null) continue;
+
+
+
+                // Validate
+                if (!(eventB.statement is StatementTerm))
+                {
+                    continue;
+                }
+
+                for (int k = j + 1; k < numOfEvents; k++)
+                {
+                    var eventC = temporalChain[k];
+                    if (eventC == null) continue;
+                    // Validate
+                    if (!(eventC.statement is StatementTerm))
+                    {
+                        continue;
+                    }
+
+                    if (eventA.statement == eventB.statement || eventA.statement == eventC.statement || eventB.statement == eventC.statement)
+                    {
+                        continue;
+                    }
+                    if (!eventB.statement.is_op()) continue;
+                    if (eventA.statement.is_op() || eventC.statement.is_op()) continue;
+         
+                    // Do inference
+                    var conjunction = this.nars.inferenceEngine.temporalRules.TemporalIntersection(eventA, eventB);
+                 
+                    conjunction.stamp.occurrence_time = eventA.stamp.occurrence_time;
+                    var implication = this.nars.inferenceEngine.temporalRules.TemporalInduction(conjunction, eventC);
+       
+                    ProcessSentence(implication);
+
+                }
+
+            }
+        }
+    }
+
+    public struct Anticipation
+    {
+        public Term term_expected;
+        public int time_remaining;
+    }
+
+    public List<Anticipation> anticipations = new();
+    Dictionary<Term, int> anticipations_dict = new();
+    public void Anticipate(Term term_to_anticipate)
+    {
+        Anticipation anticipation = new Anticipation();
+        anticipation.term_expected = term_to_anticipate;
+        anticipation.time_remaining = this.nars.config.ANTICIPATION_WINDOW;
+        anticipations.Add(anticipation);
+        if (anticipations_dict.ContainsKey(term_to_anticipate))
+        {
+            anticipations_dict[term_to_anticipate]++;
+        }
+        else
+        {
+            anticipations_dict.Add(term_to_anticipate, 1);
+        }
+    }
+
+    public void UpdateAnticipations()
+    {
+        for (int i = anticipations.Count - 1; i >= 0; i--)
+        {
+            Anticipation a = anticipations[i];
+
+            a.time_remaining--;
+
+            if (a.time_remaining <= 0)
+            {
+                anticipations.RemoveAt(i);
+                anticipations_dict[a.term_expected]--;
+                if (anticipations_dict[a.term_expected] <= 0)
+                {
+                    anticipations_dict.Remove(a.term_expected);
+                }
+
+                // disappoint; the anticipation failed
+                var disappoint = new Judgment(this.nars, a.term_expected,new EvidentialValue(0.0f,this.nars.helperFunctions.get_unit_evidence()));
+                this.nars.global_buffer.PUT_NEW(disappoint);
+            }
+            else
+            {
+                anticipations[i] = a; // write back updated struct
+            }
+        }
+    }
+
+    internal bool DoesAnticipate(Term term)
+    {
+        return anticipations_dict.ContainsKey(term);
+    }
+
+    public void RemoveAnticipations(Term term)
+    {
+        for (int i = anticipations.Count - 1; i >= 0; i--)
+        {
+            Anticipation a = anticipations[i];
+
+            if (a.term_expected == term) 
+            {
+                anticipations.RemoveAt(i);
+            }
+        }
+        anticipations_dict.Remove(term);
+    }
+}
+
+   

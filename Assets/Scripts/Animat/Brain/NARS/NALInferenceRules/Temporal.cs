@@ -12,6 +12,8 @@
 */
 
 using System.Collections.Generic;
+using System.Diagnostics;
+using Unity.Mathematics;
 
 public class TemporalRules
 {
@@ -41,6 +43,11 @@ public class TemporalRules
         */
         //Asserts.assert(j1.is_eternal() && j2.is_eternal(), "ERROR: Temporal Intersection needs events");
         Sentence result;
+        if(!j1.is_event() ||  !j2.is_event())
+        {
+            UnityEngine.Debug.LogError("Error: must use events in temporal conjunction");
+            return null;
+        }
 
         Term j1_statement_term = j1.get_statement_term();
         Term j2_statement_term = j2.get_statement_term();
@@ -49,21 +56,35 @@ public class TemporalRules
                                                                  //if not (not j1_statement_term.is_op() && j2_statement_term.is_op()){ return result  // only care about operations right now
 
         //todo restore temporal component
-        // if j1.stamp.occurrence_time == j2.stamp.occurrence_time{
-        //     // j1 &| j2
-        //     result_statement = CompoundTerm([j1_statement_term, j2_statement_term],
-        //                                                       TermConnector.ParallelConjunction)
-        // else if j1.stamp.occurrence_time < j2.stamp.occurrence_time{
-        //     // j1 &/ j2
-        //     result_statement = CompoundTerm([j1_statement_term, j2_statement_term],
-        //                                                       TermConnector.SequentialConjunction,
-        //                                                      intervals=[HelperFunctions.convert_to_interval(abs(j2.stamp.occurrence_time - j1.stamp.occurrence_time))])
-        // else if j2.stamp.occurrence_time < j1.stamp.occurrence_time{
-        //     // j2 &/ j1
-        //     result_statement = CompoundTerm([j2_statement_term, j1_statement_term],
-        //                                                       TermConnector.SequentialConjunction,
-        //                                                      intervals=[HelperFunctions.convert_to_interval(abs(j2.stamp.occurrence_time - j1.stamp.occurrence_time))])
-        CompoundTerm result_statement = TermHelperFunctions.TryGetCompoundTerm(new List<Term> { j1_statement_term, j2_statement_term }, TermConnector.Conjunction);
+        CompoundTerm result_statement = null;
+        if (j1.stamp.occurrence_time == j2.stamp.occurrence_time)
+        {
+            // j1 &| j2
+            result_statement = TermHelperFunctions.TryGetCompoundTerm(new() { j1_statement_term, j2_statement_term }, 
+                TermConnector.ParallelConjunction);
+        }
+        else if (j1.stamp.occurrence_time < j2.stamp.occurrence_time)
+        {
+            // j1 &/ j2
+            result_statement = TermHelperFunctions.TryGetCompoundTerm(new() { j1_statement_term, j2_statement_term }, 
+                TermConnector.SequentialConjunction,
+                new List<int>() { nars.helperFunctions.convert_to_interval(math.abs(j2.stamp.occurrence_time - j1.stamp.occurrence_time)) }
+            );
+         
+
+        }
+        else if (j2.stamp.occurrence_time < j1.stamp.occurrence_time)
+        {
+            // j2 &/ j1
+            result_statement = TermHelperFunctions.TryGetCompoundTerm(new() { j2_statement_term, j1_statement_term },
+                TermConnector.SequentialConjunction,
+                new List<int>() { nars.helperFunctions.convert_to_interval(math.abs(j2.stamp.occurrence_time - j1.stamp.occurrence_time)) }
+            );
+
+        }
+
+
+
         return this.nars.helperFunctions.create_resultant_sentence_two_premise(j1, j2, result_statement, this.nars.inferenceEngine.truthValueFunctions.F_Intersection);
     }
 

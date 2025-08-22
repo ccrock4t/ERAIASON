@@ -19,7 +19,7 @@ public abstract class AnimatBody : MonoBehaviour
     public const float MAX_VOXELS_HELD = 5;
     const float SINE_SPEED = 3;
     //  reproduction
-    public const float OFFSPRING_COST = 1*AnimatBody.ENERGY_IN_A_FOOD / 4;
+    public const float OFFSPRING_COST = 1*AnimatBody.ENERGY_IN_A_FOOD / 2;
 
 
     //variables
@@ -85,34 +85,29 @@ public abstract class AnimatBody : MonoBehaviour
             brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
             animat.was_hit = 0;
             
-            if(GlobalConfig.WORLD_TYPE  == GlobalConfig.WorldType.VoxelWorld)
-            {
-                // internally held voxels
-                sensory_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.INTERNAL_VOXEL_HELD];
-                sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
-                if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
-                sensor_neuron.activation = number_of_voxels_held / MAX_VOXELS_HELD;
-                brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
-            }
-
-            
+      
+            // internally held voxels
+            sensory_neuron_idx = brain.nodeID_to_idx[InitialNEATGenomes.INTERNAL_VOXEL_HELD];
+            sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
+            if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
+            sensor_neuron.activation = number_of_voxels_held / MAX_VOXELS_HELD;
+            brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
   
         }
         else if (animat.mind is NARS nar)
         {
             // sense energy
-         
 
-            if (this.energy > 2*OFFSPRING_COST)
-            {
-                var judgment = new Judgment(NARSGenome.energy_full, new EvidentialValue(), occurrence_time: nar.current_cycle_number);
-                nar.SendInput(judgment);
-            };
+
+            //if (this.energy > 2*OFFSPRING_COST)
+            //{
+
+            //};
 
             // enter instinctual goals
             foreach (var goal_data in ((NARSGenome)animat.genome.brain_genome).goals)
             {
-                var goal = new Goal(goal_data.statement, goal_data.evidence, occurrence_time: nar.current_cycle_number);
+                var goal = new Goal(nar, goal_data.statement, goal_data.evidence, occurrence_time: nar.current_cycle_number);
                 nar.SendInput(goal);
             }
         }

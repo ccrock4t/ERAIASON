@@ -18,14 +18,14 @@ public abstract class Sentence
     readonly public Term statement;
     readonly public Punctuation punctuation;
     readonly public Stamp stamp;
-    readonly public EvidentialValue evidential_value;
+    public EvidentialValue evidential_value;
     readonly public float eternal_expectation;
 
     //metadata
     public bool needs_to_be_answered_in_output;
     public bool is_from_input;
 
-    public Sentence(Term statement, EvidentialValue value, Punctuation punctuation, int occurrence_time = -1)
+    public Sentence(NARS nars, Term statement, EvidentialValue value, Punctuation punctuation, int occurrence_time = -1)
     {
         /*
 
@@ -39,7 +39,7 @@ public abstract class Sentence
 
         this.statement = statement;
         this.punctuation = punctuation;
-        this.stamp = new Stamp(this, occurrence_time);
+        this.stamp = new Stamp(nars, this, occurrence_time);
         this.evidential_value = value;  // truth-value (for Judgment) || desire-value (for Goal) || null (for Question)
 
         if (this.punctuation != Punctuation.Question)
@@ -87,7 +87,7 @@ public abstract class Sentence
     }
 
 
-    public static Sentence new_sentence_from_string(string sentence_string, int current_cycle_number)
+    public static Sentence new_sentence_from_string(NARS nars, string sentence_string, int current_cycle_number)
     {
         /*
             :param sentence_string - String of NAL syntax <term copula term>punctuation %frequency;confidence%
@@ -157,14 +157,14 @@ public abstract class Sentence
             }
             else
             {
-                value = new EvidentialValue();
+                value = new EvidentialValue(1.0f, nars.helperFunctions.get_unit_evidence());
             }
-            sentence = new Judgment(statement, value);
+            sentence = new Judgment(nars,statement, value);
         }
 
         else if (punctuation == Punctuation.Question)
         {
-            sentence = new Question(statement);
+            sentence = new Question(nars, statement);
         }
         else if (punctuation == Punctuation.Goal)
         {
@@ -175,9 +175,9 @@ public abstract class Sentence
             }
             else
             {
-                value = new EvidentialValue();
+                value = new EvidentialValue(1.0f, nars.helperFunctions.get_unit_evidence());
             }
-            sentence = new Goal(statement, value);
+            sentence = new Goal(nars,statement, value);
         }
         else
         {
@@ -210,7 +210,7 @@ public class Judgment : Sentence
         judgment ::= <statement>. %<truth-value>%
     */
 
-    public Judgment(Term statement, EvidentialValue value, int occurrence_time = -1) : base(statement, value, Punctuation.Judgment, occurrence_time) { }
+    public Judgment(NARS nars, Term statement, EvidentialValue value, int occurrence_time = -1) : base(nars, statement, value, Punctuation.Judgment, occurrence_time) { }
 
 }
 
@@ -221,7 +221,7 @@ public class Question : Sentence
         question ::= <statement>? %<truth-value>%
     */
 
-    public Question(Term statement) : base(statement, default, Punctuation.Question)
+    public Question(NARS nars, Term statement) : base(nars, statement, default, Punctuation.Question)
     {
 
     }
@@ -235,7 +235,7 @@ public class Goal : Sentence
     */
     bool executed;
 
-    public Goal(Term statement, EvidentialValue value, int occurrence_time = -1) : base(statement, value, Punctuation.Goal, occurrence_time)
+    public Goal(NARS nars, Term statement, EvidentialValue value, int occurrence_time = -1) : base(nars, statement, value, Punctuation.Goal, occurrence_time)
     {
         this.executed = false;
     }
@@ -274,12 +274,12 @@ public class Stamp
     public string derived_by;
     public bool from_one_premise_inference;
 
-    public Stamp(Sentence this_sentence, int occurrence_time = -1)
+    public Stamp(NARS nars ,Sentence this_sentence, int occurrence_time = -1)
     {
         this.id = Interlocked.Increment(ref NEXT_STAMP_ID);
         this.occurrence_time = occurrence_time;
         this.sentence = this_sentence;
-        this.evidential_base = new EvidentialBase(this_sentence);
+        this.evidential_base = new EvidentialBase(nars, this_sentence);
         this.derived_by = null; // none if input task
         this.from_one_premise_inference = false; // == this sentence derived from one-premise inference?
         this.is_eternal = (occurrence_time == -1);
@@ -313,13 +313,15 @@ public class EvidentialBase : IEnumerable<Sentence>
     */
     Sentence sentence;
     public List<Sentence> evidential_base;
-    public EvidentialBase(Sentence this_sentence)
+    NARS nars;
+    public EvidentialBase(NARS nars ,Sentence this_sentence)
     {
         /*
         :param id: Sentence ID
         */
-        this.sentence = null;// this_sentence;
-        this.evidential_base = null;// new List<Sentence> { this_sentence };  // array of sentences
+        this.nars = nars;
+        this.sentence = this_sentence;
+        this.evidential_base = new List<Sentence> { this_sentence };  // array of sentences
     }
     public IEnumerator<Sentence> GetEnumerator()
     {
@@ -336,13 +338,11 @@ public class EvidentialBase : IEnumerable<Sentence>
 
     public bool Contains(Sentence j)
     {
-        return false;
         return this.evidential_base.Contains(j);
     }
 
     public void merge_sentence_evidential_base_into_this(Sentence sentence)
     {
-        return;
         /*
             Merge a Sentence's evidential base into this.
             This function assumes the base to merge does not have evidential overlap with this base
@@ -354,7 +354,7 @@ public class EvidentialBase : IEnumerable<Sentence>
         }
 
 
-        while (this.evidential_base.Count > NARSConfig.MAX_EVIDENTIAL_BASE_LENGTH)
+        while (this.evidential_base.Count > this.nars.config.MAX_EVIDENTIAL_BASE_LENGTH)
         {
             this.evidential_base.RemoveAt(0);
         }
@@ -388,10 +388,8 @@ public class EvidentialBase : IEnumerable<Sentence>
         :param j2:
         :return: Are the sentence allowed to interact for inference
         */
-        return true;
         if (j1 == null || j2 == null) return false;
         if (j1.stamp.id == j2.stamp.id) return false;
-        if (j1.is_event() && j2.is_event()) return true;
         if (j2.stamp.evidential_base.Contains(j1)) return false;
         if (j1.stamp.evidential_base.Contains(j2)) return false;
         if (j1.stamp.evidential_base.has_evidential_overlap(j2.stamp.evidential_base)) return false;

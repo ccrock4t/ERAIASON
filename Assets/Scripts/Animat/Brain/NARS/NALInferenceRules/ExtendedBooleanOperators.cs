@@ -10,6 +10,8 @@
             Does combine evidential bases in the Resultant Sentence.
 */
 
+using Unity.Mathematics;
+
 public static class ExtendedBooleanOperators
 {
 
@@ -28,10 +30,10 @@ public static class ExtendedBooleanOperators
         */
         return band_average(argv);
         //float res = argv[0];
-        //for(int i=1; i<argv.Length; i++)
+        //for (int i = 1; i < argv.Length; i++)
         //{
         //    float arg = argv[i];
-        //    res = math.min(arg, res);
+        //    res *= arg;
         //}
         //return res;
     }

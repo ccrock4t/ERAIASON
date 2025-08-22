@@ -53,8 +53,8 @@
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.unity.services.analytics": "1.0.4",
-        "com.unity.ugui": "1.0.0"
+        "com.unity.ugui": "1.0.0",
+        "com.unity.services.analytics": "1.0.4"
       },
       "url": "https://packages.unity.com"
     },
@@ -296,9 +296,9 @@
       "depth": 1,
       "source": "registry",
       "dependencies": {
-        "com.unity.modules.unitywebrequest": "1.0.0",
+        "com.unity.modules.androidjni": "1.0.0",
         "com.unity.nuget.newtonsoft-json": "3.2.1",
-        "com.unity.modules.androidjni": "1.0.0"
+        "com.unity.modules.unitywebrequest": "1.0.0"
       },
       "url": "https://packages.unity.com"
     },
@@ -349,7 +349,7 @@
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "855607ab678bb88178d2eea69032fe57a74270c8"
+      "hash": "35b9985bf238cde2bad9c8e107c686ba3194471c"
     },
     "com.unity.xr.legacyinputhelpers": {
       "version": "2.1.11",

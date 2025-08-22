@@ -11,7 +11,7 @@ public struct EvidentialValue
 {
     public float frequency;
     public float confidence;
-    public EvidentialValue(float frequency=1.0f, float confidence=0.9f)
+    public EvidentialValue(float frequency, float confidence)
     {
         if (confidence >= 1.0f) confidence = 0.9999f;
         if(confidence <= 0.0f) confidence = 0.0001f;

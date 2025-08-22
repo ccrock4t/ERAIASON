@@ -251,48 +251,48 @@ public class Bag<T> : ItemContainer<T>
         return item;
     }
 
-
-    public Item<T>? _peek_probabilistically(Dictionary<int, List<Item<T>>> buckets)
+    System.Random rng = new System.Random();
+    public Item<T>? _peek_probabilistically(
+        Dictionary<int, List<Item<T>>> buckets,
+        bool weightByItemCount = false)
     {
-        /*
-            Probabilistically selects a priority value / bucket, then peeks an item from that bucket.
+        // 1) Build weights
+        // Example priority = (level + 1). Change this if you have your own per-level weights.
+        double[] weights = new double[this.granularity];
+        double total = 0;
 
-            :returns (item, index of item in the current bucket)
-        */
-        if (this.GetCount() == 0) return null;
-
-        this.level = this.random.Next(0, this.granularity); // Works in any threa
-
-        List<Item<T>> level_bucket;
-        while (true)
+        for (int level = 0; level < granularity; level++)
         {
-            level_bucket = buckets[this.level];
-            if (level_bucket.Count == 0)
+            if (!buckets.TryGetValue(level, out var list) || list == null || list.Count == 0)
             {
-                this.level = (this.level + 1) % this.granularity;
+                weights[level] = 0;
                 continue;
             }
 
-
-            // try to go into bucket
-            int rnd = this.random.Next(0, this.granularity);
-
-            int threshold = this.level;
-            if (rnd <= threshold)
-            {
-                // use this bucket
-                break;
-            }
-            else
-            {
-                this.level = (this.level + 1) % this.granularity;
-            }
+            double w = (level + 1);                 // priority weight
+            if (weightByItemCount) w *= list.Count; // item-weighted variant
+            weights[level] = w;
+            total += w;
         }
-        int rnd_idx = this.random.Next(0, level_bucket.Count);
-        Item<T> item = level_bucket[rnd_idx];
 
-        return item;
+        if (total <= 0) return null; // all empty
+
+        // 2) Sample a bucket via CDF
+        double r = rng.NextDouble() * total;
+        int pickedLevel = 0;
+        double cumulative = 0;
+        for (; pickedLevel < granularity; pickedLevel++)
+        {
+            cumulative += weights[pickedLevel];
+            if (r < cumulative) break;
+        }
+
+        var bucket = buckets[pickedLevel];
+        // 3) Pick an item uniformly within that bucket
+        int idx = rng.Next(0, bucket.Count);
+        return bucket[idx];
     }
+
 
     public int calc_bucket_num_from_value(float val)
     {

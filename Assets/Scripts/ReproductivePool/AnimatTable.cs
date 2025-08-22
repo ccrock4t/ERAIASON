@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -64,6 +64,11 @@ public class AnimatTable
         });
     }
 
+    public TableEntry? GetBest()
+    {
+        if (this.table.Count == 0) return null;
+        return this.table[^1];
+    }
 
     public void TryAdd(float score, Animat animat)
     {
@@ -87,11 +92,6 @@ public class AnimatTable
         if (GlobalConfig.novelty_search_processing_method == ProcessingMethod.GPU)
         {
             this.GPU_table.Add((NoveltySearch.BehaviorCharacterizationGPU)animat.behavior_characterization);
-        }
-
-        if(score < 0)
-        {
-            float x = 1;
         }
             
         this.total_score += score;
@@ -233,61 +233,44 @@ public class AnimatTable
 
     public (AnimatGenome, int) PeekRouletteWheel(int ignore_idx = -1)
     {
-        float probability;
-
         int randomly_selected_idx;
-
         float total_score = this.total_score;
-        if (ignore_idx >= 0) total_score -= this.table.ElementAt(ignore_idx).score; // this will be treated as having 0 probability
 
-        if (total_score == 0)
+        if (ignore_idx >= 0)
+            total_score -= this.table[ignore_idx].score; // assume table is a List<TableEntry>
+
+        if (total_score <= 0f)
         {
+            // fallback uniform random
             randomly_selected_idx = UnityEngine.Random.Range(0, this.table.Count);
-            if ((ignore_idx >= 0 && randomly_selected_idx == ignore_idx))
-            {
+            if (randomly_selected_idx == ignore_idx)
                 randomly_selected_idx = (randomly_selected_idx + 1) % this.table.Count;
-            }
         }
         else
         {
-            // generate probability distribution
-            float[] probabilities = new float[this.table.Count];
-            int idx = 0;
-            foreach (TableEntry entry in this.table)
+            float rnd = UnityEngine.Random.value; // [0,1)
+            float cumulative = 0f;
+
+            for (int i = 0; i < this.table.Count; i++)
             {
-                float score = entry.score;
-                if (idx != ignore_idx)
-                {
-                    probability = score / total_score;
-                }
-                else
-                {
-                    probability = 0;
-                }
+                if (i == ignore_idx) continue;
 
-                probabilities[idx] = probability;
-
-                idx++;
+                cumulative += this.table[i].score / total_score;
+                if (rnd < cumulative)
+                {
+                    randomly_selected_idx = i;
+                    goto Done;
+                }
             }
 
-            // generate Cumulative Distribution Function (CDF)
-            List<float> CDF = new();
-            CDF.Add(probabilities[0]);
-            for (int i = 1; i < probabilities.Length; i++)
-            {
-                CDF.Add(CDF[^1] + probabilities[i]);
-            }
-
-            // use the CDF to pick a random animat
-            float rnd = UnityEngine.Random.Range(0, 1f);
-            randomly_selected_idx = CDF.BinarySearch(rnd);
-            if (randomly_selected_idx < 0) randomly_selected_idx = ~randomly_selected_idx; // have to take bitwise complement for some reason, according to C# docs
+            // Edge case: floating-point imprecision → pick last
+            randomly_selected_idx = this.table.Count - 1;
         }
 
-        if (randomly_selected_idx < 0 || randomly_selected_idx >= this.table.Count) randomly_selected_idx = 0;
-
-        return (this.table.ElementAt(randomly_selected_idx).data.genome, randomly_selected_idx);
+    Done:
+        return (this.table[randomly_selected_idx].data.genome, randomly_selected_idx);
     }
+
 
     public int Count()
     {

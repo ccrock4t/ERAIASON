@@ -182,7 +182,7 @@ public class ConditionalRules
                                                                      this.nars.inferenceEngine.truthValueFunctions.F_Induction);
     }
 
-    public Sentence SimplifyConjunctiveGoal(Sentence j1, Sentence j2)
+    public Sentence SimplifyConjunctiveGoal(Goal j1, Judgment j2)
     {
         /*
             Conditional Goal Deduction
@@ -199,10 +199,14 @@ public class ConditionalRules
         CompoundTerm j1_statement = (CompoundTerm)j1.get_statement_term();
         List<Term> remaining_subterms = new List<Term>(j1_statement.subterms);
         int found_idx = remaining_subterms.IndexOf(j2.get_statement_term());
-        //Asserts.assert(found_idx != -1, "Error: Invalid inputs to Simplify conjuctive goal (deduction): "
-                    //+ j1.ToString()
-                    //+ " and "
-                    //+ j2.ToString());
+        if (found_idx == -1)
+        {
+            UnityEngine.Debug.LogError("Error: Invalid inputs to Simplify conjuctive goal (deduction)");
+        }
+        //Asserts.assert(found_idx != -1, : "
+        //+ j1.ToString()
+        //+ " and "
+        //+ j2.ToString());
 
         remaining_subterms.RemoveAt(found_idx);
         Term result_statement;

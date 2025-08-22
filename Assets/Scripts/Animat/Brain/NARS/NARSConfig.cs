@@ -26,7 +26,10 @@ public class NARSConfig {
     public float NEGATIVE_THRESHOLD = 0.5f;
 
     public int MEMORY_CONCEPT_CAPACITY = 1000;  // how many concepts can this NARS have?
-    public int EVENT_BUFFER_CAPACITY = 15;
+    public int EVENT_BUFFER_CAPACITY = 10;
+
+    public int ANTICIPATION_WINDOW = 5; //how many working cycles to expect an anticipation
+
     public int GLOBAL_BUFFER_CAPACITY = 1000;
     public int CONCEPT_LINK_CAPACITY = 100;  // how many of each concept link can this NARS have?
 
@@ -67,7 +70,7 @@ public class NARSConfig {
     /*
         Other Structures
     */
-    public const int MAX_EVIDENTIAL_BASE_LENGTH = 1; // maximum IDs to store documenting evidential base
+    public int MAX_EVIDENTIAL_BASE_LENGTH = 20; // maximum IDs to store documenting evidential base
 
     /*
         Default Input Task Values
@@ -82,4 +85,5 @@ public class NARSConfig {
     public const float DEFAULT_GOAL_PRIORITY = 0.9f;
     public const float DEFAULT_QUEST_PRIORITY = 0.9f;
 
+    public float FORGETTING_RATE = 0.999f;
 }

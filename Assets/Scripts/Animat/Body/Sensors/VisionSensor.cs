@@ -124,11 +124,21 @@ public class VisionSensor
         NativeArray<RaycastCommand> raycast_commands = new(NUM_OF_RAYCASTS, Allocator.TempJob);
         NativeArray<RaycastHit> raycast_results = new(raycast_commands.Length, Allocator.TempJob);
 
-
-        int all_layer_mask = (1 << AnimatArena.FOOD_GAMEOBJECT_LAYER)
+        int all_layer_mask;
+        if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NARSCPU)
+        {
+            all_layer_mask = (1 << AnimatArena.FOOD_GAMEOBJECT_LAYER)
+                | (1 << AnimatArena.OBSTACLE_GAMEOBJECT_LAYER)
+                | (1 << AnimatArena.INTERACTABLE_VOXEL_GAMEOBJECT_LAYER);
+        }
+        else
+        {
+            all_layer_mask = (1 << AnimatArena.FOOD_GAMEOBJECT_LAYER)
                 | (1 << AnimatArena.OBSTACLE_GAMEOBJECT_LAYER)
                 | (1 << AnimatArena.ANIMAT_GAMEOBJECT_LAYER)
                 | (1 << AnimatArena.INTERACTABLE_VOXEL_GAMEOBJECT_LAYER);
+        }
+        
         //
         // queue up the raycasts
         //
@@ -430,16 +440,15 @@ public class VisionSensor
                 sensor_neuron.activation = obstacle_activation;
                 brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
 
-                if (GlobalConfig.WORLD_TYPE == GlobalConfig.WorldType.VoxelWorld)
-                {
-                    sensorKey = new VisionSensorKey(r, VisionSensorType.PickableVoxel);
-                    neuronID = animat.genome.body_genome.visionSensorKeyToNodeID[sensorKey];
-                    sensory_neuron_idx = brain.nodeID_to_idx[neuronID];
-                    sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
-                    if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
-                    sensor_neuron.activation = pickable_voxel_activation;
-                    brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
-                }
+
+                sensorKey = new VisionSensorKey(r, VisionSensorType.PickableVoxel);
+                neuronID = animat.genome.body_genome.visionSensorKeyToNodeID[sensorKey];
+                sensory_neuron_idx = brain.nodeID_to_idx[neuronID];
+                sensor_neuron = brain.GetNeuronCurrentState(sensory_neuron_idx);
+                if (sensor_neuron.neuron_role != Neuron.NeuronRole.Sensor) Debug.LogError("error");
+                sensor_neuron.activation = pickable_voxel_activation;
+                brain.SetNeuronCurrentState(sensory_neuron_idx, sensor_neuron);
+                
                 
             }
             else
@@ -553,10 +562,6 @@ public class VisionSensor
                     }
                 }
             }
-
-
-
-
         }
 
 
@@ -571,16 +576,23 @@ public class VisionSensor
             {
                 food_statement = NARSGenome.food_unseen;
             }
-            else if (max_food_activation < ACTION_RANGE)
+            else
             {
-                food_statement = NARSGenome.food_far;
-            }
-            else// if (food_activation < CLOSENESS_ACTION_RANGE)
-            {
-                food_statement = NARSGenome.food_near;
+                if (max_food_activation >= (1f - (ACTION_RANGE / MAX_VISION_DISTANCE)))
+                {
+                    food_statement = NARSGenome.food_near;
+                }
+                else if (max_food_activation >= (1f - (MAX_VISION_DISTANCE*0.5f)))
+                {
+                    food_statement = NARSGenome.food_medium;
+                }
+                else
+                {
+                    food_statement = NARSGenome.food_far;
+                }
             }
 
-            var judgment = new Judgment(food_statement, new EvidentialValue(), occurrence_time: nar.current_cycle_number);
+            var judgment = new Judgment(nar, food_statement, new EvidentialValue(1.0f,nar.helperFunctions.get_unit_evidence()), occurrence_time: nar.current_cycle_number);
             nar.SendInput(judgment);
 
             // animat
@@ -589,24 +601,31 @@ public class VisionSensor
             {
                 animat_statement = NARSGenome.animat_unseen;
             }
-            else if (max_animat_activation < ACTION_RANGE)
+            else
             {
-                animat_statement = NARSGenome.animat_far;
-            }
-            else// if (food_activation < CLOSENESS_ACTION_RANGE)
-            {
-                animat_statement = NARSGenome.animat_near;
+                if (max_animat_activation >= (1f - (ACTION_RANGE / MAX_VISION_DISTANCE)))
+                {
+                    animat_statement = NARSGenome.animat_near;
+                }
+                else if (max_animat_activation >= (1f - (MAX_VISION_DISTANCE * 0.5f)))
+                {
+                    animat_statement = NARSGenome.animat_medium;
+                }
+                else
+                {
+                    animat_statement = NARSGenome.animat_far;
+                }
             }
 
-            judgment = new Judgment(animat_statement, new EvidentialValue(), occurrence_time: nar.current_cycle_number);
-            nar.SendInput(judgment);
+            //judgment = new Judgment(nar, animat_statement, new EvidentialValue(1.0f, nar.helperFunctions.get_unit_evidence()), occurrence_time: nar.current_cycle_number);
+            //nar.SendInput(judgment);
 
-            //if(food_was_eaten > 0)
-            //{
-            //    judgment = new Judgment(NARSGenome.energy_increase, new EvidentialValue(), occurrence_time: nar.current_cycle_number);
-            //    nar.SendInput(judgment);
-            //}
-          
+            if (food_was_eaten > 0)
+            {
+                var food_judgment = new Judgment(nar, NARSGenome.energy_full, new EvidentialValue(1.0f, nar.helperFunctions.get_unit_evidence()), occurrence_time: nar.current_cycle_number);
+                nar.SendInput(food_judgment);
+            }
+
         }
 
  

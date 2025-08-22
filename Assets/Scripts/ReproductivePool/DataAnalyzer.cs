@@ -9,12 +9,15 @@ using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+using UnityEngine.Localization.Tables;
 using static DataToolSocketClient;
+using static NARSGenome;
 
 public class DataAnalyzer : MonoBehaviour
 {
 
     StreamWriter data_file;
+    StreamWriter best_nars_data_file;
 
     // data variables
     DataToolSocketClient data_tool_socket_client;
@@ -29,6 +32,9 @@ public class DataAnalyzer : MonoBehaviour
     Queue<AnimatTable[]> task_queue = new();
     AutoResetEvent itemAdded = new AutoResetEvent(false);
     int update_num = 0;
+
+    string best_nars_filename = "BESTNARS.csv";
+
     public void Start()
     {
         this.ascending_score_comparer = Comparer<(float, AnimatGenome)>.Create((x, y) =>
@@ -47,7 +53,29 @@ public class DataAnalyzer : MonoBehaviour
             // connect to data tool
             this.data_tool_socket_client = new();
         }
- 
+
+        if (GlobalConfig.RECORD_BEST_NARS_AGENT_DATA)
+        {
+           
+            if (File.Exists(best_nars_filename))
+            {
+                File.Delete(best_nars_filename);
+            }
+            best_nars_data_file = File.CreateText(best_nars_filename);
+            List<string> row = new();
+
+            for (int p = 0; p < PersonalityParameters.GetParameterCount(); p++)
+            {
+                var parameter_name = NARSGenome.PersonalityParameters.GetName(p);
+                row.Add(parameter_name);
+            }
+            // Join into CSV row
+            string line = string.Join(",", row);
+
+            // Append to the file
+            best_nars_data_file.WriteLine(line);
+            best_nars_data_file.Flush(); // ensure it’s written immediately
+        }
 
 
     }
@@ -130,6 +158,36 @@ public class DataAnalyzer : MonoBehaviour
             Debug.LogError("No data file write stream.");
         }
 
+        if (GlobalConfig.RECORD_BEST_NARS_AGENT_DATA && GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NARSCPU)
+        {
+            AnimatTable.TableEntry? best = AnimatArena.GetInstance().objectiveFitnessTable.GetBest();
+            if(best != null)
+            {
+                var best_nar_genome = (NARSGenome)best?.data.genome.brain_genome;
+                // Collect parameter values into a row
+                List<string> row = new();
+                for (int p = 0; p < PersonalityParameters.GetParameterCount(); p++)
+                {
+                    // Assuming you have an instance called best_params holding the current values:
+
+
+
+                    float value = best_nar_genome.personality_parameters.Get(p);
+
+                    // Escape commas if needed, otherwise just ToString
+                    row.Add(value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                }
+                // Join into CSV row
+                string line = string.Join(",", row);
+
+                // Append to the file
+                best_nars_data_file.WriteLine(line);
+                best_nars_data_file.Flush(); // ensure it’s written immediately
+            }
+
+        }
+
+
         ReproductivePoolDatapoint[] table_datapoints = new ReproductivePoolDatapoint[3];
 
 
@@ -168,6 +226,21 @@ public class DataAnalyzer : MonoBehaviour
             {
                 var elite_table = tables[i];
                 if (elite_table == null) continue;
+
+                Dictionary<string, List<float>> medians = new();
+                medians["fitness_score"] = new();
+                medians["distance_travelled"] = new();
+                medians["food_eaten"] = new();
+                medians["times_reproduced"] = new();
+                medians["times_reproduced_asexually"] = new();
+                medians["times_reproduced_sexually"] = new();
+                medians["hamming_distance"] = new();
+                medians["generation"] = new();
+                medians["reproduction_chain"] = new();
+                medians["num_of_neurons"] = new();
+                medians["num_of_synapses"] = new();
+                medians["NARS_num_beliefs"] = new();
+
                 // write to file
                 float max_distance = 0;
                 float min_distance = float.MaxValue;
@@ -239,19 +312,19 @@ public class DataAnalyzer : MonoBehaviour
                 float max_NARS_num_beliefs = 0;
                 float min_NARS_num_beliefs = float.MaxValue;
 
+                Dictionary<string, float> NARS_personality_value_statistics = new();
 
-                float total_NARS_kValue = 0;
-                float avg_NARS_kValue = 0;
-                float median_NARS_kValue = 0;
-                float max_NARS_kValue = 0;
-                float min_NARS_kValue = float.MaxValue;
+                for (int p = 0; p < PersonalityParameters.GetParameterCount(); p++)
+                {
+                    var parameter_name = NARSGenome.PersonalityParameters.GetName(p);
+                    NARS_personality_value_statistics.Add("total_NARS_" + parameter_name, 0);
+                    NARS_personality_value_statistics.Add("avg_NARS_" + parameter_name, 0);
+                    NARS_personality_value_statistics.Add("median_NARS_" + parameter_name, 0);
+                    NARS_personality_value_statistics.Add("max_NARS_" + parameter_name, 0);
+                    NARS_personality_value_statistics.Add("min_NARS_" + parameter_name, float.MaxValue);
+                    medians.Add("NARS_" + parameter_name, new());
+                }
 
-
-                float total_NARS_TValue = 0;
-                float avg_NARS_TValue = 0;
-                float median_NARS_TValue = 0;
-                float max_NARS_TValue = 0;
-                float min_NARS_TValue = float.MaxValue;
 
                 float max_hamming_distance = 0;
                 float min_hamming_distance = float.MaxValue;
@@ -260,24 +333,6 @@ public class DataAnalyzer : MonoBehaviour
 
                 List<List<float>> hamming_distance_matrix = new();
                 List<AnimatSocketDatapoint> animat_datapoints = new();
-
-
-
-                Dictionary<string, List<float>> medians = new();
-                medians["fitness_score"] = new();
-                medians["distance_travelled"] = new();
-                medians["food_eaten"] = new();
-                medians["times_reproduced"] = new();
-                medians["times_reproduced_asexually"] = new();
-                medians["times_reproduced_sexually"] = new();
-                medians["hamming_distance"] = new();
-                medians["generation"] = new();
-                medians["reproduction_chain"] = new();
-                medians["num_of_neurons"] = new();
-                medians["num_of_synapses"] = new();
-                medians["NARS_num_beliefs"] = new();
-                medians["NARS_kValue"] = new();
-                medians["NARS_TValue"] = new();
 
 
                 for(int k=0; k<elite_table.table.Count; k++)
@@ -351,17 +406,18 @@ public class DataAnalyzer : MonoBehaviour
                     min_NARS_num_beliefs = math.min(min_NARS_num_beliefs, NARS_num_beliefs);
                     medians["NARS_num_beliefs"].Add(NARS_num_beliefs);
 
-                    float NARS_kValue = data.NARS_kValue;
-                    total_NARS_kValue += NARS_kValue;
-                    max_NARS_kValue = math.max(max_NARS_kValue, NARS_kValue);
-                    min_NARS_kValue = math.min(min_NARS_kValue, NARS_kValue);
-                    medians["NARS_kValue"].Add(NARS_kValue);
-
-                    float NARS_TValue = data.NARS_TValue;
-                    total_NARS_TValue += NARS_TValue;
-                    max_NARS_TValue = math.max(max_NARS_TValue, NARS_TValue);
-                    min_NARS_TValue = math.min(min_NARS_TValue, NARS_TValue);
-                    medians["NARS_TValue"].Add(NARS_TValue);
+                    if(data.NARS_Parameters != null)
+                    {
+                        for (int p = 0; p < PersonalityParameters.GetParameterCount(); p++)
+                        {
+                            var parameter_name = NARSGenome.PersonalityParameters.GetName(p);
+                            float NARS_value = data.NARS_Parameters[parameter_name];
+                            medians["NARS_" + parameter_name].Add(NARS_value);
+                            NARS_personality_value_statistics["total_NARS_" + parameter_name] += NARS_value;
+                            NARS_personality_value_statistics["max_NARS_" + parameter_name] = math.max(NARS_personality_value_statistics["max_NARS_" + parameter_name], NARS_value);
+                            NARS_personality_value_statistics["min_NARS_" + parameter_name] = math.min(NARS_personality_value_statistics["min_NARS_" + parameter_name], NARS_value);
+                        }
+                    }
 
                 AnimatSocketDatapoint animat_datapoint = new();
                     animat_datapoint.fitness = score;
@@ -369,7 +425,6 @@ public class DataAnalyzer : MonoBehaviour
                     animat_datapoint.num_of_neurons = num_of_neurons;
                     animat_datapoint.name = data.name;
                     animat_datapoints.Add(animat_datapoint);
-
 
 
                     //List<float> hamming_distances = new();
@@ -417,8 +472,15 @@ public class DataAnalyzer : MonoBehaviour
                     median_num_of_neurons = medians["num_of_neurons"].ElementAt(median_idx);
                     median_num_of_synapses = medians["num_of_synapses"].ElementAt(median_idx);
                     median_NARS_num_beliefs = medians["NARS_num_beliefs"].ElementAt(median_idx);
-                    median_NARS_kValue = medians["NARS_kValue"].ElementAt(median_idx);
-                    median_NARS_TValue = medians["NARS_TValue"].ElementAt(median_idx);
+                    foreach (var key in NARS_personality_value_statistics.Keys.ToList())
+                    {
+                        if (!key.StartsWith("median_")) continue;
+
+                        string parameter = key.Substring("median_".Length);
+                        if (!medians.TryGetValue(parameter, out var seq)) continue;
+
+                        NARS_personality_value_statistics[key] = seq.ElementAt(median_idx);
+                    }
                     //special count, all unique genome pairs
                     median_hamming_distance = medians["hamming_distance"].ElementAt(hamming_distance_count / 2);
 
@@ -436,8 +498,14 @@ public class DataAnalyzer : MonoBehaviour
                     avg_num_of_synapses = total_num_of_synapses / count;
                     avg_hamming_distance /= hamming_distance_count;
                     avg_NARS_num_beliefs = total_NARS_num_beliefs / count;
-                    avg_NARS_kValue = total_NARS_kValue / count;
-                    avg_NARS_TValue = total_NARS_TValue / count;
+                    foreach (var key in NARS_personality_value_statistics.Keys.ToList())
+                    {
+                        if (!key.StartsWith("total_")) continue;
+
+                        string parameter_name = key.Substring("total_".Length);
+                        float total = NARS_personality_value_statistics[key];
+                        NARS_personality_value_statistics["avg_" + parameter_name] = total / count;
+                    }
                 }
 
 
@@ -505,20 +573,15 @@ public class DataAnalyzer : MonoBehaviour
                     { "avg_NARS_num_beliefs", avg_NARS_num_beliefs },
                     { "max_NARS_num_beliefs", max_NARS_num_beliefs },
                     { "min_NARS_num_beliefs", min_NARS_num_beliefs },
-                    { "median_NARS_num_beliefs", median_NARS_num_beliefs },
-
-
-                    { "avg_NARS_TValue", avg_NARS_TValue },
-                    { "max_NARS_TValue", max_NARS_TValue },
-                    { "min_NARS_TValue", min_NARS_TValue  },
-                    { "median_NARS_TValue", median_NARS_TValue  },
-
-
-                    { "avg_NARS_kValue", avg_NARS_kValue },
-                    { "max_NARS_kValue", max_NARS_kValue },
-                    { "min_NARS_kValue", min_NARS_kValue },
-                    { "median_NARS_kValue", median_NARS_kValue },
+                    { "median_NARS_num_beliefs", median_NARS_num_beliefs }
                 };
+                foreach(var kvp in NARS_personality_value_statistics)
+                {
+                    if (kvp.Key.StartsWith("total")) continue;
+                    scores.Add(kvp.Key, kvp.Value);
+                }
+
+
                 if (count == 0)
                 {
                     var keys = scores.Keys.ToList();
@@ -537,7 +600,6 @@ public class DataAnalyzer : MonoBehaviour
 
 
                 table_datapoints[i] = datapoint;
-
 
 
                 if (elite_table == elite_fitness_table)
@@ -637,8 +699,7 @@ public class DataAnalyzer : MonoBehaviour
         int num_neurons = 0;
         int num_synapses = 0;
         int num_beliefs_in_genome = 0;
-        float k_value = 0;
-        float T_value = 0;
+        Dictionary<string, float> NARS_parameters = null;
         if (animat.mind is Brain brain)
         {
             num_neurons = brain.CountNumberOfHiddenNeurons();
@@ -648,9 +709,12 @@ public class DataAnalyzer : MonoBehaviour
         {
             NARSGenome nars_genome = ((NARSGenome)animat.genome.brain_genome);
             num_beliefs_in_genome = nars_genome.beliefs.Count;
-            k_value = nars_genome.getK();
-            T_value = nars_genome.getT();
-            //num_synapses = brain.GetNumberOfSynapses();
+            NARS_parameters = new();
+            for (int i = 0; i < PersonalityParameters.GetParameterCount(); i++)
+            {
+                NARS_parameters.Add(NARSGenome.PersonalityParameters.GetName(i), (float)nars_genome.personality_parameters.Get(i));
+            }
+         
         }
         return new AnimatData
             (
@@ -665,8 +729,7 @@ public class DataAnalyzer : MonoBehaviour
             num_neurons,
             num_synapses,
             num_beliefs_in_genome,
-            k_value,
-            T_value,
+            NARS_parameters,
             animat.genome,
             animat.genome.uniqueName,
             animat.behavior_characterization_CPU
@@ -696,8 +759,7 @@ public class DataAnalyzer : MonoBehaviour
 
         //  NARS
         public int NARS_num_beliefs;
-        public float NARS_kValue;
-        public float NARS_TValue;
+        public Dictionary<string, float> NARS_Parameters;
 
         public AnimatData(float displacement,
             float distance,
@@ -710,8 +772,7 @@ public class DataAnalyzer : MonoBehaviour
             int num_of_neurons,
             int num_of_synapses,
             int num_beliefs_in_genome,
-            float k_value,
-            float T_value,
+            Dictionary<string, float> NARS_Parameters,
             AnimatGenome genome,
             string name,
             NoveltySearch.BehaviorCharacterizationCPU behavior)
@@ -732,8 +793,7 @@ public class DataAnalyzer : MonoBehaviour
 
             // NARS
             this.NARS_num_beliefs = num_beliefs_in_genome;
-            this.NARS_kValue = k_value;
-            this.NARS_TValue = T_value;
+            this.NARS_Parameters = NARS_Parameters;
         }
     }
 
@@ -743,6 +803,7 @@ public class DataAnalyzer : MonoBehaviour
 
         this.data_tool_socket_client.OnAppQuit();
         data_file.Close();
+        best_nars_data_file.Close();
     }
 
     public struct GUIDatapoint

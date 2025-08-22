@@ -338,6 +338,7 @@ public static class NALSyntax
 
 public static class SyntaxUtils
 {
+    private static ConcurrentDictionary<Type, IReadOnlyDictionary<ulong, string>> _cache = new ConcurrentDictionary<Type, IReadOnlyDictionary<ulong, string>>();
     public static Term image_place_holder_term = new AtomicTerm(stringValueOf(StatementSyntax.ImagePlaceHolder));
     public static bool is_valid_term(string term_string)
     {
@@ -349,11 +350,10 @@ public static class SyntaxUtils
         return true;
     }
 
-    private static ConcurrentDictionary<Type, IReadOnlyDictionary<ulong, string>> _cache;
+
 
     public static string stringValueOf<TEnum>(TEnum value) where TEnum : struct, Enum
     {
-        if(_cache == null ) _cache = new ConcurrentDictionary<Type, IReadOnlyDictionary<ulong, string>>();
         var type = typeof(TEnum);
         var map = _cache.GetOrAdd(type, _ => BuildMap<TEnum>());
         var key = Convert.ToUInt64(value);

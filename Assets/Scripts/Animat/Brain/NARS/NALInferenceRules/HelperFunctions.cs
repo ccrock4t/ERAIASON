@@ -117,6 +117,7 @@ public class HelperFunctions
             bool higher_order_statement = result_statement is StatementTerm && !((StatementTerm)result_statement).is_first_order();
 
             float f1; float c1; float f2; float c2;
+            int occurrence_time = -1;
             if (higher_order_statement)
             {
                 (f1, c1) = (j1.evidential_value.frequency, j1.evidential_value.confidence);
@@ -129,37 +130,38 @@ public class HelperFunctions
 
                 (f1, c1) = (j1_value_decayed.frequency, j1_value_decayed.confidence);
                 (f2, c2) = (j2_value_decayed.frequency, j2_value_decayed.confidence);
+
+        
+
+
+                // if the result is a first-order statement, or a higher-order compound statement, it may need an occurrence time
+
+                if (j1.is_event() && !j2.is_event()) occurrence_time = j1.stamp.occurrence_time;
+                if (!j1.is_event() && j2.is_event()) occurrence_time = j2.stamp.occurrence_time;
+                if (j1.is_event() && j2.is_event())
+                {
+                    //average
+                    occurrence_time = (j1.stamp.occurrence_time + j2.stamp.occurrence_time) / 2;
+                }
             }
-
-
             EvidentialValue result_truth = truth_value_function(f1, c1, f2, c2);
-            int? occurrence_time = null;
-
-            // if the result is a first-order statement, or a higher-order compound statement, it may need an occurrence time
-
-            //if (j1.is_event() && !j2.is_event()) occurrence_time = j1.stamp.occurrence_time;
-            //if (!j1.is_event() && j2.is_event()) occurrence_time = j2.stamp.occurrence_time;
-            //if (j1.is_event() && j2.is_event())
-            //{
-            //    //average
-            //    occurrence_time = (j1.stamp.occurrence_time + j2.stamp.occurrence_time) / 2;
-            //}
 
             if (result_type == typeof(Judgment))
             {
-                result = new Judgment(result_statement, result_truth, this.nars.current_cycle_number);
+             
+                result = new Judgment(nars, result_statement, result_truth, occurrence_time);
             }
             else if (result_type == typeof(Goal))
             {
                 //occurrence_time = this.nars.current_cycle_number;
-                result = new Goal(result_statement, result_truth, this.nars.current_cycle_number);
+                result = new Goal(nars, result_statement, result_truth, this.nars.current_cycle_number);
             }
 
 
         }
         else if (result_type == typeof(Question))
         {
-            result = new Question(result_statement);
+            result = new Question(nars, result_statement);
         }
 
 
@@ -216,15 +218,15 @@ public class HelperFunctions
         Sentence result = null;
         if (result_type == typeof(Judgment))
         {
-            result = new Judgment(result_statement, (EvidentialValue)result_truth, this.nars.current_cycle_number);
+            result = new Judgment(nars, result_statement, (EvidentialValue)result_truth, this.nars.current_cycle_number);
         }
         else if (result_type == typeof(Goal))
         {
-            result = new Goal(result_statement, (EvidentialValue)result_truth, this.nars.current_cycle_number);
+            result = new Goal(nars, result_statement, (EvidentialValue)result_truth, this.nars.current_cycle_number);
         }
         else if (result_type == typeof(Question))
         {
-            result = new Question(result_statement);
+            result = new Question(nars, result_statement);
         }
 
 

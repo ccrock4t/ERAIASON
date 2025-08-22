@@ -47,9 +47,9 @@ public class NARSInferenceEngine
 
         try
         {
-            if (j1 is Goal && j2 is Judgment)
+            if (j1 is Goal g1 && j2 is Judgment judg2)
             {
-                results = do_semantic_inference_goal_judgment(j1, j2);
+                results = do_semantic_inference_goal_judgment(g1, judg2);
             }
             else
             {
@@ -548,7 +548,7 @@ public class NARSInferenceEngine
         return all_derived_sentences;
     }
 
-    public List<Sentence>? do_semantic_inference_goal_judgment(Sentence j1, Sentence j2)
+    public List<Sentence>? do_semantic_inference_goal_judgment(Goal j1, Judgment j2)
     {
         /*
         Derives a new Sentence by performing the appropriate inference rules on the given semantically related sentences.

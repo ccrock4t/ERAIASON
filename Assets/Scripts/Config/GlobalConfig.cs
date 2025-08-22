@@ -131,14 +131,14 @@ public class GlobalConfig : MonoBehaviour
     // ============
 
     // === World voxel automaton === 
-    public const bool RUN_WORLD_AUTOMATA = true;
+    public const bool RUN_WORLD_AUTOMATA = false;
 
     public const ProcessingMethod voxel_processing_method = ProcessingMethod.CPU;
     public const VoxelWorldSmoothingMethod voxel_mesh_smoothing_method = VoxelWorldSmoothingMethod.None;
     public GameObject world_automaton_game_object;
     public GameObject flat_plane_arena;
     public static WorldAutomaton world_automaton;
-    public static int3 WORLD_DIMENSIONS = new int3(256, 8, 256); // number cells in each dimension. Must be a multiple of 2
+    public static int3 WORLD_DIMENSIONS = new int3(128, 8, 128); // number cells in each dimension. Must be a multiple of 2
     public static int WORLD_AUTOMATA_UPDATE_PERIOD = 6; // runs every X FixedUpdates
     public const string TERRAIN_TAG = "Terrain";
     public static WorldType WORLD_TYPE = WorldType.FlatPlane;
@@ -155,7 +155,8 @@ public class GlobalConfig : MonoBehaviour
     public const string close_string = "]";
 
 
-    public const bool RECORD_DATA_TO_DISK = true;
+    public const bool RECORD_DATA_TO_DISK = false;
+    public const bool RECORD_BEST_NARS_AGENT_DATA = true;
     public const bool RECORD_DATA_TO_WEB = true;
 
     // ============

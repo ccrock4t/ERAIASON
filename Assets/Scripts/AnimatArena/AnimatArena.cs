@@ -54,7 +54,7 @@ public class AnimatArena : MonoBehaviour
     // constants
 
     [System.NonSerialized]
-    public int MINIMUM_POPULATION_QUANTITY = 50;
+    public int MINIMUM_POPULATION_QUANTITY = 30;
     public const int MAXIMUM_POPULATION_QUANTITY = 100;
 
     const int FOOD_QUANTITY = 150;
@@ -747,22 +747,35 @@ public class AnimatArena : MonoBehaviour
     AnimatGenome[] GetTestGenomeAnimat()
     {
         BodyGenome body_genome = BodyGenome.CreateTestGenome();
-        BrainGenome brain_genome;
+        BrainGenome brain_genome = null;
+        try
+        {
+            if (GlobalConfig.BRAIN_PROCESSING_METHOD == BrainProcessingMethod.NARSCPU)
+            {
+                brain_genome = new NARSGenome((WheeledRobotBodyGenome)body_genome);
+            }
+            else
+            {
+                brain_genome = InitialNEATGenomes.CreateTestGenome(body_genome);
+            }
 
-        if(GlobalConfig.BRAIN_PROCESSING_METHOD == BrainProcessingMethod.NARSCPU)
-        {
-            brain_genome = new NARSGenome((WheeledRobotBodyGenome)body_genome);
+       
         }
-        else
+        catch (TypeInitializationException ex)
         {
-            brain_genome = InitialNEATGenomes.CreateTestGenome(body_genome);
+            UnityEngine.Debug.LogError("TypeInitializationException: " + ex.Message);
+            if (ex.InnerException != null)
+            {
+                UnityEngine.Debug.LogError("Inner Exception: " + ex.InnerException.GetType().Name);
+                UnityEngine.Debug.LogError("Inner Message: " + ex.InnerException.Message);
+                UnityEngine.Debug.LogError("StackTrace: " + ex.InnerException.StackTrace);
+            }
         }
 
         AnimatGenome genome = new(
            brain_genome,
            body_genome,
            0);
-
         return new AnimatGenome[] { genome };
 
     }
