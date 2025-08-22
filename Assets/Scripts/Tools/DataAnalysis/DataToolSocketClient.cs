@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Text;
 using UnityEngine;
 using UnityEngine; // for Debug.LogWarning (optional)
+using UnityEngine.WSA;
 using Debug = UnityEngine.Debug;
 
 public class DataToolSocketClient
@@ -67,87 +68,47 @@ public class DataToolSocketClient
     const string serverIP = "127.0.0.1";
     const int port = 8089;
 
-    string[] data_to_save_to_file = new string[]
-    {
-        "BTCratio",
-        "fitness_score",
-        "food_eaten",
-        "times_reproduced",
-        "times_reproduced_asexually",
-        "times_reproduced_sexually",
-        "reproduction_chain",
-        "generation",
-        "num_of_neurons",
-        "num_of_synapses",
-        "NARS_num_beliefs",
-        "NARS_kValue",
-        "NARS_TValue",
-        "hamming_distance",
-        "distance_travelled"
-    };
+
 
     public Dictionary<string, StreamWriter> writers;
+    string data_folder;
     public DataToolSocketClient()
     {
         if (GlobalConfig.RECORD_DATA_TO_DISK)
         {
             this.writers = new();
-            foreach (var data_name in data_to_save_to_file)
-            {
+      
    
                 // Generate filename with timestamp
-                string folder = "DataTool/";
-                folder += GlobalConfig.WORLD_TYPE.ToString() + "/";
-                folder += GlobalConfig.BODY_METHOD.ToString() + "/";
+                data_folder = "DataTool/";
+                data_folder += GlobalConfig.WORLD_TYPE.ToString() + "/";
+                data_folder += GlobalConfig.BODY_METHOD.ToString() + "/";
                 if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NARSCPU)
                 {
-                    folder += "NARS/NoLearning/";
+                    data_folder += "NARS/NoLearning/";
                 }
                 else if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NeuralNetworkCPU
                     || GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.NeuralNetworkGPU)
                 {
 
-                    folder += GlobalConfig.NEURAL_NETWORK_METHOD.ToString() + "/";
+                    data_folder += GlobalConfig.NEURAL_NETWORK_METHOD.ToString() + "/";
                     if (GlobalConfig.USE_HEBBIAN)
                     {
-                        folder += GlobalConfig.HEBBIAN_METHOD.ToString() + "/";
+                        data_folder += GlobalConfig.HEBBIAN_METHOD.ToString() + "/";
                     }
                     else
                     {
-                        folder += "NoLearning/";
+                        data_folder += "NoLearning/";
                     }
 
                 }
                 else if (GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.Random)
                 {
-                    folder += "Random/";
+                    data_folder += "Random/";
                 }
 
-                folder += DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + "/";
-                Directory.CreateDirectory(folder);
-                string filename = folder;
-                filename += data_name;
-                filename += ".csv";
-                // Initialize StreamWriter
-                var writer = new StreamWriter(filename);
-
-                if(data_name != "BTCratio")
-                {
-                    var EliteFitnessTableColumns = "EliteFitness Max, EliteFitness Median, EliteFitness Mean, EliteFitness Min";
-                    var EliteNoveltyTableColumns = "EliteNovelty Max, EliteNovelty Median, EliteNovelty Mean, EliteNovelty Min";
-                    var ContinuousFitnessTableColumns = "ContinuousFitness Max, ContinuousFitness Median, ContinuousFitness Mean, ContinuousFitness Min";
-                    writer.WriteLine(EliteFitnessTableColumns
-                        + ", " + EliteNoveltyTableColumns
-                        + ", " + ContinuousFitnessTableColumns);
-                }
-                else
-                {
-                    writer.WriteLine("Ratio");
-                }
-       
-
-                writers.Add(data_name, writer);
-            }
+                data_folder += DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + "/";
+                Directory.CreateDirectory(data_folder);
 
      
         }
@@ -231,43 +192,78 @@ public class DataToolSocketClient
         Debug.Log("Server response: " + result);
     }
 
+    HashSet<string> processed = new();
 
     public void WriteToDisk(WorldDatapoint world_data,
-        Dictionary<string,float> objective_fitness_table,
-        Dictionary<string, float> novelty_table,
-        Dictionary<string, float> recent_population_table)
+        ReproductivePoolDatapoint objective_fitness_table,
+        ReproductivePoolDatapoint novelty_table,
+        ReproductivePoolDatapoint recent_population_table)
     {
- 
-        foreach (var kvp in this.writers)
+        processed.Clear();
+        foreach (var kvp in objective_fitness_table.scores)
         {
             string key = kvp.Key;
             var value = kvp.Value;
             string line;
-            if(key == "BTCratio")
+
+
+            int idx = key.IndexOf('_');
+            string data_name = (idx >= 0 && idx + 1 < key.Length)
+                ? key.Substring(idx + 1)
+                : key; // fallback if no underscore
+
+            if (processed.Contains(data_name)) continue;
+            processed.Add(data_name);
+
+            if (!writers.ContainsKey(data_name))
+            {
+                string filename = data_folder;
+                filename += data_name;
+                filename += ".csv";
+                var writer = new StreamWriter(filename);
+                if (data_name != "BTCratio")
+                {
+                    var EliteFitnessTableColumns = "EliteFitness Max, EliteFitness Median, EliteFitness Mean, EliteFitness Min";
+                    var EliteNoveltyTableColumns = "EliteNovelty Max, EliteNovelty Median, EliteNovelty Mean, EliteNovelty Min";
+                    var ContinuousFitnessTableColumns = "ContinuousFitness Max, ContinuousFitness Median, ContinuousFitness Mean, ContinuousFitness Min";
+                    writer.WriteLine(EliteFitnessTableColumns
+                        + ", " + EliteNoveltyTableColumns
+                        + ", " + ContinuousFitnessTableColumns);
+                }
+                else
+                {
+                    writer.WriteLine("Ratio");
+                  
+                }
+                writers.Add(data_name, writer);
+            }
+
+
+            if (key == "BTCratio")
             {
                 line = world_data.born_to_created_ratio.ToString();
             }
             else 
             {
-                line = objective_fitness_table["max_" + key] 
-                    + "," + objective_fitness_table["median_" + key] 
-                    + "," + objective_fitness_table["avg_" + key] 
-                    + "," + objective_fitness_table["min_" + key];
+                line = objective_fitness_table.scores["max_" + data_name] 
+                    + "," + objective_fitness_table.scores["median_" + data_name] 
+                    + "," + objective_fitness_table.scores["avg_" + data_name] 
+                    + "," + objective_fitness_table.scores["min_" + data_name];
 
              
-                line += "," + novelty_table["max_" + key]
-                    + "," + novelty_table["median_" + key]
-                    + "," + novelty_table["avg_" + key]
-                    + "," + novelty_table["min_" + key];
+                line += "," + novelty_table.scores["max_" + data_name]
+                    + "," + novelty_table.scores["median_" + data_name]
+                    + "," + novelty_table.scores["avg_" + data_name]
+                    + "," + novelty_table.scores["min_" + data_name];
                 
 
-                line += "," + recent_population_table["max_" + key]
-                     + "," + recent_population_table["median_" + key]
-                     + "," + recent_population_table["avg_" + key]
-                     + "," + recent_population_table["min_" + key];
+                line += "," + recent_population_table.scores["max_" + data_name]
+                     + "," + recent_population_table.scores["median_" + data_name]
+                     + "," + recent_population_table.scores["avg_" + data_name]
+                     + "," + recent_population_table.scores["min_" + data_name];
             }
 
-            value.WriteLine(line);
+            writers[data_name].WriteLine(line);
         }
 
 

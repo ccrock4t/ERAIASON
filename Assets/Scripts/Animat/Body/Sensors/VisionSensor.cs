@@ -578,11 +578,14 @@ public class VisionSensor
             }
             else
             {
-                if (max_food_activation >= (1f - (ACTION_RANGE / MAX_VISION_DISTANCE)))
+                float nearThreshold = 1f - (ACTION_RANGE / MAX_VISION_DISTANCE);
+                float mediumThreshold = 0.5f; // halfway
+
+                if (max_animat_activation >= nearThreshold)
                 {
                     food_statement = NARSGenome.food_near;
                 }
-                else if (max_food_activation >= (1f - (MAX_VISION_DISTANCE*0.5f)))
+                else if (max_animat_activation >= mediumThreshold)
                 {
                     food_statement = NARSGenome.food_medium;
                 }
@@ -603,11 +606,14 @@ public class VisionSensor
             }
             else
             {
-                if (max_animat_activation >= (1f - (ACTION_RANGE / MAX_VISION_DISTANCE)))
+                float nearThreshold = 1f - (ACTION_RANGE / MAX_VISION_DISTANCE);
+                float mediumThreshold = 0.5f; // halfway
+
+                if (max_animat_activation >= nearThreshold)
                 {
                     animat_statement = NARSGenome.animat_near;
                 }
-                else if (max_animat_activation >= (1f - (MAX_VISION_DISTANCE * 0.5f)))
+                else if (max_animat_activation >= mediumThreshold)
                 {
                     animat_statement = NARSGenome.animat_medium;
                 }
@@ -617,8 +623,8 @@ public class VisionSensor
                 }
             }
 
-            //judgment = new Judgment(nar, animat_statement, new EvidentialValue(1.0f, nar.helperFunctions.get_unit_evidence()), occurrence_time: nar.current_cycle_number);
-            //nar.SendInput(judgment);
+            judgment = new Judgment(nar, animat_statement, new EvidentialValue(1.0f, nar.helperFunctions.get_unit_evidence()), occurrence_time: nar.current_cycle_number);
+            nar.SendInput(judgment);
 
             if (food_was_eaten > 0)
             {

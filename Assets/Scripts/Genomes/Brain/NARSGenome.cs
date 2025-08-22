@@ -1,3 +1,4 @@
+using Mono.Cecil;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
@@ -7,6 +8,26 @@ public class NARSGenome : BrainGenome
     const float CHANCE_TO_MUTATE_BELIEF_SET = 0.35f;
     const float CHANCE_TO_MUTATE_TRUTH_VALUES = 0.8f;
     const float CHANCE_TO_MUTATE_PERSONALITY_PARAMETERS = 0.8f;
+
+
+    public enum NARS_Evolution_Type
+    {
+        NARS_EVOLVE_CONTINGENCIES_ONLY,
+        NARS_EVOLVE_LEARNING_ONLY,
+        NARS_EVOLVE_LEARNING_AND_CONTINGENCIES
+    }
+
+    public const NARS_Evolution_Type NARS_EVOLVE_TYPE = NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_ONLY;
+
+    public static bool USE_AND_EVOLVE_LEARNING()
+    {
+        return NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_LEARNING_ONLY || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_LEARNING_AND_CONTINGENCIES;
+    }
+
+    public static bool USE_AND_EVOLVE_CONTINGENCIES()
+    {
+        return NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_ONLY || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_LEARNING_AND_CONTINGENCIES;
+    }
 
     public struct EvolvableSentence
     {
@@ -183,31 +204,26 @@ public class NARSGenome : BrainGenome
         this.body_genome = body_genome;
 
         beliefs = new();
-        //if (beliefs_to_clone == null)
-        //{
+        if (USE_AND_EVOLVE_CONTINGENCIES())
+        {
+            if (beliefs_to_clone == null)
+            {
 
-        //    int rnd_amt = UnityEngine.Random.Range(1, MAX_INITIAL_BELIEFS);
-        //    for(int i=0; i < rnd_amt; i++)
-        //    {
-        //        AddNewRandomBelief();
-        //    }
-        //}
-        //else
-        //{
-        //    foreach(var belief in beliefs_to_clone)
-        //    {
-        //        AddNewBelief(belief);
-        //    }
+                int rnd_amt = UnityEngine.Random.Range(1, MAX_INITIAL_BELIEFS);
+                for (int i = 0; i < rnd_amt; i++)
+                {
+                    AddNewRandomBelief();
+                }
+            }
+            else
+            {
+                foreach (var belief in beliefs_to_clone)
+                {
+                    AddNewBelief(belief);
+                }
+            }
+        }
 
-        //}
-
-        //(StatementTerm, float?, float?)[] statement_strings = new (StatementTerm, float?, float?)[]
-        //{
-        //    (CreateContingencyStatement(food_far,move_op,food_near), null, null),
-        //    //(CreateContingencyStatement(food_unseen,rotate_right_op,food_far), null, null),
-        //};
-
-        //AddEvolvableSentences(beliefs, statement_strings);
 
         if (goals_to_clone == null)
         {
@@ -288,29 +304,6 @@ public class NARSGenome : BrainGenome
         }
 
     }
-
-
-    //public static void AddMinimalBeliefsForLearning(List<EvolvableSentence> beliefs)
-    //{
-    //    (StatementTerm, float?, float?)[] statement_strings = new (StatementTerm, float?, float?)[]
-    //    {
-    //        (CreateContigencyString(animat_far,move_op,animat_near), null, null),
-    //        (CreateContigencyString(food_unseen,move_op,food_far), null, null),
-
-    //        (CreateContigencyString(null,eat_op,energy_increase), 0.6f, null),
-
-    //        (CreateContigencyString(null,energy_increase,energy_full), 0.9f, null),
-
-    //        (CreateContigencyString(animat_near,mate_op,self_mated), null, null),
-    //        (CreateContigencyString(food_unseen,rotate_right_op,food_far), null, null),
-    //        (CreateContigencyString(animat_unseen,move_op,animat_far), null, null),
-    //        (CreateContigencyString(animat_unseen,rotate_right_op,animat_far), null, null),
-    //    };
-
-    //    AddEvolvableSentences(beliefs, statement_strings);
-    //}
-
-
     public static void AddIdealBeliefs(List<EvolvableSentence> beliefs)
     {
         (StatementTerm, float?, float?)[] statement_strings = new (StatementTerm, float?, float?)[]
@@ -367,129 +360,134 @@ public class NARSGenome : BrainGenome
     private static Vector2Int GetTableCapacityRange() => new(1, 20);
     private static Vector2Int GetEvidentialBaseLengthRange() => new(1, 50);
 
+    // Local helpers
+    void MutateFloat(ref float field, Vector2 range, float replaceChance, float mutate_chance)
+    {
+        if (UnityEngine.Random.value < (1f- mutate_chance)) return; // certain chance to mutate
+        if (UnityEngine.Random.value < replaceChance)
+        {
+            field = UnityEngine.Random.Range(range.x, range.y);
+        }
+        else
+        {
+            field += (float)GetPerturbationFromRange(range);
+        }
+        field = math.clamp(field, range.x, range.y);
+    }
+
+    void MutateInt(ref int field, Vector2Int range, float replaceChance, float mutate_chance)
+    {
+        if (UnityEngine.Random.value < (1f - mutate_chance)) return; // certain chance to mutate
+
+        if (UnityEngine.Random.value < replaceChance)
+        {
+            // int Random.Range max is exclusive; add +1 to include range.y
+            field = UnityEngine.Random.Range(range.x, range.y + 1);
+        }
+        else
+        {
+            field += (int)GetPerturbationFromRange(range);
+        }
+        field = (int)math.clamp(field, range.x, range.y);
+    }
+
+
+    static Vector2 truth_range = new(0f, 1f);
     public override void Mutate()
     {
         float rnd = UnityEngine.Random.Range(0f, 1f);
 
-        //if(rnd < CHANCE_TO_MUTATE_BELIEF_SET)
-        //{
-        //    int rnd2 = UnityEngine.Random.Range(0, 3);
-        //    if (rnd2 == 0 || this.beliefs.Count == 0)
-        //    {
-        //        // add new belief
-        //        AddNewRandomBelief();
-        //    }
-        //    else if (rnd2 == 1)
-        //    {
-        //        // remove a belief
-        //        RemoveRandomBelief();
-        //    }
-        //    else
-        //    {
-        //        // change a belief
-        //        ModifyRandomBelief();
-        //    }
-        //}
 
-        rnd = UnityEngine.Random.Range(0f, 1f);
 
-        //if (rnd < CHANCE_TO_MUTATE_TRUTH_VALUES)
-        //{
-        //    for(int i=0; i < this.beliefs.Count; i++)
-        //    {
-        //        EvolvableSentence sentence = this.beliefs[i];
-        //        float rnd2 = UnityEngine.Random.Range(0f, 1f);
-        //        if(rnd2 < 0.9)
-        //        {
-        //            sentence.evidence.frequency += UnityEngine.Random.Range(-0.1f, 0.1f);
-        //        }
-        //        else
-        //        {
-        //            sentence.evidence.frequency = UnityEngine.Random.Range(0.5f, 1.0f);
-        //        }
-        //        sentence.evidence.frequency = math.clamp(sentence.evidence.frequency, 0.5f, 1f);
-        //        this.beliefs[i] = sentence;
-        //    }
-        //}
-        rnd = UnityEngine.Random.Range(0f, 1f);
+        if (USE_AND_EVOLVE_CONTINGENCIES())
+        {
+            if (rnd < CHANCE_TO_MUTATE_BELIEF_SET)
+            {
+                int rnd2 = UnityEngine.Random.Range(0, 3);
+                if (rnd2 == 0 || this.beliefs.Count == 0)
+                {
+                    // add new belief
+                    AddNewRandomBelief();
+                }
+                else if (rnd2 == 1)
+                {
+                    // remove a belief
+                    RemoveRandomBelief();
+                }
+                else
+                {
+                    // change a belief
+                    ModifyRandomBelief();
+                }
+            }
+
+            rnd = UnityEngine.Random.Range(0f, 1f);
+
+            if (rnd < CHANCE_TO_MUTATE_TRUTH_VALUES)
+            {
+                const float CHANCE_TO_REPLACE_TRUTH_VALUE = 0.05f;
+                const float CHANCE_TO_MUTATE = 0.6f;
+                for (int i = 0; i < this.beliefs.Count; i++)
+                {
+                    EvolvableSentence sentence = this.beliefs[i];
+                    MutateFloat(ref sentence.evidence.frequency, truth_range, CHANCE_TO_REPLACE_TRUTH_VALUE, CHANCE_TO_MUTATE);
+                    MutateFloat(ref sentence.evidence.confidence, truth_range, CHANCE_TO_REPLACE_TRUTH_VALUE, CHANCE_TO_MUTATE);
+                    sentence.evidence.confidence = math.clamp(sentence.evidence.confidence, 0.0001f, 0.9999f);
+                    this.beliefs[i] = sentence;
+                }
+            }
+            rnd = UnityEngine.Random.Range(0f, 1f);
+        }
 
         if (rnd < CHANCE_TO_MUTATE_PERSONALITY_PARAMETERS)
         {
             // tweakable: probability to *replace* a field instead of perturbing it
             const float CHANCE_TO_REPLACE_PARAM = 0.05f;
 
-            // Local helpers
-            void MutateFloat(ref float field, Vector2 range, float replaceChance)
-            {
-                if (UnityEngine.Random.value < replaceChance)
-                {
-                    field = UnityEngine.Random.Range(range.x, range.y);
-                }
-                else
-                {
-                    field += (float)GetPerturbationFromRange(range);
-                }
-                field = math.clamp(field, range.x, range.y);
-            }
-
-            void MutateInt(ref int field, Vector2Int range, float replaceChance)
-            {
-                if (UnityEngine.Random.value < 0.6f) return; // certain chance to mutate
-
-                if (UnityEngine.Random.value < replaceChance)
-                {
-                    // int Random.Range max is exclusive; add +1 to include range.y
-                    field = UnityEngine.Random.Range(range.x, range.y + 1);
-                }
-                else
-                {
-                    field += (int)GetPerturbationFromRange(range);
-                }
-                field = (int)math.clamp(field, range.x, range.y);
-            }
+            const float CHANCE_TO_MUTATE = 0.3f;
 
             // --- k ---
             var kRange = GetKRange();
-            MutateFloat(ref this.personality_parameters.k, kRange, CHANCE_TO_REPLACE_PARAM);
+            MutateFloat(ref this.personality_parameters.k, kRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
 
             // --- T ---
             var TRange = GetTRange();
-            MutateFloat(ref this.personality_parameters.T, TRange, CHANCE_TO_REPLACE_PARAM);
+            MutateFloat(ref this.personality_parameters.T, TRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
 
             // --- Anticipation window ---
             var AnticipationWindowRange = GetAnticipationWindowRange();
-            MutateInt(ref this.personality_parameters.Anticipation_Window, AnticipationWindowRange, CHANCE_TO_REPLACE_PARAM);
+            MutateInt(ref this.personality_parameters.Anticipation_Window, AnticipationWindowRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
 
             // --- Forgetting rate ---
             var ForgettingRateRange = GetForgettingRateRange();
-            MutateFloat(ref this.personality_parameters.Forgetting_Rate, ForgettingRateRange, CHANCE_TO_REPLACE_PARAM);
+            MutateFloat(ref this.personality_parameters.Forgetting_Rate, ForgettingRateRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
 
             // --- Event buffer capacity ---
             var EventBufferCapacityRange = GetEventBufferCapacityRange();
-            MutateInt(ref this.personality_parameters.Event_Buffer_Capacity, EventBufferCapacityRange, CHANCE_TO_REPLACE_PARAM);
+            MutateInt(ref this.personality_parameters.Event_Buffer_Capacity, EventBufferCapacityRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
 
             // --- Table capacity ---
             var TableCapacityRange = GetTableCapacityRange();
-            MutateInt(ref this.personality_parameters.Table_Capacity, TableCapacityRange, CHANCE_TO_REPLACE_PARAM);
+            MutateInt(ref this.personality_parameters.Table_Capacity, TableCapacityRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
 
             // --- Evidential base length ---
             var EvidentialBaseLengthRange = GetEvidentialBaseLengthRange();
-            MutateInt(ref this.personality_parameters.Evidential_Base_Length, EvidentialBaseLengthRange, CHANCE_TO_REPLACE_PARAM);
+            MutateInt(ref this.personality_parameters.Evidential_Base_Length, EvidentialBaseLengthRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
 
             // --- Time Projection Event ---
             var timeProjectionEventRange = GetTimeProjectionEventRange();
-            MutateFloat(ref this.personality_parameters.Time_Projection_Event, timeProjectionEventRange, CHANCE_TO_REPLACE_PARAM);
+            MutateFloat(ref this.personality_parameters.Time_Projection_Event, timeProjectionEventRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
 
             // --- Time Projection Goal ---
             var timeProjectionGoalRange = GetTimeProjectionGoalRange();
-            MutateFloat(ref this.personality_parameters.Time_Projection_Goal, timeProjectionGoalRange, CHANCE_TO_REPLACE_PARAM);
+            MutateFloat(ref this.personality_parameters.Time_Projection_Goal, timeProjectionGoalRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
         }
 
     }
 
 
 
-    const float DEFAULT_C = 0.99f;
+ 
     public void AddNewRandomBelief()
     {
         StatementTerm statement = CreateContingencyStatement(GetRandomSensoryTerm(), GetRandomMotorTerm(), GetRandomSensoryTerm());
@@ -497,8 +495,9 @@ public class NARSGenome : BrainGenome
         if (!belief_statement_strings.ContainsKey(statement_string))
         {
             float f = UnityEngine.Random.Range(0.5f, 1f);
+            float c = UnityEngine.Random.Range(0.0f, 1f);
             EvolvableSentence sentence = new(statement: statement,
-                   new float2(f, DEFAULT_C));
+                   new float2(f, c));
             this.beliefs.Add(sentence);
             belief_statement_strings.Add(statement_string, true);
         }

@@ -155,7 +155,7 @@ public class GlobalConfig : MonoBehaviour
     public const string close_string = "]";
 
 
-    public const bool RECORD_DATA_TO_DISK = false;
+    public const bool RECORD_DATA_TO_DISK = true;
     public const bool RECORD_BEST_NARS_AGENT_DATA = true;
     public const bool RECORD_DATA_TO_WEB = true;
 

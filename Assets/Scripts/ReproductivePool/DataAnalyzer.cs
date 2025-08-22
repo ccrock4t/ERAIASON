@@ -641,9 +641,9 @@ public class DataAnalyzer : MonoBehaviour
                 try
                 {
                     this.data_tool_socket_client.WriteToDisk(world_data,
-                     elite_fitness_table_data,
-                     elite_novelty_table_data,
-                     continuous_fitness_table_data);
+                     table_datapoints[0],
+                     table_datapoints[1],
+                     table_datapoints[2]);
                 }
                 catch (Exception ex)
                 {

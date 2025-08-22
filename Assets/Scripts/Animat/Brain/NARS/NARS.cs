@@ -117,15 +117,17 @@ public class NARS : Mind
         }
 
 
- 
 
 
-        this.temporal_module.UpdateAnticipations();
-        Parallel.ForEach(this.memory.concepts_bag, concept_item =>
+        if (NARSGenome.USE_AND_EVOLVE_LEARNING())
         {
-            var concept = concept_item.obj;
-            concept.belief_table.Forget();
-        });
+            this.temporal_module.UpdateAnticipations();
+            Parallel.ForEach(this.memory.concepts_bag, concept_item =>
+            {
+                var concept = concept_item.obj;
+                concept.belief_table.Forget();
+            });
+        }
 
 /*                #todo this.temporal_module.process_anticipations()
 
@@ -282,9 +284,13 @@ public class NARS : Mind
 
             :param Judgment Task to process
         */
-        if(j.is_event()){
-            // only put non-derived atomic events in temporal module for now
-            this.temporal_module.PUT_NEW(j);
+        if (NARSGenome.USE_AND_EVOLVE_LEARNING())
+        {
+            if (j.is_event())
+            {
+                // only put non-derived atomic events in temporal module for now
+                this.temporal_module.PUT_NEW(j);
+            }
         }
 
         Item<Concept> task_statement_concept_item = this.memory.peek_concept_item(j.statement);
@@ -544,13 +550,17 @@ public class NARS : Mind
                                 Concept second_subterm_concept = this.memory.peek_concept(second_subterm_statement);
                                 Judgment second_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
 
-                                if (first_subterm_belief != null
-                                    && this.inferenceEngine.is_positive(first_subterm_belief)
-                                    && second_subterm_statement.is_op())
+                                if (NARSGenome.USE_AND_EVOLVE_LEARNING())
                                 {
-                                    // since the contextual event is true,and the second term  is a motor op, form an anticipation for the postcondition
-                                    this.temporal_module.Anticipate(j.get_statement_term());
+                                    if (first_subterm_belief != null
+                                        && this.inferenceEngine.is_positive(first_subterm_belief)
+                                        && second_subterm_statement.is_op())
+                                    {
+                                        // since the contextual event is true,and the second term  is a motor op, form an anticipation for the postcondition
+                                        this.temporal_module.Anticipate(j.get_statement_term());
+                                    }
                                 }
+
                             }
                         }
 
