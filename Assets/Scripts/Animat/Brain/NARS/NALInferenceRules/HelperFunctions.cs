@@ -143,6 +143,7 @@ public class HelperFunctions
                     //average
                     occurrence_time = (j1.stamp.occurrence_time + j2.stamp.occurrence_time) / 2;
                 }
+
             }
             EvidentialValue result_truth = truth_value_function(f1, c1, f2, c2);
 

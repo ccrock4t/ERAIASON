@@ -301,8 +301,8 @@ public class EvidentialBase : IEnumerable<Sentence>
         Stores history of how the sentence was derived
     */
     Sentence sentence;
-    public List<Sentence> evidential_base;
-    public Dictionary<Sentence, bool> evidential_base_dict;
+    private HashSet<Sentence> evidential_base;
+    private Queue<Sentence> evidential_base_list;
     NARS nars;
     public EvidentialBase(NARS nars ,Sentence this_sentence)
     {
@@ -311,10 +311,10 @@ public class EvidentialBase : IEnumerable<Sentence>
         */
         this.nars = nars;
         this.sentence = this_sentence;
-        this.evidential_base = new List<Sentence>(this.nars.config.MAX_EVIDENTIAL_BASE_LENGTH);  // array of sentences
-        this.evidential_base_dict = new Dictionary<Sentence, bool>(this.nars.config.MAX_EVIDENTIAL_BASE_LENGTH);
+        this.evidential_base = new (this.nars.config.MAX_EVIDENTIAL_BASE_LENGTH);  // array of sentences
+        this.evidential_base_list = new (this.nars.config.MAX_EVIDENTIAL_BASE_LENGTH);  // array of sentences
         this.evidential_base.Add(this_sentence);
-        this.evidential_base_dict.Add(this_sentence,true);
+        this.evidential_base_list.Enqueue(this_sentence);
     }
     public IEnumerator<Sentence> GetEnumerator()
     {
@@ -331,7 +331,7 @@ public class EvidentialBase : IEnumerable<Sentence>
 
     public bool Contains(Sentence j)
     {
-        return this.evidential_base_dict.ContainsKey(j);
+        return this.evidential_base.Contains(j);
     }
 
     public void merge_sentence_evidential_base_into_this(Sentence sentence)
@@ -343,17 +343,16 @@ public class EvidentialBase : IEnumerable<Sentence>
         */
         foreach (Sentence e_sentence in sentence.stamp.evidential_base)
         {
-            if (this.evidential_base_dict.ContainsKey(e_sentence)) continue;
-            this.evidential_base.Add(e_sentence);
-            this.evidential_base_dict.Add(e_sentence, true);
-        }
+            if (!this.evidential_base.Add(e_sentence))
+                continue; // skip duplicates
 
+            this.evidential_base_list.Enqueue(e_sentence);
 
-        while (this.evidential_base.Count > this.nars.config.MAX_EVIDENTIAL_BASE_LENGTH)
-        {
-            var e_sentence = this.evidential_base[0];
-            this.evidential_base.RemoveAt(0);
-            this.evidential_base_dict.Remove(e_sentence);
+            if (this.evidential_base.Count > this.nars.config.MAX_EVIDENTIAL_BASE_LENGTH)
+            {
+                var oldest = this.evidential_base_list.Dequeue();
+                this.evidential_base.Remove(oldest);
+            }
         }
 
     }
@@ -366,8 +365,9 @@ public class EvidentialBase : IEnumerable<Sentence>
             O(M + N)
             https://stackoverflow.com/questions/3170055/test-if-lists-share-any-items-in-python
         */
-        if (this.sentence.is_event()) return false;
-        return this.evidential_base.Intersect(other_base.evidential_base).Any();
+        //if (this.sentence.is_event()) return false;
+        // return this.evidential_base.Intersect(other_base.evidential_base).Any();
+        return this.evidential_base.Overlaps(other_base.evidential_base);
     }
 
 
@@ -384,6 +384,7 @@ public class EvidentialBase : IEnumerable<Sentence>
         :param j2:
         :return: Are the sentence allowed to interact for inference
         */
+        if (j1.is_event() || j2.is_event()) return true;
         if (j1 == null || j2 == null) return false;
         if (j1.stamp.id == j2.stamp.id) return false;
         if (j2.stamp.evidential_base.Contains(j1)) return false;

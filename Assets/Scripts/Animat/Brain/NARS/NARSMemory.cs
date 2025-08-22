@@ -295,7 +295,7 @@ public class Memory
         foreach(var explanation_concept_item in concept.explanation_links) 
         {
             var explanation_concept = explanation_concept_item.obj;
-            var candidate = explanation_concept.belief_table.peek_first_interactable(j);
+            var candidate = explanation_concept.belief_table.peek_random_interactable(j);
             if (candidate == null) continue;
             var e = nars.inferenceEngine.get_expectation(candidate);
             if(candidate.evidential_value.frequency < 0.5f || e < 0.5f) continue;
@@ -304,7 +304,7 @@ public class Memory
             cdf.Add(total);
         }
 
-        if (candidates == 0) return null;
+        if (candidates.Count == 0) return null;
 
         // Fallback: if all confidences are zero, select uniformly at random
         if (total <= 0.0)

@@ -138,7 +138,7 @@ public class GlobalConfig : MonoBehaviour
     public GameObject world_automaton_game_object;
     public GameObject flat_plane_arena;
     public static WorldAutomaton world_automaton;
-    public static int3 WORLD_DIMENSIONS = new int3(128, 8, 128); // number cells in each dimension. Must be a multiple of 2
+    public static int3 WORLD_DIMENSIONS = new int3(256, 8, 256); // number cells in each dimension. Must be a multiple of 2
     public static int WORLD_AUTOMATA_UPDATE_PERIOD = 6; // runs every X FixedUpdates
     public const string TERRAIN_TAG = "Terrain";
     public static WorldType WORLD_TYPE = WorldType.FlatPlane;
