@@ -265,7 +265,7 @@ public class NARSGenome : BrainGenome
         personality_parameters.Evidential_Base_Length = UnityEngine.Random.Range(eblRange.x, eblRange.y + 1);
 
         // Time Projection Event
-        var timeProjectionEventRange = GetTimeProjectionJudgementRange();
+        var timeProjectionEventRange = GetTimeProjectionEventRange();
         personality_parameters.Time_Projection_Event = UnityEngine.Random.Range(timeProjectionEventRange.x, timeProjectionEventRange.y);
 
         // Time ProjectionGoal
@@ -357,12 +357,12 @@ public class NARSGenome : BrainGenome
         return cloned_genome;
     }
 
-    private static Vector2 GetKRange() => new(1f, 5f);
+    private static Vector2 GetKRange() => new(1f, 10f);
     private static Vector2 GetTRange() => new(0f, 1f);
-    private static Vector2 GetTimeProjectionJudgementRange() => new(0, 0.95f);
-    private static Vector2 GetTimeProjectionGoalRange() => new(0f, 0.95f);
-    private static Vector2 GetForgettingRateRange() => new(0f, 1f);
-    private static Vector2Int GetAnticipationWindowRange() => new(1, 20);
+    private static Vector2 GetTimeProjectionEventRange() => new(0.0000001f, 10f);
+    private static Vector2 GetTimeProjectionGoalRange() => new(0.0000001f, 10f);
+    private static Vector2 GetForgettingRateRange() => new(1, 250f);
+    private static Vector2Int GetAnticipationWindowRange() => new(1, 30);
     private static Vector2Int GetEventBufferCapacityRange() => new(3, 20);
     private static Vector2Int GetTableCapacityRange() => new(1, 20);
     private static Vector2Int GetEvidentialBaseLengthRange() => new(1, 50);
@@ -434,6 +434,8 @@ public class NARSGenome : BrainGenome
 
             void MutateInt(ref int field, Vector2Int range, float replaceChance)
             {
+                if (UnityEngine.Random.value < 0.6f) return; // certain chance to mutate
+
                 if (UnityEngine.Random.value < replaceChance)
                 {
                     // int Random.Range max is exclusive; add +1 to include range.y
@@ -475,7 +477,7 @@ public class NARSGenome : BrainGenome
             MutateInt(ref this.personality_parameters.Evidential_Base_Length, EvidentialBaseLengthRange, CHANCE_TO_REPLACE_PARAM);
 
             // --- Time Projection Event ---
-            var timeProjectionEventRange = GetTimeProjectionJudgementRange();
+            var timeProjectionEventRange = GetTimeProjectionEventRange();
             MutateFloat(ref this.personality_parameters.Time_Projection_Event, timeProjectionEventRange, CHANCE_TO_REPLACE_PARAM);
 
             // --- Time Projection Goal ---

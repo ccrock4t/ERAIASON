@@ -5,6 +5,7 @@
 */
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Mathematics;
 using UnityEngine;
 using static UnityEditor.Progress;
 
@@ -113,7 +114,7 @@ public class Table<T> where T : Sentence
         foreach (var kvp in priority_queue)
         {
             var item = kvp.Value;
-            item.evidential_value.confidence *= this.nars.config.FORGETTING_RATE;
+            item.evidential_value.confidence *= math.pow(2, -1/this.nars.config.FORGETTING_RATE);
     
             result.Add(item);
         }
@@ -188,7 +189,7 @@ public class Table<T> where T : Sentence
             Returns null if depq is empty
         */
         if (this.GetCount() == 0) return null;
-        int rnd = Random.Range(0, this.GetCount());
+        int rnd = UnityEngine.Random.Range(0, this.GetCount());
         return priority_queue.ElementAt(rnd).Value;
     }
 

@@ -20,6 +20,7 @@ public class NARS : Mind
        NARS Class
     */
 
+    public int NEXT_STAMP_ID = 0;
     public NARSConfig config;
 
     public NARSInferenceEngine inferenceEngine;
@@ -522,54 +523,39 @@ public class NARS : Mind
             {
                 // process j! with random context-relevant explanation E = (P =/> j).
                 int explanation_count = statement_concept.explanation_links.GetCount();
-                if (explanation_count > 0) {
-                    var random_belief = this.memory.get_best_explanation(j); // (P =/> j)
-                    if (random_belief != null)
+                var random_belief = this.memory.get_random_bag_explanation(j); // (P =/> j)
+                if (random_belief != null) {
+       
+                    var results = this.inferenceEngine.do_semantic_inference_two_premise(j, random_belief); // {E, J!} :- P!
+
+                    foreach (var result in results)
                     {
-                        if (random_belief.evidential_value.frequency < 0.5f || this.inferenceEngine.get_expectation(random_belief) < 0.5f)
+                        if (result.statement is CompoundTerm)
                         {
-                            MotorBabble();
-                            return;
-                        }
-
-
-                        var results = this.inferenceEngine.do_semantic_inference_two_premise(j, random_belief); // {E, J!} :- P!
-
-
-
-                        foreach (var result in results)
-                        {
-                            if (result.statement is CompoundTerm)
+                            bool is_conjunction = TermConnectorMethods.is_conjunction(result.statement.connector);
+                            if (is_conjunction)  // if it's a conjunction (A &/ B), 
                             {
-                                bool is_conjunction = TermConnectorMethods.is_conjunction(result.statement.connector);
-                                if (is_conjunction)  // if it's a conjunction (A &/ B), 
+
+                                Term first_subterm_statement = ((CompoundTerm)result.statement).subterms[0];
+                                Concept first_subterm_concept = this.memory.peek_concept(first_subterm_statement);
+                                Judgment first_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
+
+                                Term second_subterm_statement = ((CompoundTerm)result.statement).subterms[1];
+                                Concept second_subterm_concept = this.memory.peek_concept(second_subterm_statement);
+                                Judgment second_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
+
+                                if (first_subterm_belief != null
+                                    && this.inferenceEngine.is_positive(first_subterm_belief)
+                                    && second_subterm_statement.is_op())
                                 {
-
-                                    Term first_subterm_statement = ((CompoundTerm)result.statement).subterms[0];
-                                    Concept first_subterm_concept = this.memory.peek_concept(first_subterm_statement);
-                                    Judgment first_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
-
-                                    Term second_subterm_statement = ((CompoundTerm)result.statement).subterms[1];
-                                    Concept second_subterm_concept = this.memory.peek_concept(second_subterm_statement);
-                                    Judgment second_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
-
-                                    if (first_subterm_belief != null
-                                        && this.inferenceEngine.is_positive(first_subterm_belief)
-                                        && second_subterm_statement.is_op())
-                                    {
-                                        // since the contextual event is true,and the second term  is a motor op, form an anticipation for the postcondition
-                                        this.temporal_module.Anticipate(j.get_statement_term());
-                                    }
+                                    // since the contextual event is true,and the second term  is a motor op, form an anticipation for the postcondition
+                                    this.temporal_module.Anticipate(j.get_statement_term());
                                 }
                             }
-
-
-
-                            this.global_buffer.PUT_NEW(result);
                         }
 
+                        this.global_buffer.PUT_NEW(result);
                     }
-
                 }
                 else
                 {
@@ -589,7 +575,7 @@ public class NARS : Mind
         var motor_terms = NARSGenome.MOTOR_TERM_SET;
         int rnd = UnityEngine.Random.Range(0, motor_terms.Length);
         var motor_term = motor_terms[rnd];
-        SendInput(new Goal(this, motor_term, new EvidentialValue(1.0f, this.helperFunctions.get_unit_evidence()), occurrence_time: current_cycle_number));
+        SendInput(new Goal(this, motor_term, new EvidentialValue(1.0f, 0.99f), occurrence_time: current_cycle_number));
     }
 
     public List<Sentence> process_sentence_semantic_inference(Sentence j1, Concept? related_concept = null)

@@ -85,5 +85,5 @@ public class NARSConfig {
     public const float DEFAULT_GOAL_PRIORITY = 0.9f;
     public const float DEFAULT_QUEST_PRIORITY = 0.9f;
 
-    public float FORGETTING_RATE = 0.999f;
+    public float FORGETTING_RATE = 1;
 }

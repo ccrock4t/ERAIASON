@@ -9,6 +9,8 @@
             Assumes the given sentences do not have evidential overlap.
             Does combine evidential bases in the Resultant Sentence.
 */
+using Unity.Mathematics;
+
 public class TruthValueFunctions
 {
     NARS nars;
@@ -211,7 +213,7 @@ public class TruthValueFunctions
         */
         if (t_B == t_T) return new EvidentialValue(frequency, confidence);
         int interval = UnityEngine.Mathf.Abs(t_B - t_T);
-        float projected_confidence = confidence * UnityEngine.Mathf.Pow(decay, interval);
+        float projected_confidence = confidence * math.pow(2, -(interval / decay));
         return new EvidentialValue(frequency, projected_confidence);
     }
 

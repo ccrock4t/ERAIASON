@@ -56,15 +56,6 @@ public abstract class Sentence
             + " " + this.evidential_value.ToString();
     }
 
-    public override int GetHashCode()
-    {
-        /*
-            A Sentence is identified by its ID
-
-            : return: Sentence ID
-        */
-        return this.stamp.id;
-    }
 
     public bool is_event()
     {
@@ -264,7 +255,6 @@ public class Stamp
         when it was created, its occurrence time (when is its truth value valid),
         evidential base, etc.
     */
-    public static int NEXT_STAMP_ID;
 
     public bool is_eternal; 
     public int id;
@@ -276,14 +266,13 @@ public class Stamp
 
     public Stamp(NARS nars ,Sentence this_sentence, int occurrence_time = -1)
     {
-        this.id = Interlocked.Increment(ref NEXT_STAMP_ID);
+        this.id = nars.NEXT_STAMP_ID++;
         this.occurrence_time = occurrence_time;
         this.sentence = this_sentence;
         this.evidential_base = new EvidentialBase(nars, this_sentence);
         this.derived_by = null; // none if input task
         this.from_one_premise_inference = false; // == this sentence derived from one-premise inference?
         this.is_eternal = (occurrence_time == -1);
-
     }
 
     public Tense get_tense(int cycle)
@@ -313,6 +302,7 @@ public class EvidentialBase : IEnumerable<Sentence>
     */
     Sentence sentence;
     public List<Sentence> evidential_base;
+    public Dictionary<Sentence, bool> evidential_base_dict;
     NARS nars;
     public EvidentialBase(NARS nars ,Sentence this_sentence)
     {
@@ -321,7 +311,10 @@ public class EvidentialBase : IEnumerable<Sentence>
         */
         this.nars = nars;
         this.sentence = this_sentence;
-        this.evidential_base = new List<Sentence> { this_sentence };  // array of sentences
+        this.evidential_base = new List<Sentence>(this.nars.config.MAX_EVIDENTIAL_BASE_LENGTH);  // array of sentences
+        this.evidential_base_dict = new Dictionary<Sentence, bool>(this.nars.config.MAX_EVIDENTIAL_BASE_LENGTH);
+        this.evidential_base.Add(this_sentence);
+        this.evidential_base_dict.Add(this_sentence,true);
     }
     public IEnumerator<Sentence> GetEnumerator()
     {
@@ -338,7 +331,7 @@ public class EvidentialBase : IEnumerable<Sentence>
 
     public bool Contains(Sentence j)
     {
-        return this.evidential_base.Contains(j);
+        return this.evidential_base_dict.ContainsKey(j);
     }
 
     public void merge_sentence_evidential_base_into_this(Sentence sentence)
@@ -350,13 +343,17 @@ public class EvidentialBase : IEnumerable<Sentence>
         */
         foreach (Sentence e_sentence in sentence.stamp.evidential_base)
         {
+            if (this.evidential_base_dict.ContainsKey(e_sentence)) continue;
             this.evidential_base.Add(e_sentence);
+            this.evidential_base_dict.Add(e_sentence, true);
         }
 
 
         while (this.evidential_base.Count > this.nars.config.MAX_EVIDENTIAL_BASE_LENGTH)
         {
+            var e_sentence = this.evidential_base[0];
             this.evidential_base.RemoveAt(0);
+            this.evidential_base_dict.Remove(e_sentence);
         }
 
     }
@@ -369,7 +366,6 @@ public class EvidentialBase : IEnumerable<Sentence>
             O(M + N)
             https://stackoverflow.com/questions/3170055/test-if-lists-share-any-items-in-python
         */
-        return false;
         if (this.sentence.is_event()) return false;
         return this.evidential_base.Intersect(other_base.evidential_base).Any();
     }

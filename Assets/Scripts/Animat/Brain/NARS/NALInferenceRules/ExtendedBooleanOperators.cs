@@ -28,17 +28,41 @@ public static class ExtendedBooleanOperators
             Returns:
                 argv1*argv2*...*argvn
         */
-        return band_average(argv);
+        //return band_average(argv);
         //float res = argv[0];
         //for (int i = 1; i < argv.Length; i++)
         //{
         //    float arg = argv[i];
-        //    res *= arg;
+        //    res = math.min(res,arg);
         //}
-        //return res;
+        var res = band_geometric_average(argv);
+        return res;
     }
 
+    public static float band_geometric_average(float[] argv)
+    {
+        /*
+           //modified band average
+            Boolean AND, with an exponent inversely proportional to the number of terms being ANDed.
 
+            -----------------
+
+            Input:
+                argv: NAL Boolean Values
+
+            Returns:
+                (argv1*argv2*...*argvn)^(1/n)
+        */
+
+        float res = argv[0];
+        for (int i = 1; i < argv.Length; i++)
+        {
+            float arg = argv[i];
+            res *= arg;
+        }
+        float exp = 1 / argv.Length;
+        return math.pow(res, exp);
+    }
     public static float band_average(float[] argv)
     {
         /*

@@ -183,6 +183,12 @@ public class GlobalConfig : MonoBehaviour
 #endif
     }
 
+    [ContextMenu("Toggle Show Lines")]
+    public void ToggleShowLines()
+    { 
+        show_lines = !show_lines;
+    }
+
     private void Awake()
     {
         SetIsMobileVar();

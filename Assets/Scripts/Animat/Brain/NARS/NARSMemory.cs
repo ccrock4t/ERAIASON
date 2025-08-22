@@ -1,10 +1,13 @@
-/*
+﻿/*
     Author: Christian Hahm
     Created: May 26, 2022
     Purpose: Defines NARS internal memory
 */
 
 
+using NUnit.Framework;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Memory
@@ -218,7 +221,7 @@ public class Memory
                 }
                 else
                 {
-                    int rand_int = Random.Range(0, 2);
+                    int rand_int = UnityEngine.Random.Range(0, 2);
                     switch (rand_int)
                     {
                         case 0:
@@ -275,117 +278,49 @@ public class Memory
         return best_explanation_belief;
     }
 
-    /*    public Judgment? get_explanation_preferred_with_true_precondition(Sentence j)
-        {
-            *//*
-                Gets the best explanation belief for the given sentence's statement
-                that the sentence is able to interact with
-                :param statement_concept:
-                :return:
-            *//*
-            Concept statement_concept = this.peek_concept(j.statement); // B
-            if (statement_concept.explanation_links.GetCount() == 0) return null;
-            Judgment? best_explanation_belief = null;
-            int count = 0;
-            int MAX_ATTEMPTS = this.nars.config.NUMBER_OF_ATTEMPTS_TO_SEARCH_FOR_SEMANTICALLY_RELATED_BELIEF;
 
-            while (count < MAX_ATTEMPTS)
-            {
-                Item<Concept> item = statement_concept.explanation_links.peek();
-                Concept explanation_concept = item.obj;  // A =/> B
-                StatementTerm explanation_term = (StatementTerm)explanation_concept.term;
-                Concept subject_concept = this.peek_concept(explanation_term.get_subject_term());
-                if (subject_concept.contains_positive())
-                {
-                    // (A &/ B) =/> C && A.
-                    Judgment? belief = (Judgment?)explanation_concept.belief_table.peek();
-                    if (belief != null)
-                    {
-                        if (best_explanation_belief == null)
-                        {
-                            best_explanation_belief = belief;
-                        }
-                        else
-                        {
-                            best_explanation_belief = (Judgment)this.nars.inferenceEngine.localRules.Choice(belief, best_explanation_belief);
-                        }
-                    }
-                }
-
-                count++;
-            }
-            if (best_explanation_belief == null)
-            {
-                Item<Concept> item = statement_concept.explanation_links.peek();
-                best_explanation_belief = item.obj.belief_table.peek_random();
-            }
-
-            return best_explanation_belief;
-        }*/
-
-    /*    def get_prediction_preferred_with_true_postcondition(j)
-        {
-            *//*
-    Gets the best explanation belief for the given sentence's statement
-    that the sentence == able to interact with
-    :param statement_concept:
-    :return:
-    *//*
-            Concept statement_concept = this.peek_concept(j.statement); // B
-            if (statement_concept.prediction_links.GetCount() == 0) return;
-            best_prediction_belief = null;
-            count = 0;
-            MAX_ATTEMPTS = WorldConfig.NUMBER_OF_ATTEMPTS_TO_SEARCH_FOR_SEMANTICALLY_RELATED_BELIEF;
-            while count < MAX_ATTEMPTS:
-                item = statement_concept.prediction_links.peek();
-        prediction_concept: Concept = item.obj; // A =/> B
-
-            if prediction_concept.term.get_predicate_term().contains_positive(){
-                // (A &/ B) =/> C && A.
-                belief = prediction_concept.belief_table.peek_highest_confidence_interactable(j);
-                if belief == null:
-                        continue;
-                    else if best_prediction_belief == null:
-                        best_prediction_belief = belief;
-                break;
-                count += 1;
-
-                if best_prediction_belief == null:
-                item = statement_concept.prediction_links.peek();
-                best_prediction_belief = item.obj.belief_table.peek_random();
-
-                return best_prediction_belief;
-            }
-
-            def get_random_bag_prediction(j)
-            {
-            *//*
-    Gets the best explanation belief for the given sentence's statement
-    that the sentence == able to interact with
-    :param statement_concept:
-    :return:
-    *//*
-            statement_concept: Concept = this.peek_concept(j.statement); // B
-                if len(statement_concept.prediction_links) == 0: return null;
-
-            prediction_concept_item = statement_concept.prediction_links.peek();
-            prediction_concept = prediction_concept_item.obj;
-            prediction_belief = prediction_concept.belief_table.peek();
-
-            return prediction_belief;
-        }
-    */
     public Judgment get_random_bag_explanation(Sentence j)
     {
         Concept concept = this.peek_concept(j.statement); // B
-        if(concept.explanation_links.GetCount() == 0) return null;
+        if (concept == null || concept.explanation_links.GetCount() == 0)
+            return null;
 
-        var explanation_concept_item = concept.explanation_links.peek();
-        var explanation_concept = explanation_concept_item.obj;
-        var explanation_belief = explanation_concept.belief_table.peek_random_interactable(j);
 
-        return explanation_belief;
+        // Build CDF from confidence weights
+        float total = 0.0f;
+        int count = concept.explanation_links.GetCount();
+        var cdf = new List<double>();
+        var candidates = new List<Judgment>();
+
+        foreach(var explanation_concept_item in concept.explanation_links) 
+        {
+            var explanation_concept = explanation_concept_item.obj;
+            var candidate = explanation_concept.belief_table.peek_first_interactable(j);
+            if (candidate == null) continue;
+            var e = nars.inferenceEngine.get_expectation(candidate);
+            if(candidate.evidential_value.frequency < 0.5f || e < 0.5f) continue;
+            candidates.Add(candidate);
+            total += e;
+            cdf.Add(total);
+        }
+
+        if (candidates == 0) return null;
+
+        // Fallback: if all confidences are zero, select uniformly at random
+        if (total <= 0.0)
+        {
+            int idx = UnityEngine.Random.Range(0, count);
+            return candidates[idx];
+        }
+
+        // Sample: uniform in [0, total), then binary search the CDF
+        float r = UnityEngine.Random.value * total;
+        int k = Array.BinarySearch(cdf.ToArray(), r);
+        if (k < 0) k = ~k; // first index where cdf[idx] >= r
+
+        return candidates[k];
     }
+
 
     /*
             def get_random_explanation_preferred_with_true_precondition(j)

@@ -97,15 +97,6 @@ public class LocalRules
              Returns:
                j1 or j2, depending on which is better according to the choice rule
         */
-        float decay;
-        if (j1 is Goal)
-        {
-            decay = this.nars.config.PROJECTION_DECAY_DESIRE;
-        }
-        else
-        {
-            decay = this.nars.config.PROJECTION_DECAY_EVENT;
-        }
 
         // Truth Value
         EvidentialValue j1_value = this.nars.inferenceEngine.get_sentence_value_time_decayed(j1);

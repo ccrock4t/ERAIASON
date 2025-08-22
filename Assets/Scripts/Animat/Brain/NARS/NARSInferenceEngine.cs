@@ -821,13 +821,28 @@ public class NARSInferenceEngine
         */
         if (sentence.is_event())
         {
-            EvidentialValue present_value = this.nars.inferenceEngine.truthValueFunctions.F_Projection(sentence.evidential_value.frequency,
-                                                           sentence.evidential_value.confidence,
-                                                           (int)sentence.stamp.occurrence_time,
-                                                           this.nars.current_cycle_number,
-                                                           this.nars.config.PROJECTION_DECAY_EVENT);
+            float decay = 0;
+            if (sentence is Judgment)
+            {
+                decay = this.nars.config.PROJECTION_DECAY_EVENT;
+            }
+            else if(sentence is Goal)
+            {
+                decay = this.nars.config.PROJECTION_DECAY_DESIRE;
+            }
+            else
+            {
+                UnityEngine.Debug.LogError("error");
+                return new EvidentialValue();
+            }
 
-            return present_value;
+
+            return this.nars.inferenceEngine.truthValueFunctions.F_Projection(sentence.evidential_value.frequency,
+                                                            sentence.evidential_value.confidence,
+                                                            (int)sentence.stamp.occurrence_time,
+                                                            this.nars.current_cycle_number,
+                                                            decay
+                                                            );
         }
         else
         {

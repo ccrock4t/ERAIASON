@@ -11,8 +11,8 @@ public class WheeledRobot : AnimatBody
 
     public const int TOUCH_SENSOR_NEURON_ID = 4;
 
-    const float movement_speed = 0.5f;
-    const float rotate_speed = 5f;
+    const float movement_speed = 0.25f;
+    const float rotate_speed = 2.5f;
 
     const float JUMP_THRESHOLD = 0.5f;
 
