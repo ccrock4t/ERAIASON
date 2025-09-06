@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -157,31 +159,10 @@ public class GlobalConfig : MonoBehaviour
 
     public const bool RECORD_DATA_TO_DISK = true;
     public const bool RECORD_BEST_NARS_AGENT_DATA = true;
-    public const bool RECORD_DATA_TO_WEB = true;
+    public const bool RECORD_DATA_TO_WEB = false;
 
     // ============
 
-    static bool? isMobile = null;
-    public static bool DeviceIsMobile()
-    {
-        if(isMobile == null) SetIsMobileVar();
-        return (bool)isMobile;
-    }
-
-    public static bool DeviceIsDesktop()
-    {
-        return !DeviceIsMobile();
-    }
-
-
-    public static void SetIsMobileVar()
-    {
-#if UNITY_ANDROID || UNITY_IOS
-            isMobile = true;
-#else
-            isMobile = false;
-#endif
-    }
 
     [ContextMenu("Toggle Show Lines")]
     public void ToggleShowLines()
@@ -191,7 +172,13 @@ public class GlobalConfig : MonoBehaviour
 
     private void Awake()
     {
-        SetIsMobileVar();
+        if(!TryLoadEnumFromFile<NARSGenome.NARS_Evolution_Type>("narstest.txt", out var type))
+        {
+            Application.Quit();
+        }
+
+        NARSGenome.NARS_EVOLVE_TYPE = type;
+
         // setup automaton
         WorldAutomaton world_automaton;
 
@@ -214,5 +201,54 @@ public class GlobalConfig : MonoBehaviour
         GlobalConfig.world_automaton.Start();
 
     }
+
+    /// <summary>
+    /// Reads a single integer from <paramref name="path"/> and converts it to TEnum.
+    /// Returns true on success; otherwise sets <paramref name="value"/> to <paramref name="defaultValue"/>.
+    /// </summary>
+    public static bool TryLoadEnumFromFile<TEnum>(string path, out TEnum value, TEnum defaultValue = default)
+        where TEnum : struct, Enum
+    {
+        value = defaultValue;
+
+        try
+        {
+            if (!File.Exists(path))
+            {
+                Debug.LogWarning($"[EnumFile] File not found: {path}");
+                return false;
+            }
+
+            // Read first non-empty token
+            var text = File.ReadAllText(path).Trim();
+            if (string.IsNullOrEmpty(text))
+            {
+                Debug.LogWarning($"[EnumFile] Empty file: {path}");
+                return false;
+            }
+
+            if (!int.TryParse(text, out int raw))
+            {
+                Debug.LogWarning($"[EnumFile] Not an int: '{text}' in {path}");
+                return false;
+            }
+
+            // Validate against defined enum values
+            if (!Enum.IsDefined(typeof(TEnum), raw))
+            {
+                Debug.LogWarning($"[EnumFile] {raw} is not a valid {typeof(TEnum).Name} value.");
+                return false;
+            }
+
+            value = (TEnum)Enum.ToObject(typeof(TEnum), raw);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[EnumFile] Failed to load enum from {path}: {ex.Message}");
+            return false;
+        }
+    }
+
 }
 

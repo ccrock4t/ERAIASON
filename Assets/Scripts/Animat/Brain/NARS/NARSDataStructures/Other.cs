@@ -6,8 +6,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
-using UnityEngine;
-using static UnityEditor.Progress;
+
 
 public class Table<T> where T : Sentence
 {

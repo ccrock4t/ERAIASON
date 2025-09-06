@@ -76,6 +76,7 @@ public class NARS : Mind
             SendInput(belief);
         }
 
+
         this.config.k = nars_genome.personality_parameters.k;
         this.config.T = nars_genome.personality_parameters.T;
         this.config.ANTICIPATION_WINDOW = nars_genome.personality_parameters.Anticipation_Window;
@@ -85,6 +86,7 @@ public class NARS : Mind
         this.config.MAX_EVIDENTIAL_BASE_LENGTH = nars_genome.personality_parameters.Evidential_Base_Length;
         this.config.PROJECTION_DECAY_EVENT = nars_genome.personality_parameters.Time_Projection_Event;
         this.config.PROJECTION_DECAY_DESIRE = nars_genome.personality_parameters.Time_Projection_Goal;
+        
     }
 
 
@@ -119,7 +121,7 @@ public class NARS : Mind
 
 
 
-        if (NARSGenome.USE_AND_EVOLVE_LEARNING())
+        if (NARSGenome.USE_LEARNING())
         {
             this.temporal_module.UpdateAnticipations();
             Parallel.ForEach(this.memory.concepts_bag, concept_item =>
@@ -284,7 +286,7 @@ public class NARS : Mind
 
             :param Judgment Task to process
         */
-        if (NARSGenome.USE_AND_EVOLVE_LEARNING())
+        if (NARSGenome.USE_LEARNING())
         {
             if (j.is_event())
             {
@@ -550,7 +552,7 @@ public class NARS : Mind
                                 Concept second_subterm_concept = this.memory.peek_concept(second_subterm_statement);
                                 Judgment second_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
 
-                                if (NARSGenome.USE_AND_EVOLVE_LEARNING())
+                                if (NARSGenome.USE_LEARNING())
                                 {
                                     if (first_subterm_belief != null
                                         && this.inferenceEngine.is_positive(first_subterm_belief)

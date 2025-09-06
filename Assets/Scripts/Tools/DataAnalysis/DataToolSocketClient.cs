@@ -1,19 +1,11 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System;
-using System.Collections.Generic;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Sockets;
-using System.Reflection;
-using System.Reflection;
 using System.Text;
-using UnityEngine;
-using UnityEngine; // for Debug.LogWarning (optional)
-using UnityEngine.WSA;
 using Debug = UnityEngine.Debug;
 
 public class DataToolSocketClient
@@ -265,6 +257,17 @@ public class DataToolSocketClient
 
             writers[data_name].WriteLine(line);
         }
+
+        if (!writers.ContainsKey("GlobalBirthrate"))
+        {
+            string filename = data_folder;
+            filename += "GlobalBirthrate";
+            filename += ".csv";
+            var writer = new StreamWriter(filename);
+            writers.Add("GlobalBirthrate", writer);
+        }
+
+        writers["GlobalBirthrate"].WriteLine(world_data.born_to_created_ratio.ToString());
 
 
     }

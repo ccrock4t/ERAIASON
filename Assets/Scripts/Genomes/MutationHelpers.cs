@@ -25,7 +25,7 @@ public static class MutationHelpers
 
         result *= stdDev; // scale
 
-        return math.clamp(result, min, max);
+        return result;
     }
 
     public static double GetPerturbationFromRange(Vector2 range, double fraction = 0.1f)

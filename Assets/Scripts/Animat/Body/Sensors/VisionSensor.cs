@@ -595,7 +595,7 @@ public class VisionSensor
                 }
             }
 
-            var judgment = new Judgment(nar, food_statement, new EvidentialValue(1.0f,nar.helperFunctions.get_unit_evidence()), occurrence_time: nar.current_cycle_number);
+            var judgment = new Judgment(nar, food_statement, new EvidentialValue(1.0f,0.99f), occurrence_time: nar.current_cycle_number);
             nar.SendInput(judgment);
 
             // animat
@@ -623,12 +623,13 @@ public class VisionSensor
                 }
             }
 
-            judgment = new Judgment(nar, animat_statement, new EvidentialValue(1.0f, nar.helperFunctions.get_unit_evidence()), occurrence_time: nar.current_cycle_number);
+            judgment = new Judgment(nar, animat_statement, new EvidentialValue(1.0f, 0.99f), occurrence_time: nar.current_cycle_number);
             nar.SendInput(judgment);
 
             if (food_was_eaten > 0)
             {
-                var food_judgment = new Judgment(nar, NARSGenome.energy_full, new EvidentialValue(1.0f, nar.helperFunctions.get_unit_evidence()), occurrence_time: nar.current_cycle_number);
+                float f = body.energy / AnimatBody.MAX_ENERGY;
+                var food_judgment = new Judgment(nar, NARSGenome.energy_full, new EvidentialValue(f, 0.99f), occurrence_time: nar.current_cycle_number);
                 nar.SendInput(food_judgment);
             }
 

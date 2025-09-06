@@ -1,4 +1,4 @@
-using Mono.Cecil;
+
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
@@ -12,21 +12,52 @@ public class NARSGenome : BrainGenome
 
     public enum NARS_Evolution_Type
     {
-        NARS_EVOLVE_CONTINGENCIES_ONLY,
-        NARS_EVOLVE_LEARNING_ONLY,
-        NARS_EVOLVE_LEARNING_AND_CONTINGENCIES
+        NARS_NO_CONTINGENCY_FIXED_PERSONALITY_LEARNING,
+        NARS_NO_CONTINGENCY_RANDOM_PERSONALITY_LEARNING,
+
+        NARS_EVOLVE_CONTINGENCIES_FIXED_PERSONALITY_NO_LEARNING,
+        NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_NO_LEARNING,
+
+        NARS_EVOLVE_CONTINGENCIES_FIXED_PERSONALITY_LEARNING,
+        NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_LEARNING,
+
+        NARS_EVOLVE_PERSONALITY_LEARNING,
+        NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_LEARNING
     }
 
-    public const NARS_Evolution_Type NARS_EVOLVE_TYPE = NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_ONLY;
+    public static NARS_Evolution_Type NARS_EVOLVE_TYPE = NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_NO_LEARNING;
 
-    public static bool USE_AND_EVOLVE_LEARNING()
+
+    public static bool RANDOM_PERSONALITY()
     {
-        return NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_LEARNING_ONLY || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_LEARNING_AND_CONTINGENCIES;
+        return NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_NO_CONTINGENCY_RANDOM_PERSONALITY_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_NO_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_LEARNING;
+    }
+
+    public static bool USE_LEARNING()
+    {
+        return NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_NO_CONTINGENCY_FIXED_PERSONALITY_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_NO_CONTINGENCY_RANDOM_PERSONALITY_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_FIXED_PERSONALITY_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_LEARNING;
+    }
+
+    public static bool EVOLVE_PERSONALITY()
+    {
+        return NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_LEARNING 
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_LEARNING;
     }
 
     public static bool USE_AND_EVOLVE_CONTINGENCIES()
     {
-        return NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_ONLY || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_LEARNING_AND_CONTINGENCIES;
+        return NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_FIXED_PERSONALITY_NO_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_NO_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_FIXED_PERSONALITY_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_LEARNING;
     }
 
     public struct EvolvableSentence
@@ -153,7 +184,7 @@ public class NARSGenome : BrainGenome
         {
             move_op = (StatementTerm)Term.from_string("((*,{SELF}) --> move)");
             rotate_right_op = (StatementTerm)Term.from_string("((*,{SELF}) --> turnRight)");
-          //  rotate_left_op = (StatementTerm)Term.from_string("((*,{SELF}) --> turnLeft)");
+            //  rotate_left_op = (StatementTerm)Term.from_string("((*,{SELF}) --> turnLeft)");
             eat_op = (StatementTerm)Term.from_string("((*,{SELF}) --> eat)");
             fight_op = (StatementTerm)Term.from_string("((*,{SELF}) --> fight)");
             mate_op = (StatementTerm)Term.from_string("((*,{SELF}) --> mate)");
@@ -173,7 +204,7 @@ public class NARSGenome : BrainGenome
         }
 
 
-        if(SENSORY_TERM_SET == null)
+        if (SENSORY_TERM_SET == null)
         {
             SENSORY_TERM_SET = new StatementTerm[]
             {
@@ -235,19 +266,62 @@ public class NARSGenome : BrainGenome
             goals = new(goals_to_clone);
         }
 
-        personality_parameters = new();
+        this.personality_parameters = new();
         if (personality_to_clone != null)
         {
-            personality_parameters = (PersonalityParameters)personality_to_clone;
-           
+            this.personality_parameters = (PersonalityParameters)personality_to_clone;
+
         }
         else
         {
-            RandomizePersonalityParameters(ref personality_parameters);
+            if (EVOLVE_PERSONALITY())
+            {
+                RandomizePersonalityParameters(ref this.personality_parameters);
+            }
+            else
+            {
+                this.personality_parameters = DefaultParameters();
+            }
         }
 
+        if (NARSGenome.RANDOM_PERSONALITY())
+        {
+            RandomizePersonalityParameters(ref this.personality_parameters);
+        }
+    }
+
+    public static PersonalityParameters DefaultParameters()
+    {
+        PersonalityParameters personality_parameters = new();
+        // k
+        personality_parameters.k = 1;
+
+        // T
+        personality_parameters.T = 0.51f;
+
+        // Anticipation window
+        personality_parameters.Anticipation_Window = 5;
+
+        // Forgetting rate
+        personality_parameters.Forgetting_Rate = 10;
+
+        // Event buffer capacity
+        personality_parameters.Event_Buffer_Capacity = 10;
+
+        // Table capacity
+        personality_parameters.Table_Capacity = 5;
+
+        // Evidential base length
+        personality_parameters.Evidential_Base_Length = 20;
+
+        // Time Projection Event
+        personality_parameters.Time_Projection_Event = 10;
+
+        // Time ProjectionGoal
+        personality_parameters.Time_Projection_Goal = 1;
 
 
+        return personality_parameters;
     }
 
     public static void RandomizePersonalityParameters(ref PersonalityParameters personality_parameters)
@@ -395,12 +469,14 @@ public class NARSGenome : BrainGenome
     static Vector2 truth_range = new(0f, 1f);
     public override void Mutate()
     {
-        float rnd = UnityEngine.Random.Range(0f, 1f);
+
+        float rnd = 0;
 
 
 
         if (USE_AND_EVOLVE_CONTINGENCIES())
         {
+            rnd = UnityEngine.Random.value;
             if (rnd < CHANCE_TO_MUTATE_BELIEF_SET)
             {
                 int rnd2 = UnityEngine.Random.Range(0, 3);
@@ -421,8 +497,7 @@ public class NARSGenome : BrainGenome
                 }
             }
 
-            rnd = UnityEngine.Random.Range(0f, 1f);
-
+            rnd = UnityEngine.Random.value;
             if (rnd < CHANCE_TO_MUTATE_TRUTH_VALUES)
             {
                 const float CHANCE_TO_REPLACE_TRUTH_VALUE = 0.05f;
@@ -436,15 +511,17 @@ public class NARSGenome : BrainGenome
                     this.beliefs[i] = sentence;
                 }
             }
-            rnd = UnityEngine.Random.Range(0f, 1f);
+           
         }
 
-        if (rnd < CHANCE_TO_MUTATE_PERSONALITY_PARAMETERS)
+        rnd = UnityEngine.Random.value;
+
+        if (EVOLVE_PERSONALITY() && rnd < CHANCE_TO_MUTATE_PERSONALITY_PARAMETERS)
         {
             // tweakable: probability to *replace* a field instead of perturbing it
             const float CHANCE_TO_REPLACE_PARAM = 0.05f;
 
-            const float CHANCE_TO_MUTATE = 0.3f;
+            const float CHANCE_TO_MUTATE = 0.5f;
 
             // --- k ---
             var kRange = GetKRange();

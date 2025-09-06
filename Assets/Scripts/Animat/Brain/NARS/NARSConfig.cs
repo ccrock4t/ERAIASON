@@ -22,7 +22,7 @@ public class NARSConfig {
 
     public int TAU_WORKING_CYCLE_DURATION = 25;  // time in milliseconds per working cycle
 
-    public float POSITIVE_THRESHOLD = 0.51f;
+    public float POSITIVE_THRESHOLD = 0.6f;
     public float NEGATIVE_THRESHOLD = 0.5f;
 
     public int MEMORY_CONCEPT_CAPACITY = 1000;  // how many concepts can this NARS have?

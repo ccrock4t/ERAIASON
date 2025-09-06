@@ -150,8 +150,16 @@ public class DataAnalyzer : MonoBehaviour
         return standardizedBirthRate;
     }
 
+    int data_written_count = 0;
+
     private void SendDataToGUIAndWriteToFile()
     {
+        if(data_written_count == 482)
+        {
+            Application.Quit();
+        }
+        data_written_count++;
+
         Debug.Log("DATATOOL: Preparing data");
         if (GlobalConfig.RECORD_DATA_TO_DISK && data_file == null)
         {
