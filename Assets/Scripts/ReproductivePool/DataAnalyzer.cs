@@ -154,7 +154,7 @@ public class DataAnalyzer : MonoBehaviour
 
     private void SendDataToGUIAndWriteToFile()
     {
-        if(data_written_count == 482)
+        if(data_written_count == 241)
         {
             Application.Quit();
         }

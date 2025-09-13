@@ -25,7 +25,7 @@ public class NARSConfig {
     public float POSITIVE_THRESHOLD = 0.6f;
     public float NEGATIVE_THRESHOLD = 0.5f;
 
-    public int MEMORY_CONCEPT_CAPACITY = 1000;  // how many concepts can this NARS have?
+    public int MEMORY_CONCEPT_CAPACITY = 100000;  // how many concepts can this NARS have?
     public int EVENT_BUFFER_CAPACITY = 10;
 
     public int ANTICIPATION_WINDOW = 5; //how many working cycles to expect an anticipation

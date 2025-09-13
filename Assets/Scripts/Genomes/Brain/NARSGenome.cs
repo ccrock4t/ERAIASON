@@ -673,36 +673,44 @@ public class NARSGenome : BrainGenome
 
         NARSGenome offspring1 = new(parent1.body_genome);
         NARSGenome offspring2 = new(parent2.body_genome);
-        //for (int i = 0; i < longer_array; i++)
-        //{
-        //    int rnd = UnityEngine.Random.Range(0, 2);
 
-        //    if (rnd == 0)
-        //    {
-        //        if (i < parent1.beliefs.Count) offspring1.AddNewBelief(parent1.beliefs[i]);
-        //        if (i < parent2.beliefs.Count) offspring2.AddNewBelief(parent2.beliefs[i]);
-        //    }
-        //    else
-        //    {
-        //        if (i < parent2.beliefs.Count) offspring1.AddNewBelief(parent2.beliefs[i]);
-        //        if (i < parent1.beliefs.Count) offspring2.AddNewBelief(parent1.beliefs[i]);
-        //    }
-        //}
-
-        for (int i = 0; i < PersonalityParameters.GetParameterCount(); i++)
+        if (USE_AND_EVOLVE_CONTINGENCIES())
         {
-            int rnd = UnityEngine.Random.Range(0, 2);
-            if (rnd == 0)
+            for (int i = 0; i < longer_array; i++)
             {
-                offspring1.personality_parameters.Set(i, parent1.personality_parameters.Get(i));
-                offspring2.personality_parameters.Set(i, parent2.personality_parameters.Get(i));
-            }
-            else
-            {
-                offspring1.personality_parameters.Set(i, parent2.personality_parameters.Get(i));
-                offspring2.personality_parameters.Set(i, parent1.personality_parameters.Get(i));
+                int rnd = UnityEngine.Random.Range(0, 2);
+
+                if (rnd == 0)
+                {
+                    if (i < parent1.beliefs.Count) offspring1.AddNewBelief(parent1.beliefs[i]);
+                    if (i < parent2.beliefs.Count) offspring2.AddNewBelief(parent2.beliefs[i]);
+                }
+                else
+                {
+                    if (i < parent2.beliefs.Count) offspring1.AddNewBelief(parent2.beliefs[i]);
+                    if (i < parent1.beliefs.Count) offspring2.AddNewBelief(parent1.beliefs[i]);
+                }
             }
         }
+
+        if (EVOLVE_PERSONALITY())
+        {
+            for (int i = 0; i < PersonalityParameters.GetParameterCount(); i++)
+            {
+                int rnd = UnityEngine.Random.Range(0, 2);
+                if (rnd == 0)
+                {
+                    offspring1.personality_parameters.Set(i, parent1.personality_parameters.Get(i));
+                    offspring2.personality_parameters.Set(i, parent2.personality_parameters.Get(i));
+                }
+                else
+                {
+                    offspring1.personality_parameters.Set(i, parent2.personality_parameters.Get(i));
+                    offspring2.personality_parameters.Set(i, parent1.personality_parameters.Get(i));
+                }
+            }
+        }
+
 
 
         return (offspring1, offspring2);
