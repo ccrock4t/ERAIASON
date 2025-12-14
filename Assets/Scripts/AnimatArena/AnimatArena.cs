@@ -752,7 +752,22 @@ public class AnimatArena : MonoBehaviour
         {
             if (GlobalConfig.BRAIN_PROCESSING_METHOD == BrainProcessingMethod.NARSCPU)
             {
-                brain_genome = new NARSGenome((WheeledRobotBodyGenome)body_genome);
+                if(GlobalConfig.BODY_METHOD == BodyMethod.WheeledRobot)
+                {
+                    brain_genome = new NARSGenome((WheeledRobotBodyGenome)body_genome);
+                }else if (GlobalConfig.BODY_METHOD == BodyMethod.SoftVoxelRobot)
+                {
+                    brain_genome = new NARSGenome((SoftVoxelRobotBodyGenome)body_genome);
+                }
+                else if (GlobalConfig.BODY_METHOD == BodyMethod.ArticulatedRobot)
+                {
+                    Debug.LogError("ERROR: body type not supported");
+                }
+                else
+                {
+                    Debug.LogError("ERROR: invalid body type");
+                }
+
             }
             else
             {

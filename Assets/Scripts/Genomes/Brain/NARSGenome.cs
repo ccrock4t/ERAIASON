@@ -1,5 +1,6 @@
 
 using System.Collections.Generic;
+using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
 using UnityEngine;
 using static MutationHelpers;
@@ -168,71 +169,33 @@ public class NARSGenome : BrainGenome
 
     public const int num_of_personality_parameters = 2;
 
-    WheeledRobotBodyGenome body_genome;
+    BodyGenome body_genome;
 
     const int MAX_INITIAL_BELIEFS = 10;
 
     Judgment move_instinct;
 
-    public NARSGenome(WheeledRobotBodyGenome body_genome,
+    public NARSGenome(BodyGenome body_genome,
         List<EvolvableSentence> beliefs_to_clone = null,
         List<EvolvableSentence> goals_to_clone = null,
         PersonalityParameters? personality_to_clone = null
         )
     {
-        if (!sensorymotor_statements_initialized)
+        if (body_genome is WheeledRobotBodyGenome)
         {
-            move_op = (StatementTerm)Term.from_string("((*,{SELF}) --> move)");
-            rotate_right_op = (StatementTerm)Term.from_string("((*,{SELF}) --> turnRight)");
-            //  rotate_left_op = (StatementTerm)Term.from_string("((*,{SELF}) --> turnLeft)");
-            eat_op = (StatementTerm)Term.from_string("((*,{SELF}) --> eat)");
-            fight_op = (StatementTerm)Term.from_string("((*,{SELF}) --> fight)");
-            mate_op = (StatementTerm)Term.from_string("((*,{SELF}) --> mate)");
-            asexual_op = (StatementTerm)Term.from_string("((*,{SELF}) --> asexual)");
-
-            food_far = (StatementTerm)Term.from_string("({food} --> [far])");
-            food_medium = (StatementTerm)Term.from_string("({food} --> [medium])");
-            food_near = (StatementTerm)Term.from_string("({food} --> [near])");
-            food_unseen = (StatementTerm)Term.from_string("({food} --> [unseen])");
-            animat_far = (StatementTerm)Term.from_string("({animat} --> [far])");
-            animat_medium = (StatementTerm)Term.from_string("({animat} --> [medium])");
-            animat_near = (StatementTerm)Term.from_string("({animat} --> [near])");
-            animat_unseen = (StatementTerm)Term.from_string("({animat} --> [unseen])");
-            energy_full = (StatementTerm)Term.from_string("({ENERGY} --> [FULL])");
-            self_mated = (StatementTerm)Term.from_string("({SELF} --> [mated])");
-            sensorymotor_statements_initialized = true;
+            SetupWheeledRobotBodyGenome();
+        }
+        else if (body_genome is SoftVoxelRobotBodyGenome)
+        {
+            SetupSoftVoxelRobotBodyGenome((SoftVoxelRobotBodyGenome)body_genome);
+        }
+        else
+        {
+            Debug.LogError("not supported");
         }
 
 
-        if (SENSORY_TERM_SET == null)
-        {
-            SENSORY_TERM_SET = new StatementTerm[]
-            {
-                food_far,
-                food_medium,
-                food_near,
-                food_unseen,
-                animat_far,
-                animat_medium,
-                animat_near,
-                animat_unseen,
-                energy_full,
-                self_mated,
-            };
-
-            MOTOR_TERM_SET = new StatementTerm[]
-            {
-                move_op,
-                rotate_right_op,
-             //   rotate_left_op,
-                eat_op,
-                mate_op,
-                asexual_op,
-                fight_op
-            };
-        }
-
-        this.body_genome = body_genome;
+            this.body_genome = body_genome;
 
         beliefs = new();
         if (USE_AND_EVOLVE_CONTINGENCIES())
@@ -289,6 +252,110 @@ public class NARSGenome : BrainGenome
             RandomizePersonalityParameters(ref this.personality_parameters);
         }
     }
+
+   
+    public void SetupSoftVoxelRobotBodyGenome(SoftVoxelRobotBodyGenome body_genome)
+    {
+        if (!sensorymotor_statements_initialized)
+        {
+            List<StatementTerm> sensoryStatements = new();
+            List<StatementTerm> motorStatements = new();
+            for(int i=0; i < body_genome.voxel_array.Length; i++)
+            {
+                var voxel = body_genome.voxel_array[i];
+                if (voxel == SoftVoxelRobot.RobotVoxel.Empty) continue;
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Touch)"));
+                //for(int pitch=-45; pitch <= 45; pitch += 15)
+                //{
+                //    string deg = math.abs(pitch).ToString();
+                //    if (pitch < 0) deg = "Negative" + deg;
+                //    else deg = "Positive" + deg;
+
+                //    sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Pitch " + deg + ")"));
+                //}
+                //for (int roll = -45; roll <= 45; roll += 15)
+                //{
+                //    string deg = math.abs(roll).ToString();
+                //    if (roll < 0) deg = "Negative" + deg;
+                //    else deg = "Positive" + deg;
+
+                //    sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Roll " + deg + ")"));
+                //}
+
+
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACT)"));
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)"));
+            }
+            energy_full = (StatementTerm)Term.from_string("({ENERGY} --> [FULL])");
+            sensoryStatements.Add(energy_full);
+
+            SENSORY_TERM_SET = sensoryStatements.ToArray();
+
+            MOTOR_TERM_SET = motorStatements.ToArray();
+
+            sensorymotor_statements_initialized = true;
+        }
+
+
+    }
+
+    public void SetupWheeledRobotBodyGenome()
+    {
+        if (!sensorymotor_statements_initialized)
+        {
+            move_op = (StatementTerm)Term.from_string("((*,{SELF}) --> move)");
+            rotate_right_op = (StatementTerm)Term.from_string("((*,{SELF}) --> turnRight)");
+            //  rotate_left_op = (StatementTerm)Term.from_string("((*,{SELF}) --> turnLeft)");
+            eat_op = (StatementTerm)Term.from_string("((*,{SELF}) --> eat)");
+            fight_op = (StatementTerm)Term.from_string("((*,{SELF}) --> fight)");
+            mate_op = (StatementTerm)Term.from_string("((*,{SELF}) --> mate)");
+            asexual_op = (StatementTerm)Term.from_string("((*,{SELF}) --> asexual)");
+
+            food_far = (StatementTerm)Term.from_string("({food} --> [far])");
+            food_medium = (StatementTerm)Term.from_string("({food} --> [medium])");
+            food_near = (StatementTerm)Term.from_string("({food} --> [near])");
+            food_unseen = (StatementTerm)Term.from_string("({food} --> [unseen])");
+            animat_far = (StatementTerm)Term.from_string("({animat} --> [far])");
+            animat_medium = (StatementTerm)Term.from_string("({animat} --> [medium])");
+            animat_near = (StatementTerm)Term.from_string("({animat} --> [near])");
+            animat_unseen = (StatementTerm)Term.from_string("({animat} --> [unseen])");
+            energy_full = (StatementTerm)Term.from_string("({ENERGY} --> [FULL])");
+            self_mated = (StatementTerm)Term.from_string("({SELF} --> [mated])");
+            sensorymotor_statements_initialized = true;
+        }
+
+
+        if (SENSORY_TERM_SET == null)
+        {
+            SENSORY_TERM_SET = new StatementTerm[]
+            {
+                food_far,
+                food_medium,
+                food_near,
+                food_unseen,
+                animat_far,
+                animat_medium,
+                animat_near,
+                animat_unseen,
+                energy_full,
+                self_mated,
+            };
+
+            MOTOR_TERM_SET = new StatementTerm[]
+            {
+                move_op,
+                rotate_right_op,
+             //   rotate_left_op,
+                eat_op,
+                mate_op,
+                asexual_op,
+                fight_op
+            };
+        }
+    }
+  
+
+
 
     public static PersonalityParameters DefaultParameters()
     {

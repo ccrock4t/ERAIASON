@@ -66,7 +66,7 @@ public class SoftVoxelRobotBodyGenome : BodyGenome
         }
     }
     
-
+    // for NEAT
     public Dictionary<SoftVoxelSensorKey, int> svrSensorKeyToNodeID = new();
     public Dictionary<SoftVoxelMotorKey, int> svrMotorKeyToNodeID = new();
 

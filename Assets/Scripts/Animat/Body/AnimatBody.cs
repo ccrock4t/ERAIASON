@@ -132,7 +132,15 @@ public abstract class AnimatBody : MonoBehaviour
         }
         else if (animat.mind is NARS nar)
         {
-            asexual_activation = nar.GetGoalActivation(NARSGenome.asexual_op);
+            if(animat.body is WheeledRobot)
+            {
+                asexual_activation = nar.GetGoalActivation(NARSGenome.asexual_op);
+            }
+            else
+            {
+                asexual_activation = 0;
+            }
+            
         }else if(GlobalConfig.BRAIN_PROCESSING_METHOD == GlobalConfig.BrainProcessingMethod.Random)
         {
             asexual_activation = UnityEngine.Random.value;
@@ -185,10 +193,20 @@ public abstract class AnimatBody : MonoBehaviour
             fight_color = fight_motor_neuron.activation >= 0 ? fight_motor_neuron.activation : 0;
         }else if(a.mind is NARS nar)
         {
+            if(a.mind is WheeledRobot)
+            {
+                eat_color = nar.GetStoredActivation(NARSGenome.eat_op);
+                mate_color = nar.GetStoredActivation(NARSGenome.mate_op);
+                fight_color = nar.GetStoredActivation(NARSGenome.fight_op);
+            }
+            else
+            {
+                eat_color = 0.5;
+                mate_color = 0.5;
+                fight_color = 0.5;
 
-            eat_color = nar.GetStoredActivation(NARSGenome.eat_op); 
-            mate_color = nar.GetStoredActivation(NARSGenome.mate_op);
-            fight_color = nar.GetStoredActivation(NARSGenome.fight_op);
+            }
+            
         }
         else
         {

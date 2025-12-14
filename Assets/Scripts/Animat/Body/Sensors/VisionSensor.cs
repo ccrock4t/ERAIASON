@@ -36,6 +36,11 @@ public class VisionSensor
     List<RayPreviewCast> ray_preview_casts = new();
     public void DoRaycastVisionAndMotorHandling(Animat animat)
     {
+        if(animat.mind is NARS && !(animat.body is WheeledRobot))
+        {
+            return;
+        }
+
         float seconds_to_draw_debug_ray = Time.fixedDeltaTime * GlobalConfig.ANIMAT_BRAIN_UPDATE_PERIOD;
 
         AnimatBody body = animat.body;

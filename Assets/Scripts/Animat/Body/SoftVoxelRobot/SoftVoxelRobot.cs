@@ -172,18 +172,8 @@ public class SoftVoxelRobot : AnimatBody
         }
         else if (animat.mind is NARS nar)
         {
+            Debug.LogError("todo");
         }
-
-        /*        if (this.energy_remaining > ENERGY_IN_A_FOOD)
-                {
-                    SoftVoxelRobotBodyGenome cloned_genome = ((SoftVoxelRobotBodyGenome)this.genome).Clone();
-                    cloned_genome.Mutate();
-                    Animat offspring = AnimatArena.GetInstance().SpawnGenomeInRandomSpot(cloned_genome, cloned_genome.generation + 1);
-                    this.energy_remaining -= ENERGY_IN_A_FOOD;
-                    offspring.override_color = Color.black;
-                    this.times_reproduced++;
-                    Debug.Log("Animat asexually reproduced itself.");
-                }*/
 
     }
 
@@ -301,6 +291,7 @@ public class SoftVoxelRobot : AnimatBody
         }
         else if (animat.mind is NARS nar)
         {
+            Debug.LogError("todo");
         }
     }
 

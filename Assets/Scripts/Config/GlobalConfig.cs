@@ -118,7 +118,7 @@ public class GlobalConfig : MonoBehaviour
 
     // === Animat body ===
 
-    public static BodyMethod BODY_METHOD = BodyMethod.WheeledRobot;
+    public static BodyMethod BODY_METHOD = BodyMethod.SoftVoxelRobot;
     public static BodyGenome custom_genome = null;
 
     // wheeled robot config

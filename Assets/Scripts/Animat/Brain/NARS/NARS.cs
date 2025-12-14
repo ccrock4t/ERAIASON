@@ -700,6 +700,11 @@ public class NARS : Mind
 
     public void SendInput(Sentence input_sentence)
     {
+        if(input_sentence == null || input_sentence.statement == null)
+        {
+            Debug.LogError("Null input");
+            return;
+        }
         //Debug.Log("Sending input: " + this.nars.helperFunctions.sentence_to_string(input_sentence));
         if(input_sentence == null)
         {

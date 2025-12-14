@@ -545,9 +545,27 @@ public class Animat : MonoBehaviour
             {
                 nar.task.GetAwaiter().GetResult();   // or: await nar.task;
             }
-            nar.SetStoredActivation(NARSGenome.eat_op);
-            nar.SetStoredActivation(NARSGenome.mate_op);
-            nar.SetStoredActivation(NARSGenome.fight_op);
+
+            // cache motor op activations
+            if(this.body is WheeledRobot)
+            {
+                nar.SetStoredActivation(NARSGenome.eat_op);
+                nar.SetStoredActivation(NARSGenome.mate_op);
+                nar.SetStoredActivation(NARSGenome.fight_op);
+            }
+            else if (this.body is SoftVoxelRobot)
+            {
+             
+                foreach (var motor_statement in NARSGenome.MOTOR_TERM_SET)
+                {
+                    nar.SetStoredActivation(motor_statement);
+                }
+            }
+            else
+            {
+                Debug.LogError("not supported");
+            }
+
         }
 
 

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 /*
     Author: Christian Hahm
@@ -168,6 +169,11 @@ public class Item<T>
         :param object:
         :return: key for object
     */
+        if(obj == null)
+        {
+            UnityEngine.Debug.LogError("no key for null");
+            return "";
+        }
         string key = null;
         if (obj is Concept)
         {
