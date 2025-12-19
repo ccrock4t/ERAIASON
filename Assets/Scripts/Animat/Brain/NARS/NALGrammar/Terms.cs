@@ -10,6 +10,7 @@ Helper Functions
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -496,7 +497,7 @@ public class CompoundTerm : Term
     public List<int> intervals;
     public bool is_operation;
 
-    public CompoundTerm(List<Term> subterms,
+    public CompoundTerm(List<Term> sub,
         TermConnector term_connector,
         string term_str,
         bool is_op,
@@ -511,7 +512,16 @@ public class CompoundTerm : Term
 
             interval_list: array of time interval_list between statements (only used for sequential conjunction)
         */
-        this.subterms = subterms;
+        if (TermConnectorMethods.is_order_invariant((TermConnector)term_connector))
+        {
+            // order doesn't matter, alphabetize so the system can recognize the same term
+            sub.Sort((x, y) => x.ToString().CompareTo(y.ToString()));
+        }
+        if(sub.Count != sub.Distinct().Count())
+        {
+            UnityEngine.Debug.LogError("duplicate terms "+ subterms);
+        }
+        this.subterms = sub;
         this.connector = term_connector;
         this.intervals = intervals;
         this.is_operation = is_op;

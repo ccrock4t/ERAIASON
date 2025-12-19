@@ -54,10 +54,10 @@ public class AnimatArena : MonoBehaviour
     // constants
 
     [System.NonSerialized]
-    public int MINIMUM_POPULATION_QUANTITY = 30;
+    public int MINIMUM_POPULATION_QUANTITY = 10;
     public const int MAXIMUM_POPULATION_QUANTITY = 100;
 
-    const int FOOD_QUANTITY = 150;
+    const int FOOD_QUANTITY = 0;
 
     public const int ANIMAT_GAMEOBJECT_LAYER = 9; // for raycast detectionsS
     public const int FOOD_GAMEOBJECT_LAYER = 10; // for raycast detections
@@ -145,12 +145,9 @@ public class AnimatArena : MonoBehaviour
             }
         }
 
-        var offsprings = GetTestGenomeAnimat();
+        //var offsprings = GetTestGenomeAnimat();
+        //SpawnGenomesInLine(offsprings);
 
-        foreach (var offspring in offsprings)
-        {
-            SpawnGenomeInRandomSpot(offspring);
-        }
 
         //initialize UI
 
@@ -340,18 +337,27 @@ public class AnimatArena : MonoBehaviour
 
 
 
-
+    float generation_timer;
+    const float TIME_PER_GENERATION = 10;
     public void FixedUpdate()
     {
         DataAnalyzer.TrackPopulationSnapshot();
         if (this.current_generation.Count < MINIMUM_POPULATION_QUANTITY)
         {
-            //Parallel.For(0, MINIMUM_POPULATION_QUANTITY - this.current_generation.Count, i =>
-            //{ 
-                GenerateNewAnimat();
-            //});
-            
+            int needed = MINIMUM_POPULATION_QUANTITY;
+
+            // build enough genomes (sexual reproduction can return 2 at once)
+            List<AnimatGenome> batch = new List<AnimatGenome>(needed);
+            while (batch.Count < needed)
+            {
+                var offsprings = CreateOffsprings();
+                for (int i = 0; i < offsprings.Length && batch.Count < needed; i++)
+                    batch.Add(offsprings[i]);
+            }
+
+            SpawnGenomesInLine(batch);
         }
+        generation_timer += Time.fixedDeltaTime;
 
 
         for (int animat_idx = 0; animat_idx < this.current_generation.Count; animat_idx++)
@@ -361,7 +367,8 @@ public class AnimatArena : MonoBehaviour
             var animat_position = animat.body._GetCenterOfMass();
             bool out_of_bounds = IsOutOfArenaBounds(animat_position);
             // check for death conditions
-            if (animat.body.energy <= 0 ||
+            if (generation_timer > TIME_PER_GENERATION ||
+                animat.body.energy <= 0 ||
                 animat.body.health <= 0 ||
                 animat.body.age > AnimatBody.MAX_AGE ||
                 animat.body.Crashed() ||
@@ -423,10 +430,9 @@ public class AnimatArena : MonoBehaviour
             }
 
         }
-
-        if (food_blocks.Count < FOOD_QUANTITY)
+        if(generation_timer > TIME_PER_GENERATION)
         {
-            SpawnFoodBlockInRandomPosition();
+            generation_timer = 0;
         }
     }
 
@@ -462,15 +468,15 @@ public class AnimatArena : MonoBehaviour
 
 
         // Total food eaten
-        float food_score = animat.body.number_of_food_eaten / AnimatBody.ENERGY_IN_A_FOOD;
-        float reproduction_bonus = math.pow(1f + animat.body.times_reproduced,2);
-        float look_score = animat.body.frames_food_detected / animat.body.total_frames_alive;
-        float displacement = animat.GetDisplacementFromBirthplace();
-        float distance_score = math.min(1.0f, displacement / 20f);
- 
-        return (distance_score + distance_score * look_score + look_score * food_score + food_score) * reproduction_bonus;
-     
+        //float food_score = animat.body.number_of_food_eaten / AnimatBody.ENERGY_IN_A_FOOD;
+        //float reproduction_bonus = math.pow(1f + animat.body.times_reproduced,2);
+        //float look_score = animat.body.frames_food_detected / animat.body.total_frames_alive;
+        //float displacement = animat.GetDisplacementFromBirthplace();
+        //float distance_score = math.min(1.0f, displacement / 20f);
 
+        //return (distance_score + distance_score * look_score + look_score * food_score + food_score) * reproduction_bonus;
+
+        return animat.GetZDistanceTravelled();
         // Reproduction bonus
 
 
@@ -623,39 +629,31 @@ public class AnimatArena : MonoBehaviour
 
     }
 
-    void GenerateNewAnimat()
+    private AnimatGenome[] CreateOffsprings()
     {
         if (LOAD_MODE)
         {
-            LoadGenomeAndSpawn();
-            return;
+            LoadGenomeAndSpawn();     // if you really want load-mode to still work
+            return Array.Empty<AnimatGenome>();
         }
-
-        AnimatGenome[] offsprings;
 
         int rnd = NEATConnection.ThreadSafeSystemRandomRange(0, 20);
 
         if (rnd == 0 || this.objectiveFitnessTable.Count() == 0)
-        {
-            offsprings = GetTestGenomeAnimat(); // generate brand new animat
-        }
-        else if (rnd >= 1 && rnd < 10) // 1-10
-        {
-            offsprings = GetExplicitFitnessAnimat(false); // asexual
-        }
-        else //if (rnd >= 10) // 10-219
-        {
-            offsprings = GetExplicitFitnessAnimat(true); // sexual
-        }
-
-        foreach (var offspring in offsprings)
-        {
-            //MainThreadDispatcher.RunOnMainThread(() =>
-           // {
-                SpawnGenomeInRandomSpot(offspring);
-           // });
-        }
+            return GetTestGenomeAnimat();              // brand new
+        else if (rnd >= 1 && rnd < 10)
+            return GetExplicitFitnessAnimat(false);    // asexual
+        else
+            return GetExplicitFitnessAnimat(true);     // sexual
     }
+
+    void GenerateNewAnimat()
+    {
+        var offsprings = CreateOffsprings();
+        foreach (var offspring in offsprings)
+            SpawnGenomeInRandomSpot(offspring);
+    }
+
 
     public AnimatTable GetRandomTable()
     {
@@ -794,6 +792,63 @@ public class AnimatArena : MonoBehaviour
         return new AnimatGenome[] { genome };
 
     }
+
+    // Put near your other fields
+    private float generationSpacing = 10f;   // distance between animats along X
+    private float generationZ = -1f;        // if < 0, auto-use middle of arena
+    private float generationMargin = 0.5f; // keep away from walls
+
+    private Vector3 GetGroundedPosition(float x, float z)
+    {
+        // clamp inside arena
+        x = Mathf.Clamp(x, 0.5f, GlobalConfig.WORLD_DIMENSIONS.x - 0.5f);
+        z = Mathf.Clamp(z, 0.5f, GlobalConfig.WORLD_DIMENSIONS.z - 0.5f);
+
+        Vector3 position = new Vector3(x, 0, z);
+
+        int last_good_y = GlobalConfig.WORLD_DIMENSIONS.y - 1;
+        for (int y = GlobalConfig.WORLD_DIMENSIONS.y - 2; y >= 0; y--)
+        {
+            Vector3Int voxel_position = new Vector3Int((int)position.x, y, (int)position.z);
+            Element element = GlobalConfig.world_automaton.GetCellCurrentState(voxel_position);
+
+            if (element != Element.Empty)
+                break;
+
+            last_good_y = y;
+        }
+
+        position.y = last_good_y;
+
+        // match your GetRandomPositionForAnimat behavior
+        if (GlobalConfig.BODY_METHOD != BodyMethod.SoftVoxelRobot)
+            position += new Vector3(0, 0.5f, 0);
+
+        return position;
+    }
+
+    private void SpawnGenomesInLine(IReadOnlyList<AnimatGenome> genomes)
+    {
+        if (genomes == null || genomes.Count == 0) return;
+
+        float z = (generationZ < 0f) ? (GlobalConfig.WORLD_DIMENSIONS.z * 0.5f) : generationZ;
+
+        // center the line in X, while respecting margins
+        float totalWidth = (genomes.Count - 1) * generationSpacing;
+        float startX = GlobalConfig.WORLD_DIMENSIONS.x * 0.5f - totalWidth * 0.5f;
+
+        float minX = generationMargin;
+        float maxX = GlobalConfig.WORLD_DIMENSIONS.x - generationMargin - totalWidth;
+        startX = Mathf.Clamp(startX, minX, maxX);
+
+        for (int i = 0; i < genomes.Count; i++)
+        {
+            float x = startX + i * generationSpacing;
+            Vector3 pos = GetGroundedPosition(x, z);
+            SpawnGenomeInPosition(genomes[i], pos);
+        }
+    }
+
 
 
     public Animat SpawnGenomeInRandomSpot(AnimatGenome genome)

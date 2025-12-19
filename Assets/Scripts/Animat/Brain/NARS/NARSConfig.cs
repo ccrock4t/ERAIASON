@@ -86,4 +86,9 @@ public class NARSConfig {
     public const float DEFAULT_QUEST_PRIORITY = 0.9f;
 
     public float FORGETTING_RATE = 1;
+
+    public bool RUNTIME_COMPOUNDS1 { get; internal set; }
+    public bool RUNTIME_COMPOUNDS2 { get; internal set; }
+    public bool RUNTIME_COMPOUNDS3 { get; internal set; }
+    public float COMPOUND_CONFIDENCE { get; internal set; }
 }

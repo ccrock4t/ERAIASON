@@ -449,7 +449,7 @@ public class Animat : MonoBehaviour
 
 
 
-        this.body.age += Time.fixedDeltaTime;
+        //this.body.age += Time.fixedDeltaTime;
 
         frame++;
     }
@@ -569,7 +569,7 @@ public class Animat : MonoBehaviour
         }
 
 
-        this.SpendEnergy();
+        //this.SpendEnergy();
 
         this.body.Sense(this);
         if (GlobalConfig.BRAIN_PROCESSING_METHOD != BrainProcessingMethod.Random)
@@ -725,6 +725,13 @@ public class Animat : MonoBehaviour
         return distance;
 
         //Vector2 D = this.GetCenterOfMass().xz - this.birthplace.xz;
+    }
+
+    public float GetZDistanceTravelled()
+    {
+        var dist = this.GetCenterOfMass().z - this.birthplace.z;
+        if (dist < 0) dist = 0;
+        return dist;
     }
 
     public Vector2 GetVectorFromBirthplace()

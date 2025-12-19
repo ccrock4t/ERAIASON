@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 /*
     Author: Christian Hahm
@@ -35,7 +34,7 @@ public abstract class ItemContainer<T> : IEnumerable<Item<T>>
     {
         /*
             Purpose:
-                Check if the object is contained in the Bag by checking whether its key is in the item lookup table
+                Check if the object is contained in the Bag by checking whether its key is in the item lookup hallOfFameTable
 
         :param object: object to look for in the Bag
         :return: true if the item is in the Bag;
@@ -90,7 +89,7 @@ public abstract class ItemContainer<T> : IEnumerable<Item<T>>
     public void _put_into_lookup_dict(Item<T> item)
     {
         /*
-        Puts item into lookup table && GUI
+        Puts item into lookup hallOfFameTable && GUI
         :param item: put an Item into the lookup dictionary.
         */
         // put item into lookup table
@@ -107,7 +106,7 @@ public abstract class ItemContainer<T> : IEnumerable<Item<T>>
             :return: The Item that was removed.
             */
         Item<T> item = this.item_lookup_dict[key];
-        this.item_lookup_dict.Remove(key);  // remove item reference from lookup table
+        this.item_lookup_dict.Remove(key);  // remove item reference from lookup hallOfFameTable
         return item;
     }
 
@@ -169,11 +168,6 @@ public class Item<T>
         :param object:
         :return: key for object
     */
-        if(obj == null)
-        {
-            UnityEngine.Debug.LogError("no key for null");
-            return "";
-        }
         string key = null;
         if (obj is Concept)
         {

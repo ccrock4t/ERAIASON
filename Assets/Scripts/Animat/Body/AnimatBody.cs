@@ -113,7 +113,7 @@ public abstract class AnimatBody : MonoBehaviour
         }
 
         //vision
-        this.vision_sensor.DoRaycastVisionAndMotorHandling(animat);
+        //this.vision_sensor.DoRaycastVisionAndMotorHandling(animat);
     }
 
 
@@ -201,9 +201,9 @@ public abstract class AnimatBody : MonoBehaviour
             }
             else
             {
-                eat_color = 0.5;
-                mate_color = 0.5;
-                fight_color = 0.5;
+                eat_color = color.r;
+                mate_color = color.g;
+                fight_color = color.b;
 
             }
             
@@ -219,9 +219,9 @@ public abstract class AnimatBody : MonoBehaviour
 
         Color new_color = new((float)r, (float)g, (float)b);
 
-        new_color = Color.Lerp(new_color, Color.gray, 0.5f + 0.5f*(this.age / MAX_AGE));
+      //  new_color = Color.Lerp(new_color, Color.gray, 0.5f + 0.5f*(this.age / MAX_AGE));
 
-        new_color = Color.Lerp(Color.black, new_color, this.health / MAX_HEALTH);
+      //  new_color = Color.Lerp(Color.black, new_color, this.health / MAX_HEALTH);
 
 
         SetColor(new_color);
@@ -292,6 +292,8 @@ public abstract class AnimatBody : MonoBehaviour
         Physics.SyncTransforms();
 
     }
+
+    public Color color;
 
 
     public abstract (Vector3, Vector3) GetVisionSensorPositionAndDirection();

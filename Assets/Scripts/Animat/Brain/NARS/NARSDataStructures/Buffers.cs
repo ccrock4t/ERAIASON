@@ -7,9 +7,6 @@ using Priority_Queue;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
-using Unity.Entities.UniversalDelegates;
-using UnityEngine.Purchasing;
-using static BodyGenome;
 
 
 public class Buffer<T> : ItemContainer<T>
@@ -91,6 +88,7 @@ public class TemporalModule
     /// </summary>
     public Judgment PUT_NEW(Judgment obj)
     {
+        if (!(obj.statement is StatementTerm)) return null;
         // Insert in sorted order by occurrence_time
         int idx = temporal_chain.BinarySearch(obj, JudgmentTimeComparer.Instance);
         if (idx < 0) idx = ~idx; // BinarySearch returns bitwise complement of insert index
@@ -146,6 +144,14 @@ public class TemporalModule
         return temporal_chain[^1];
     }
 
+    void ProcessSentence(Sentence derivedSentence)
+    {
+        if (derivedSentence != null && this.nars != null)
+        {
+            this.nars.global_buffer.PUT_NEW(derivedSentence);
+        }
+    }
+
 
     public void temporal_chaining()
     {
@@ -163,18 +169,28 @@ public class TemporalModule
         if (numOfEvents == 0) return;
 
 
-        void ProcessSentence(Sentence derivedSentence)
-        {
-            if (derivedSentence != null && this.nars != null)
-            {
-                this.nars.global_buffer.PUT_NEW(derivedSentence);
-            }
-        }
 
+        if (this.nars.config.RUNTIME_COMPOUNDS1)
+        {
+            FormContigencies1S();
+        }
+        else if (this.nars.config.RUNTIME_COMPOUNDS2)
+        {
+            FormContigencies2S();
+        }
+        else if (this.nars.config.RUNTIME_COMPOUNDS3)
+        {
+            FormContigencies3S();
+        }
+    }
+
+    public void FormContigencies1S()
+    {
+        int numOfEvents = temporal_chain.Count;
         // Loop over all earlier events A
         for (int i = 0; i < numOfEvents - 2; i++)
         {
-            var eventA = temporalChain[i];
+            var eventA = temporal_chain[i];
             if (eventA == null) continue;
 
 
@@ -186,10 +202,10 @@ public class TemporalModule
             }
             for (int j = i + 1; j < numOfEvents - 1; j++)
             {
-                var eventB = temporalChain[j];
+                var eventB = temporal_chain[j];
                 if (eventA == null) continue;
 
-
+                if (eventB.stamp.occurrence_time < eventA.stamp.occurrence_time) continue; // event B must have occured after or at the time of sensory context
 
                 // Validate
                 if (!(eventB.statement is StatementTerm))
@@ -199,7 +215,7 @@ public class TemporalModule
 
                 for (int k = j + 1; k < numOfEvents; k++)
                 {
-                    var eventC = temporalChain[k];
+                    var eventC = temporal_chain[k];
                     if (eventC == null) continue;
                     // Validate
                     if (!(eventC.statement is StatementTerm))
@@ -213,18 +229,202 @@ public class TemporalModule
                     }
                     if (!eventB.statement.is_op()) continue;
                     if (eventA.statement.is_op() || eventC.statement.is_op()) continue;
-         
+                    if (eventC.stamp.occurrence_time <= eventB.stamp.occurrence_time) continue; // event C must have occured after the motor op
                     // Do inference
                     var conjunction = this.nars.inferenceEngine.temporalRules.TemporalIntersection(eventA, eventB);
-                 
+
                     conjunction.stamp.occurrence_time = eventA.stamp.occurrence_time;
                     var implication = this.nars.inferenceEngine.temporalRules.TemporalInduction(conjunction, eventC);
                     implication.evidential_value.frequency = 1.0f;
-                    implication.evidential_value.confidence = this.nars.helperFunctions.get_unit_evidence();
+                    implication.evidential_value.confidence = this.nars.config.COMPOUND_CONFIDENCE;
                     ProcessSentence(implication);
-
                 }
 
+            }
+        }
+    }
+
+    public void FormContigencies2S()
+    {
+        int numOfEvents = temporal_chain.Count;
+
+        // A
+        for (int i = 0; i < numOfEvents - 3; i++)
+        {
+            var eventA = temporal_chain[i];
+            if (eventA == null) continue;
+            if (!(eventA.statement is StatementTerm)) continue;
+            if (eventA.statement.is_op()) continue; // A must be non-op
+
+            // B
+            for (int j = i + 1; j < numOfEvents - 2; j++)
+            {
+                var eventB = temporal_chain[j];
+                if (eventB == null) continue;               // (your code had eventA == null here by mistake)
+                if (!(eventB.statement is StatementTerm)) continue;
+                if (eventB.statement.is_op()) continue;     // B must be non-op
+
+                // Only form (A && B) if simultaneous
+                if (eventA.stamp.occurrence_time != eventB.stamp.occurrence_time)
+                    continue;
+
+                // Avoid duplicates
+                if (eventA.statement == eventB.statement) continue;
+
+                // Form (A && B)
+                // NOTE: replace ParallelConjunction(...) with whatever your engine calls the "&&" constructor.
+                List<Term> subterms = new();
+                subterms.Add(eventA.statement);
+                subterms.Add(eventB.statement);
+                CompoundTerm conjAB = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
+
+                // C (must be op)
+                for (int k = j + 1; k < numOfEvents - 1; k++)
+                {
+                    var eventC = temporal_chain[k];
+                    if (eventC == null) continue;
+                    if (!(eventC.statement is StatementTerm)) continue;
+                    if (!eventC.statement.is_op()) continue; // C must be op
+                    if(eventC.stamp.occurrence_time < eventA.stamp.occurrence_time) continue; // event C must have occured after or at the time of sensory context
+
+                    if (eventC.statement == eventA.statement || eventC.statement == eventB.statement)
+                        continue;
+
+                    // Form (A && B) &/ op_C
+                    List<Term> subterms2 = new();
+                    subterms2.Add(conjAB);
+                    subterms2.Add(eventC.statement);
+                    CompoundTerm subject = TermHelperFunctions.TryGetCompoundTerm(subterms2, TermConnector.SequentialConjunction);
+
+                    // D (must be non-op)
+                    for (int l = k + 1; l < numOfEvents; l++)
+                    {
+                        var eventD = temporal_chain[l];
+                        if (eventD == null) continue;
+                        if (!(eventD.statement is StatementTerm)) continue;
+                        if (eventD.statement.is_op()) continue; // D must be non-op
+                        if (eventD.stamp.occurrence_time <= eventC.stamp.occurrence_time) continue; // event D must have occured after the motor op
+
+                        if (eventD.statement == eventA.statement ||
+                            eventD.statement == eventB.statement ||
+                            eventD.statement == eventC.statement)
+                            continue;
+
+                        // (A &| B) &/ op_C => D
+                        StatementTerm implication_statement = new StatementTerm(subject, eventD.statement, Copula.PredictiveImplication);
+                        Judgment implication = new(this.nars, implication_statement, new());
+                        implication.evidential_value.frequency = 1.0f;
+                        implication.evidential_value.confidence = this.nars.config.COMPOUND_CONFIDENCE;
+                        ProcessSentence(implication);
+                    }
+                }
+            }
+        }
+    }
+    public void FormContigencies3S()
+    {
+        int numOfEvents = temporal_chain.Count;
+
+        // A
+        for (int i = 0; i < numOfEvents - 4; i++)
+        {
+            var eventA = temporal_chain[i];
+            if (eventA == null) continue;
+            if (!(eventA.statement is StatementTerm)) continue;
+            if (eventA.statement.is_op()) continue; // A must be non-op
+
+            // B
+            for (int j = i + 1; j < numOfEvents - 3; j++)
+            {
+                var eventB = temporal_chain[j];
+                if (eventB == null) continue;
+                if (!(eventB.statement is StatementTerm)) continue;
+                if (eventB.statement.is_op()) continue; // B must be non-op
+
+                // Must be simultaneous with A
+                if (eventB.stamp.occurrence_time != eventA.stamp.occurrence_time)
+                    continue;
+
+                if (eventB.statement == eventA.statement) continue;
+
+                // C (third sensory term)
+                for (int k = j + 1; k < numOfEvents - 2; k++)
+                {
+                    var eventC = temporal_chain[k];
+                    if (eventC == null) continue;
+                    if (!(eventC.statement is StatementTerm)) continue;
+                    if (eventC.statement.is_op()) continue; // C must be non-op
+
+                    // Must be simultaneous with A and B
+                    if (eventC.stamp.occurrence_time != eventA.stamp.occurrence_time)
+                        continue;
+
+                    if (eventC.statement == eventA.statement || eventC.statement == eventB.statement)
+                        continue;
+
+                    // Form (A &| B &| C)
+                    List<Term> ctxTerms = new();
+                    ctxTerms.Add(eventA.statement);
+                    ctxTerms.Add(eventB.statement);
+                    ctxTerms.Add(eventC.statement);
+
+                    CompoundTerm contextABC = TermHelperFunctions.TryGetCompoundTerm(ctxTerms, TermConnector.ParallelConjunction);
+
+                    // D (must be op)
+                    for (int d = k + 1; d < numOfEvents - 1; d++)
+                    {
+                        var eventD = temporal_chain[d];
+                        if (eventD == null) continue;
+                        if (!(eventD.statement is StatementTerm)) continue;
+                        if (!eventD.statement.is_op()) continue; // D must be op
+
+                        // op must occur after or at the time of sensory context
+                        if (eventD.stamp.occurrence_time < eventA.stamp.occurrence_time)
+                            continue;
+
+                        if (eventD.statement == eventA.statement ||
+                            eventD.statement == eventB.statement ||
+                            eventD.statement == eventC.statement)
+                            continue;
+
+                        // Form (A &| B &| C) &/ op_D
+                        List<Term> subjTerms = new();
+                        subjTerms.Add(contextABC);
+                        subjTerms.Add(eventD.statement);
+
+                        // In your last snippet you used SequentialConjunction for "&/".
+                        CompoundTerm subject = TermHelperFunctions.TryGetCompoundTerm(subjTerms, TermConnector.SequentialConjunction);
+
+                        // E (must be non-op)
+                        for (int e = d + 1; e < numOfEvents; e++)
+                        {
+                            var eventE = temporal_chain[e];
+                            if (eventE == null) continue;
+                            if (!(eventE.statement is StatementTerm)) continue;
+                            if (eventE.statement.is_op()) continue; // E must be non-op
+
+                            // E must have occured after the motor op
+                            if (eventE.stamp.occurrence_time <= eventD.stamp.occurrence_time)
+                                continue;
+
+                            if (eventE.statement == eventA.statement ||
+                                eventE.statement == eventB.statement ||
+                                eventE.statement == eventC.statement ||
+                                eventE.statement == eventD.statement)
+                                continue;
+
+                            // (A &| B &| C) &/ op_D => E
+                            StatementTerm implication_statement =
+                                new StatementTerm(subject, eventE.statement, Copula.PredictiveImplication);
+
+                            Judgment implication = new(this.nars, implication_statement, new());
+                            implication.evidential_value.frequency = 1.0f;
+                            implication.evidential_value.confidence = this.nars.config.COMPOUND_CONFIDENCE;
+                            ProcessSentence(implication);
+
+                        }
+                    }
+                }
             }
         }
     }

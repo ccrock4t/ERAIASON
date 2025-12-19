@@ -195,7 +195,7 @@ public class Table<T> where T : Sentence
     public T? peek_first_interactable(Sentence j)
     {
         /*
-            Returns a sentence in this table that j may interact with
+            Returns a sentence in this hallOfFameTable that j may interact with
             null if there are none.
             O(N)
 
@@ -217,7 +217,7 @@ public class Table<T> where T : Sentence
     public List<T> peek_all_interactable(Sentence j)
     {
         /*
-            Returns a sentence in this table that j may interact with
+            Returns a sentence in this hallOfFameTable that j may interact with
             null if there are none.
             O(N)
 

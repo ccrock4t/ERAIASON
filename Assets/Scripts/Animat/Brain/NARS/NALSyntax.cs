@@ -89,7 +89,8 @@ public static class TermConnectorMethods
                 connector == TermConnector.IntensionalSetStart ||
                 connector == TermConnector.Negation ||
                 connector == TermConnector.Conjunction ||
-                connector == TermConnector.Disjunction);
+                connector == TermConnector.Disjunction ||
+                connector == TermConnector.ParallelConjunction);
     }
 
 

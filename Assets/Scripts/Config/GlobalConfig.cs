@@ -147,7 +147,7 @@ public class GlobalConfig : MonoBehaviour
     // ============
 
     //EA settings
-    public static bool USE_NOVELTY_SEARCH = true;
+    public static bool USE_NOVELTY_SEARCH = false;
     internal static bool show_lines;
 
     // === Saving and loading ===

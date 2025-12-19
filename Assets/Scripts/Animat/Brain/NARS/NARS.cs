@@ -25,6 +25,7 @@ public class NARS : Mind
 
     public NARSInferenceEngine inferenceEngine;
     public Memory memory;
+
     public Buffer<Sentence> global_buffer;
     public TemporalModule temporal_module;
 
@@ -35,7 +36,7 @@ public class NARS : Mind
     List<(int, StatementTerm, float, List<string>)> operation_queue; // operations the system has queued to executed
     Goal current_operation_goal_sequence;
     string last_executed = "";
-    
+
 
     // enforce milliseconds per working cycle
     int cycle_begin_time = 0;
@@ -47,7 +48,7 @@ public class NARS : Mind
     public System.Random random;
 
 
-
+    public NARSGenome genome;
     public NARS(NARSGenome nars_genome)
     {
         this.random = new System.Random();
@@ -58,12 +59,12 @@ public class NARS : Mind
         this.helperFunctions = new HelperFunctions(this);
 
         this.global_buffer = new Buffer<Sentence>(this.config.GLOBAL_BUFFER_CAPACITY);
-        this.temporal_module = new (this, this.config.EVENT_BUFFER_CAPACITY);
+        this.temporal_module = new(this, this.config.EVENT_BUFFER_CAPACITY);
 
 
         this.operation_queue = new List<(int, StatementTerm, float, List<string>)>(); // operations the system has queued to executed
 
-
+        this.genome = nars_genome;
         SetupUsingGenome(nars_genome);
     }
 
@@ -73,6 +74,7 @@ public class NARS : Mind
         foreach (var gene in nars_genome.beliefs)
         {
             var belief = new Judgment(this, gene.statement, gene.evidence);
+            CompoundTerm subject = (CompoundTerm)((StatementTerm)belief.statement).get_subject_term();
             SendInput(belief);
         }
 
@@ -86,7 +88,11 @@ public class NARS : Mind
         this.config.MAX_EVIDENTIAL_BASE_LENGTH = nars_genome.personality_parameters.Evidential_Base_Length;
         this.config.PROJECTION_DECAY_EVENT = nars_genome.personality_parameters.Time_Projection_Event;
         this.config.PROJECTION_DECAY_DESIRE = nars_genome.personality_parameters.Time_Projection_Goal;
-        
+        this.config.RUNTIME_COMPOUNDS1 = nars_genome.personality_parameters.RuntimeCompounds1 == 1;
+        this.config.RUNTIME_COMPOUNDS2 = nars_genome.personality_parameters.RuntimeCompounds2 == 1;
+        this.config.RUNTIME_COMPOUNDS3 = nars_genome.personality_parameters.RuntimeCompounds3 == 1;
+        this.config.COMPOUND_CONFIDENCE = nars_genome.personality_parameters.Compound_Confidence;
+
     }
 
 
@@ -105,45 +111,37 @@ public class NARS : Mind
 
         // global buffer
         int buffer_len = this.global_buffer.GetCount();
+
+        if (buffer_len >= 3 * global_buffer.capacity / 4) Debug.LogWarning("NARS buffer about  to overflow");
         int tasks_left = buffer_len;
         while (tasks_left > 0)
         {
             Sentence buffer_item = this.global_buffer.take().obj;
-            if(buffer_item is Judgment && buffer_item.statement == NARSGenome.energy_full)
+            tasks_left--;
+
+            if (buffer_item is Goal && this.inferenceEngine.get_sentence_value_time_decayed(buffer_item).confidence < 0.1)
             {
-                int j = 1;
+                continue;
             }
+
             // process task
             this.process_sentence_initial(buffer_item);
-            tasks_left--;
+            
         }
 
 
 
 
-        if (NARSGenome.USE_LEARNING())
-        {
-            this.temporal_module.UpdateAnticipations();
-            Parallel.ForEach(this.memory.concepts_bag, concept_item =>
-            {
-                var concept = concept_item.obj;
-                concept.belief_table.Forget();
-            });
-        }
+        //if (NARSGenome.USE_LEARNING())
+        //{
+        //    this.temporal_module.UpdateAnticipations();
+        //    Parallel.ForEach(this.memory.concepts_bag, concept_item =>
+        //    {
+        //        var concept = concept_item.obj;
+        //        concept.belief_table.Forget();
+        //    });
+        //}
 
-/*                #todo this.temporal_module.process_anticipations()
-
-                // debug statements
-                if(this.nars.config.DEBUG)
-                    Debug.Log("operation queue: " + str(len(this.operation_queue)))
-                    Debug.Log("anticipations queue: " + str(len(this.temporal_module.anticipations_queue)))
-                    Debug.Log("global buffer: " + str(len(this.global_buffer)))
-
-
-                if WorldConfig.USE_PROFILER:
-                    pstats.Stats(this.pr).sort_stats('tottime').print_stats(10) #tottime == time spent in the function alone, cumtime == including subfunctions
-                    this.pr.enable()
-        */
     }
 
 
@@ -170,72 +168,72 @@ public class NARS : Mind
 
     public void Consider(Concept? concept = null)
     {
-        /*
-            Process a belief from a random concept in memory.
+        ///*
+        //    Process a belief from a random concept in memory.
 
-            This function can result in new tasks
+        //    This function can result in new tasks
 
-            :param: concept: concept to consider. If null, picks a random concept
-        */
-        Item<Concept>? concept_item = null;
-        if (concept == null)
-        {
-            concept_item = this.memory.get_random_concept_item();
-            if (concept_item == null) return; // nothing to ponder
-            concept = concept_item.obj;
-        }
-
-
-        // If concept is not named by a statement, get a related concept that is a statement
-        int attempts = 0;
-        int max_attempts = 2;
-        while (attempts < max_attempts && !(((concept.term is StatementTerm) || ((concept.term is CompoundTerm) && !((CompoundTerm)concept.term).is_first_order()))))
-        {
-            if (concept.term_links.GetCount() > 0)
-            {
-                concept = concept.term_links.peek().obj;
-            }
-            else
-            {
-                break;
-            }
-
-            attempts += 1;
-        }
-
-        // debugs
-        if (this.config.DEBUG)
-        {
-            string str = "Considering concept: " + concept.term.ToString();
-            if (concept_item != null) str += concept_item.budget.ToString();
-            if (concept.belief_table.GetCount() > 0) str += " expectation: " + this.inferenceEngine.get_expectation(concept.belief_table.peek()).ToString();
-            if (concept.desire_table.GetCount() > 0) str += " desirability: " + concept.desire_table.peek().get_desirability(this);
-            Debug.Log(str);
-        }
-
-        //Debug.Log("CONSIDER: " + str(concept))
-
-        if (concept != null && attempts != max_attempts)
-        {
-            // process a belief && desire
-            if (concept.belief_table.GetCount() > 0)
-            {
-                this.process_judgment_continued(concept.belief_table.peek());  // process most confident belief
-            }
+        //    :param: concept: concept to consider. If null, picks a random concept
+        //*/
+        //Item<Concept>? concept_item = null;
+        //if (concept == null)
+        //{
+        //    concept_item = this.memory.get_random_concept_item();
+        //    if (concept_item == null) return; // nothing to ponder
+        //    concept = concept_item.obj;
+        //}
 
 
-            if (concept.desire_table.GetCount() > 0)
-            {
-                this.process_goal_continued(concept.desire_table.peek()); // process most confident goal
-            }
+        //// If concept is not named by a statement, get a related concept that is a statement
+        //int attempts = 0;
+        //int max_attempts = 2;
+        //while (attempts < max_attempts && !(((concept.term is StatementTerm) || ((concept.term is CompoundTerm) && !((CompoundTerm)concept.term).is_first_order()))))
+        //{
+        //    if (concept.term_links.GetCount() > 0)
+        //    {
+        //        concept = concept.term_links.peek().obj;
+        //    }
+        //    else
+        //    {
+        //        break;
+        //    }
+
+        //    attempts += 1;
+        //}
+
+        //// debugs
+        //if (this.config.DEBUG)
+        //{
+        //    string str = "Considering concept: " + concept.term.ToString();
+        //    if (concept_item != null) str += concept_item.budget.ToString();
+        //    if (concept.belief_table.GetCount() > 0) str += " expectation: " + this.inferenceEngine.get_expectation(concept.belief_table.peek()).ToString();
+        //    if (concept.desire_table.GetCount() > 0) str += " desirability: " + concept.desire_table.peek().get_desirability(this);
+        //    Debug.Log(str);
+        //}
+
+        ////Debug.Log("CONSIDER: " + str(concept))
+
+        //if (concept != null && attempts != max_attempts)
+        //{
+        //    // process a belief && desire
+        //    if (concept.belief_table.GetCount() > 0)
+        //    {
+        //        this.process_judgment_continued(concept.belief_table.peek());  // process most confident belief
+        //    }
 
 
-            // decay priority;
-            if (concept_item != null)
-            {
-                this.memory.concepts_bag.decay_item(concept_item.key, this.config.PRIORITY_DECAY_VALUE);
-            }
-        }
+        //    if (concept.desire_table.GetCount() > 0)
+        //    {
+        //        this.process_goal_continued(concept.desire_table.peek()); // process most confident goal
+        //    }
+
+
+        //    // decay priority;
+        //    if (concept_item != null)
+        //    {
+        //        this.memory.concepts_bag.decay_item(concept_item.key, this.config.PRIORITY_DECAY_VALUE);
+        //    }
+        //}
     }
 
 
@@ -246,7 +244,7 @@ public class NARS : Mind
             Initial processing for a Narsese sentence
         */
         Term task_statement_term = j.statement;
-        if (task_statement_term.contains_variable()) return; // todo handle variables
+        // if (task_statement_term.contains_variable()) return; // todo handle variables
 
         // statement_concept_item = this.memory.peek_concept_item(task_statement_term)
         // statement_concept = statement_concept_item.object
@@ -282,7 +280,7 @@ public class NARS : Mind
     {
         /*
             Processes a Narsese Judgment Task
-            Insert it into the belief table && revise it with another belief
+            Insert it into the belief hallOfFameTable && revise it with another belief
 
             :param Judgment Task to process
         */
@@ -295,10 +293,11 @@ public class NARS : Mind
             }
         }
 
+
         Item<Concept> task_statement_concept_item = this.memory.peek_concept_item(j.statement);
         if (task_statement_concept_item == null) return;
 
-       // this.memory.concepts_bag.strengthen_item_quality(task_statement_concept_item.key);
+        // this.memory.concepts_bag.strengthen_item_quality(task_statement_concept_item.key);
 
         Concept statement_concept = task_statement_concept_item.obj;
 
@@ -332,11 +331,11 @@ public class NARS : Mind
         Term statement_term = j1.statement;
 
         // do regular semantic inference;
-        List<Sentence> results = this.process_sentence_semantic_inference(j1);
-        foreach (Sentence result in results)
-        {
-            this.global_buffer.PUT_NEW(result);
-        }
+        //List<Sentence> results = this.process_sentence_semantic_inference(j1);
+        //foreach (Sentence result in results)
+        //{
+        //    this.global_buffer.PUT_NEW(result);
+        //}
     }
 
 
@@ -348,7 +347,7 @@ public class NARS : Mind
         //this.memory.concepts_bag.strengthen_item_quality(task_statement_concept_item.key);
 
         Concept task_statement_concept = task_statement_concept_item.obj;
-        // get the best answer from concept belief table
+        // get the best answer from concept belief hallOfFameTable
         Judgment best_answer = task_statement_concept.belief_table.peek();
         Sentence? j1 = null;
         if (best_answer != null)
@@ -385,7 +384,7 @@ public class NARS : Mind
         /*
             Initial Processing
 
-            Insert it into the desire table || revise with the most confident desire
+            Insert it into the desire hallOfFameTable || revise with the most confident desire
         */
 
         Item<Concept> statement_concept_item = this.memory.peek_concept_item(j.statement);
@@ -404,6 +403,7 @@ public class NARS : Mind
 
     }
 
+    ConcurrentBag<Judgment> variable_unifications_for_goal_derivation = new();
     public void process_goal_continued(Goal j)
     {
         /*
@@ -462,78 +462,236 @@ public class NARS : Mind
             {
                 if (this.inferenceEngine.is_positive(desire_event))
                 {
-                   // Debug.Log(desire_event.ToString() + " is positive for goal: " + j.ToString());
+                    // Debug.Log(desire_event.ToString() + " is positive for goal: " + j.ToString());
                     return;  // Return if goal is already achieved
                 }
             }
 
-            if (statement is CompoundTerm)
+            if (statement is CompoundTerm compoundStatement && compoundStatement.connector == TermConnector.SequentialConjunction)
             {
-                if(statement.connector == null)
+                if (statement.connector == null)
                 {
                     Debug.LogError("null connector for statement " + statement);
                     return;
                 }
-                TermConnector connector = (TermConnector)statement.connector;
-                bool is_conjunction = TermConnectorMethods.is_conjunction(connector);
-                if (is_conjunction)
+          
+                // if it's a conjunction (A &/ B), simplify using true beliefs (e.g. A) or derive a goal for A! if A is false
+                Term first_subterm_statement = (Term)((CompoundTerm)statement).subterms[0];
+                Concept first_subterm_concept = this.memory.peek_concept(first_subterm_statement);
+                //  Term sensory_predicate = first_subterm_statement.get_predicate_term();
+                //   Term sensory_subject = first_subterm_statement.get_subject_term();
+                Judgment first_subterm_belief = null;
+                //if (sensory_predicate is VariableTerm)
+                //{
+                //    variable_unifications_for_goal_derivation.Clear();
+                //    // find judgments which satisfy the variable, if any
+                //    Parallel.ForEach(this.memory.concepts_bag, concept_item =>
+                //    {
+                //        var concept = concept_item.obj;
+                //        var term = concept.term;
+                //        if (term is StatementTerm statement && term.is_first_order())
+                //        {
+                //            if (statement.get_subject_term() is AtomicTerm atom)
+                //            {
+                //                if (atom == sensory_subject)
+                //                {
+                //                    // subjects match, so it matches the variable predicate
+                //                    var judgment = concept.belief_table.peek_first_interactable(j);
+                //                    if (judgment != null)
+                //                    {
+                //                        variable_unifications_for_goal_derivation.Add(judgment);
+                //                    }
+                //                }
+                //            }
+                //        }
+
+                //    });
+
+                //    var candidates = variable_unifications_for_goal_derivation.ToArray();
+                //    if (candidates.Length > 0)
+                //    {
+                //        // 1. Compute total weight (sum of frequencies)
+                //        float totalWeight = 0f;
+                //        foreach (var jdg in candidates)
+                //        {
+                //            // clamp to >= 0 just in case
+                //            float w = Mathf.Max(0f, this.inferenceEngine.get_expectation(jdg));   // <-- use the right property here
+                //            totalWeight += w;
+                //        }
+
+                //        Judgment picked = null;
+
+                //        if (totalWeight > 0f)
+                //        {
+                //            // 2. Pick a random point in [0, totalWeight)
+                //            float r = UnityEngine.Random.Range(0f, totalWeight);
+
+                //            // 3. Walk through and find where r falls
+                //            float cumulative = 0f;
+                //            foreach (var jdg in candidates)
+                //            {
+                //                float w = Mathf.Max(0f, this.inferenceEngine.get_expectation(jdg));  // same property
+                //                cumulative += w;
+                //                if (r <= cumulative)
+                //                {
+                //                    picked = jdg;
+                //                    break;
+                //                }
+                //            }
+                //        }
+
+                //        // Fallback: if all frequencies were 0 (or something weird), use uniform
+                //        if (picked == null)
+                //        {
+                //            int index = UnityEngine.Random.Range(0, candidates.Length);
+                //            picked = candidates[index];
+                //        }
+
+                //        first_subterm_belief = picked;
+                //    }
+
+
+                //}
+                //else
+                //{
+                first_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
+
+                StatementTerm motor_op_statement = (StatementTerm)((CompoundTerm)statement).subterms[1];
+                Concept second_subterm_concept = this.memory.peek_concept(motor_op_statement);
+                CompoundTerm operation_product = (CompoundTerm)motor_op_statement.get_subject_term();
+                Term operation_argument = operation_product.subterms[1];
+
+                if(first_subterm_statement is CompoundTerm)
                 {
-                    // if it's a conjunction (A &/ B), simplify using true beliefs (e.g. A) or derive a goal for A! if A is false
-                    Term first_subterm_statement = ((CompoundTerm)statement).subterms[0];
-                    Concept first_subterm_concept = this.memory.peek_concept(first_subterm_statement);
-                    Judgment first_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
+                    int test = 1;
+                }
 
-                    Term second_subterm_statement = ((CompoundTerm)statement).subterms[1];
-                    Concept second_subterm_concept = this.memory.peek_concept(second_subterm_statement);
-                    Judgment second_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
+                //if (!(operation_argument is VariableTerm == sensory_predicate is VariableTerm))
+                //{
+                //    Debug.LogError("assert both S and ^M must contain the same term types");
+                //    return;
+                //}
 
-                    if (first_subterm_belief != null && this.inferenceEngine.is_positive(first_subterm_belief))
-                    {
+
+                if (operation_argument is VariableTerm)
+                {
+                    // handle operation variable
+                }
+                else
+                {
+
+                }
+
+
+                if (first_subterm_belief != null && this.inferenceEngine.is_positive(first_subterm_belief))
+                {
+                    List<Sentence> results = null;
+                    //if (sensory_predicate is VariableTerm)
+                    //{
+
+                    //    var subterms = new Term[] { ((CompoundTerm)motor_op_statement.get_subject_term()).subterms[0], ((StatementTerm)first_subterm_belief.statement).get_predicate_term() };
+                    //    CompoundTerm unified_motor_compound = null;// TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.Product);
+                    //    StatementTerm unified_goal_statement = new(unified_motor_compound, motor_op_statement.get_predicate_term(), Copula.Inheritance);
+                    //    var value = this.inferenceEngine.truthValueFunctions.F_Deduction(
+                    //        first_subterm_belief.evidential_value.frequency,
+                    //        first_subterm_belief.evidential_value.confidence,
+                    //        j.evidential_value.frequency,
+                    //        j.evidential_value.confidence);
+                    //    Goal derived_variable_unified_goal = new Goal(this, unified_goal_statement, value);
+
+                    //    results = new()
+                    //    {
+                    //        derived_variable_unified_goal
+                    //    };
+                    //}
+                    //else
+                    //{
+
                         // the first component of the goal is positive, do inference and derive the remaining goal component
-                        List<Sentence> results = this.inferenceEngine.do_semantic_inference_two_premise(j, first_subterm_belief);
-                        foreach (Sentence result in results)
-                        {
-                            this.global_buffer.PUT_NEW(result);
-                        }
-                        return; // done deriving goals
-                    }
-                    else
+                    results = this.inferenceEngine.do_semantic_inference_two_premise(j, first_subterm_belief);
+                    //}
+
+                    if (first_subterm_belief.statement.connector == TermConnector.ParallelConjunction)
                     {
+                        int test = 1;
+                    }
+                    foreach (Sentence result in results)
+                    {
+                        this.global_buffer.PUT_NEW(result);
+                    }
+                    return; // done deriving goals
+                }
+                else
+                {
+                    // if (sensory_predicate is VariableTerm)
+                    //  {
+                        //var unification_term = Term.from_string(AlpineGridManager.GetRandomDirectionString());
+                        //StatementTerm first_subterm_statement_unified = new StatementTerm(sensory_subject, unification_term, Copula.Inheritance);
+                        //first_subterm_statement = first_subterm_statement_unified;
+                    //  }
+
+
+                    //if(first_subterm_statement is CompoundTerm c && first_subterm_statement.connector == TermConnector.ParallelConjunction)
+                    //{
+                    //    foreach(var subterm in c.subterms)
+                    //    {
+                    //        Goal subtermgoal = (Goal)this.helperFunctions.create_resultant_sentence_one_premise(j, c.subterms[1], null, j.evidential_value);
+                    //        this.global_buffer.PUT_NEW(subtermgoal);
+                    //    }
+                    //}
+                    //else
+                    //{
                         //first belief was not positive, so derive a goal to make it positive
                         Goal first_subterm_goal = (Goal)this.helperFunctions.create_resultant_sentence_one_premise(j, first_subterm_statement, null, j.evidential_value);
                         this.global_buffer.PUT_NEW(first_subterm_goal);
-                    }
+                    //}
                 }
-                else if (statement.connector == TermConnector.Negation && TermConnectorMethods.is_conjunction(((CompoundTerm)statement).subterms[0].connector))
-                {
-                    // if it's a negated conjunction (--,(A &/ B))!, simplify using true beliefs (e.g. A.)
-                    // (--,(A &/ B)) ==> D && A
-                    // induction
-                    // :- (--,(A &/ B)) && A ==> D :- (--,B) ==> D :- (--,B)!
-                    CompoundTerm conjunction = (CompoundTerm)((CompoundTerm)statement).subterms[0];
-                    Term subterm = conjunction.subterms[0];
-                    Concept subterm_concept = this.memory.peek_concept(subterm);
-                    Judgment belief = subterm_concept.belief_table.peek();
-                    if (belief != null && this.inferenceEngine.is_positive(belief))
-                    {
-                        // the first component of the goal is negative, do inference and derive the remaining goal component
-                        List<Sentence> results = this.inferenceEngine.do_semantic_inference_two_premise(j, belief);
-                        foreach (Sentence result in results)
-                        {
-                            this.global_buffer.PUT_NEW(result);
-                        }
+                
+                //else if (statement.connector == TermConnector.Negation && TermConnectorMethods.is_conjunction(((CompoundTerm)statement).subterms[0].connector))
+                //{
+                //    // if it's a negated conjunction (--,(A &/ B))!, simplify using true beliefs (e.g. A.)
+                //    // (--,(A &/ B)) ==> D && A
+                //    // induction
+                //    // :- (--,(A &/ B)) && A ==> D :- (--,B) ==> D :- (--,B)!
+                //    CompoundTerm conjunction = (CompoundTerm)((CompoundTerm)statement).subterms[0];
+                //    Term subterm = conjunction.subterms[0];
+                //    Concept subterm_concept = this.memory.peek_concept(subterm);
+                //    Judgment belief = subterm_concept.belief_table.peek();
+                //    if (belief != null && this.inferenceEngine.is_positive(belief))
+                //    {
+                //        // the first component of the goal is negative, do inference and derive the remaining goal component
+                //        List<Sentence> results = this.inferenceEngine.do_semantic_inference_two_premise(j, belief);
+                //        foreach (Sentence result in results)
+                //        {
+                //            this.global_buffer.PUT_NEW(result);
+                //        }
 
-                        return; // done deriving goals
-                    }
-                }
+                //        return; // done deriving goals
+                //    }
+                //}
             }
             else
             {
                 // process j! with random context-relevant explanation E = (P =/> j).
                 int explanation_count = statement_concept.explanation_links.GetCount();
-                var random_belief = this.memory.get_random_bag_explanation(j); // (P =/> j)
-                if (random_belief != null) {
-       
+
+                if (explanation_count == 0)
+                {
+                    if (NARSGenome.USE_LEARNING())
+                    {
+                        // no explanations, so babble to learn one
+                        MotorBabble();
+                    }
+                    return;
+                }
+                // foreach (var explanation_concept in statement_concept.explanation_links)
+                // {
+                var random_belief = this.memory.get_random_bag_explanation(j); //explanation_concept.obj.belief_table.peek();
+                if (random_belief != null)
+                {
+
+                    CompoundTerm subject = (CompoundTerm)((StatementTerm)random_belief.statement).get_subject_term();
+
                     var results = this.inferenceEngine.do_semantic_inference_two_premise(j, random_belief); // {E, J!} :- P!
 
                     foreach (var result in results)
@@ -569,23 +727,20 @@ public class NARS : Mind
                         this.global_buffer.PUT_NEW(result);
                     }
                 }
-                else
-                {
-                    // no explanations, so babble
-                    MotorBabble();
-                }
-              
+                //}
+
+
+
+
             }
         }
     }
 
 
-
-
     void MotorBabble()
     {
         var motor_terms = NARSGenome.MOTOR_TERM_SET;
-        int rnd = UnityEngine.Random.Range(0, motor_terms.Length);
+        int rnd = UnityEngine.Random.Range(0, motor_terms.Count);
         var motor_term = motor_terms[rnd];
         SendInput(new Goal(this, motor_term, new EvidentialValue(1.0f, 0.99f), occurrence_time: current_cycle_number));
     }
@@ -612,10 +767,10 @@ public class NARS : Mind
 
             if (statement_term is CompoundTerm)
             {
-                if (statement_concept.prediction_links.GetCount() > 0)
-                {
-                    related_concept = statement_concept.prediction_links.peek().obj;
-                }
+                //if (statement_concept.prediction_links.GetCount() > 0)
+                //{
+                //    related_concept = statement_concept.prediction_links.peek().obj;
+                //}
             }
             else if (statement_term is StatementTerm && !((StatementTerm)statement_term).is_first_order())
             {
@@ -629,10 +784,10 @@ public class NARS : Mind
                 {
                     related_concept = statement_concept.explanation_links.peek().obj;
                 }
-                else if (statement_concept.superterm_links.GetCount() > 0)
-                {
-                    related_concept = statement_concept.superterm_links.peek().obj;
-                }
+                //else if (statement_concept.superterm_links.GetCount() > 0)
+                //{
+                //    related_concept = statement_concept.superterm_links.peek().obj;
+                //}
             }
             else
             {
@@ -693,20 +848,16 @@ public class NARS : Mind
         //Debug.Log(str);
 
         // input the operation statement
-        Judgment operation_event = new Judgment(this, operation_statement_to_execute, new EvidentialValue(1.0f,0.99f), this.current_cycle_number);
+        Judgment operation_event = new Judgment(this, operation_statement_to_execute, new EvidentialValue(1.0f, 0.99f), this.current_cycle_number);
         this.process_judgment_initial(operation_event);
     }
 
 
     public void SendInput(Sentence input_sentence)
     {
-        if(input_sentence == null || input_sentence.statement == null)
-        {
-            Debug.LogError("Null input");
-            return;
-        }
+
         //Debug.Log("Sending input: " + this.nars.helperFunctions.sentence_to_string(input_sentence));
-        if(input_sentence == null)
+        if (input_sentence == null)
         {
             Debug.LogError("NULl input to NARS is invalid");
             return;
@@ -725,10 +876,6 @@ public class NARS : Mind
     }
 
     public System.Threading.Tasks.Task task;
-    public override void ScheduleWorkingCycle()
-    {
-        do_working_cycle();
-    }
 
     public override void SaveToDisk()
     {
@@ -765,4 +912,10 @@ public class NARS : Mind
         float activation = GetGoalActivation(goal_statement);
         stored_activations[goal_statement.ToString()] = activation;
     }
+
+    public override void ScheduleWorkingCycle()
+    {
+        do_working_cycle();
+    }
+
 }

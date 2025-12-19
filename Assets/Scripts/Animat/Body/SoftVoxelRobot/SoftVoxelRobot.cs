@@ -72,6 +72,7 @@ public class SoftVoxelRobot : AnimatBody
         this.transform.localPosition = new Vector3(0,0.25f,0);
         this.transform.rotation = Quaternion.identity;
         this.transform.localScale = Vector3.one * this.scale;
+        this.color = new(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
     }
 
     public void DoVoxelyzeTimestep()
