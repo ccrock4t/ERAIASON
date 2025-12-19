@@ -47,6 +47,7 @@ public class SoftVoxelObject
     float time = 0;
 
     public List<(int3, CVX_Voxel, RobotVoxel)> sensor_voxels;
+    public Dictionary<int, CVX_Voxel> NARS_voxels;
     public List<(int3, CVX_Voxel)> raycast_sensor_voxels;
     public List<(int3, CVX_Voxel, RobotVoxel)> motor_voxels;
     public Dictionary<CVX_Voxel, double3> voxel_angular_velocities;
@@ -101,6 +102,7 @@ public class SoftVoxelObject
         this.voxelyze_materials_to_robot_voxel = new();
         this.motor_voxels = new();
         this.sensor_voxels = new();
+        this.NARS_voxels = new();
         this.raycast_sensor_voxels = new();
         this.voxel_angular_velocities = new();
         this.voxel_linear_velocities = new();
@@ -175,6 +177,8 @@ public class SoftVoxelObject
 
             // this voxel can be sensed by the brain
             this.sensor_voxels.Add((coords, cvx_voxel, material_enum));
+
+            this.NARS_voxels.Add(i, cvx_voxel);
    
             if (material_enum == RobotVoxel.Raycast_Vision_Sensor)
             {

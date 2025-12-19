@@ -37,6 +37,8 @@ public class SoftVoxelRobot : AnimatBody
                 AngularAcceleration_Sensor,*/
     }
 
+    public bool[] NARSVoxelContractedStates;
+
 
     public SoftVoxelRobot() : base()
     {
@@ -168,13 +170,33 @@ public class SoftVoxelRobot : AnimatBody
             });
 
   
-            this.DoVoxelyzeTimestep();
+         
         }
         else if (animat.mind is NARS nar)
         {
-            Debug.LogError("todo");
-        }
+            for (int i = 0; i < this.genome.voxel_array.Length; i++)
+            {
+                if (this.genome.voxel_array[i] == RobotVoxel.Empty) continue;
+                var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
+                var contract_term = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACT)");
+                var relax_term = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)");
+                float contract_activation = nar.GetGoalActivation(contract_term);
+                float relax_activation = nar.GetGoalActivation(relax_term);
+                if (contract_activation < nar.config.T && relax_activation < nar.config.T) continue;
 
+                bool contracted = false;
+                if (contract_activation >= nar.config.T && contract_activation >= relax_activation)
+                {
+                    contracted = true;
+                }else if (relax_activation >= nar.config.T && relax_activation >= contract_activation)
+                {
+                    contracted = false;
+                }
+                soft_voxel_object.SetVoxelTemperatureFromNeuronActivation(cvx_voxel, contracted ? 1 : -1);
+                this.NARSVoxelContractedStates[i] = contracted;
+            }
+        }
+        this.DoVoxelyzeTimestep();
     }
 
     public override void Sense(Animat animat)
@@ -271,8 +293,6 @@ public class SoftVoxelRobot : AnimatBody
                     }
                     else if (i == 2)
                     {
-
-
                         // get a ray pointing right from the voxel
                         Vector3 direction = Vector3.right;
                         direction = voxel_rotation * direction;
@@ -291,7 +311,34 @@ public class SoftVoxelRobot : AnimatBody
         }
         else if (animat.mind is NARS nar)
         {
-            Debug.LogError("todo");
+            if (this.NARSVoxelContractedStates == null) this.NARSVoxelContractedStates = new bool[this.genome.voxel_array.Length];
+            for (int i = 0; i < this.genome.voxel_array.Length; i++)
+            {
+                if (this.genome.voxel_array[i] == RobotVoxel.Empty) continue;
+                var contracted = this.NARSVoxelContractedStates[i];
+                StatementTerm contracted_sensor_term;
+                if (contracted)
+                {
+                    contracted_sensor_term= (StatementTerm)Term.from_string("(voxel" + i + " --> Contracted)");
+                }
+                else
+                {
+                    contracted_sensor_term= (StatementTerm)Term.from_string("(voxel" + i + " --> Relaxed)");
+                }
+
+                var contracted_sensation = new Judgment(nar, contracted_sensor_term, new(1.0f, 0.99f));
+                nar.SendInput(contracted_sensation);
+
+                var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
+                bool is_touching_ground = VoxelyzeEngine.GetVoxelFloorPenetration(cvx_voxel) > 0;
+                if (is_touching_ground)
+                {
+                    var touch_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Touch)");
+                    var touch_sensation = new Judgment(nar, touch_sensor_term, new(1.0f, 0.99f));
+                    nar.SendInput(touch_sensation);
+                }
+            }
+
         }
     }
 

@@ -265,6 +265,8 @@ public class NARSGenome : BrainGenome
                 var voxel = body_genome.voxel_array[i];
                 if (voxel == SoftVoxelRobot.RobotVoxel.Empty) continue;
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Touch)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Contracted)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Relaxed)"));
                 //for(int pitch=-45; pitch <= 45; pitch += 15)
                 //{
                 //    string deg = math.abs(pitch).ToString();
