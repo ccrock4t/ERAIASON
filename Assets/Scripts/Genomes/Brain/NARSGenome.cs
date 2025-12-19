@@ -16,13 +16,13 @@ public class NARSGenome : BrainGenome
     const float CHANCE_TO_MUTATE_BELIEFS = 0.8f;
 
     const bool ALLOW_VARIABLES = false;
-    const bool ALLOW_COMPOUNDS = false;
+    const bool ALLOW_COMPOUNDS = true;
     public static bool USE_GENERALIZATION = false;
 
     public bool LIMIT_SIZE = false;
-    public int SIZE_LIMIT = 10;
+    public int SIZE_LIMIT = 20;
 
-
+    const int MAX_COMPOUND_SIZE = 2; // 2 or 3
 
     public enum NARS_Evolution_Type
     {
@@ -715,68 +715,23 @@ public class NARSGenome : BrainGenome
 
         CompoundTerm subject = (CompoundTerm)implication.get_subject_term();
         Term S = (Term)subject.subterms[0];
-        StatementTerm M = (StatementTerm)subject.subterms[1];
+        Term M = (Term)subject.subterms[1];
         Term P = (Term)implication.get_predicate_term();
 
         StatementTerm new_statement;
 
 
-        int rnd_sensor = UnityEngine.Random.Range(0, 2);
-        if (rnd_sensor == 0)
+        int rnd_element = UnityEngine.Random.Range(0, 3);
+        if (rnd_element == 0)
         {
             //S
             // compound S
 
             if (S is CompoundTerm sComp)
             {
-                if (Random.value < 0.5 || sComp.subterms.Count == 3)
-                {
-                    //remove term
-                    if (sComp.subterms.Count == 2)
-                    {
-                        // make compound into not compound
-                        int rnd_subterm_idx = Random.Range(0, 2);
-                        new_statement = CreateContingencyStatement(sComp.subterms[rnd_subterm_idx], M, P);
-                    }
-                    else// if (pComp.subterms.Count == 3)
-                    {
-                        // reduce compound from 3 to 2
-                        int rnd_subterm_ignore = Random.Range(0, 3);
-                        // make not compound into compound
-                        List<Term> subterms = new();
-                        int i = 0;
-                        foreach (var st in sComp.subterms)
-                        {
-                            if (rnd_subterm_ignore != i)
-                            {
-                                subterms.Add(st);
-                            }
-                            i++;
-                        }
-                        CompoundTerm c = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
-                        new_statement = CreateContingencyStatement(c, M, P);
-                    }
-
-                }
-                else
-                {
-                    // add term to 2-compound
-                    List<Term> subterms = new();
-                    subterms.Add(sComp.subterms[0]);
-                    subterms.Add(sComp.subterms[1]);
-                    var ignoreList = new List<StatementTerm>();
-                    foreach (var t in sComp.subterms)
-                    {
-                        if (t is StatementTerm st)
-                            ignoreList.Add(st);
-                    }
-
-                    var randomS = GetRandomSensoryTerm(ignoreList);
-                    subterms.Add(randomS);
-                    CompoundTerm c = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
-                    new_statement = CreateContingencyStatement(c, M, P);
-                }
-
+                // make compound into not compound
+                int rnd_subterm_idx = Random.Range(0, 2);
+                new_statement = CreateContingencyStatement(sComp.subterms[rnd_subterm_idx], M, P);
             }
             else if (S is StatementTerm)
             {
@@ -794,64 +749,17 @@ public class NARSGenome : BrainGenome
                 return;
             }
         }
-        else if (rnd_sensor == 1)
+        else if (rnd_element == 1)
         {
             // P
             // compound P
 
             if (P is CompoundTerm pComp)
             {
-                if (Random.value < 0.5 || pComp.subterms.Count == 3)
-                {
-                    //remove term
-                    if (pComp.subterms.Count == 2)
-                    {
-                        // make compound into not compound
-                        int rnd_subterm_idx = Random.Range(0, 2);
-                        new_statement = CreateContingencyStatement(S, M, pComp.subterms[rnd_subterm_idx]);
-                    }
-                    else// if (pComp.subterms.Count == 3)
-                    {
-                        // reduce compound from 3 to 2
-                        int rnd_subterm_ignore = Random.Range(0, 3);
-
-
-                        // make not compound into compound
-                        List<Term> subterms = new();
-                        int i = 0;
-                        foreach (var st in pComp.subterms)
-                        {
-                            if (rnd_subterm_ignore != i)
-                            {
-                                subterms.Add(st);
-                            }
-                            i++;
-                        }
-
-                        CompoundTerm c = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
-                        new_statement = CreateContingencyStatement(S, M, c);
-                    }
-
-                }
-                else
-                {
-                    // add term to 2-compound
-                    List<Term> subterms = new();
-                    subterms.Add(pComp.subterms[0]);
-                    subterms.Add(pComp.subterms[1]);
-                    var ignoreList = new List<StatementTerm>();
-                    foreach (var t in pComp.subterms)
-                    {
-                        if (t is StatementTerm st)
-                            ignoreList.Add(st);
-                    }
-
-                    var randomP = GetRandomSensoryTerm(ignoreList);
-                    subterms.Add(randomP);
-                    CompoundTerm c = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
-                    new_statement = CreateContingencyStatement(S, M, c);
-                }
-
+                //remove term
+                // make compound into not compound
+                int rnd_subterm_idx = Random.Range(0, 2);
+                new_statement = CreateContingencyStatement(S, M, pComp.subterms[rnd_subterm_idx]);
             }
             else if (P is StatementTerm)
             {
@@ -866,6 +774,35 @@ public class NARSGenome : BrainGenome
             else
             {
                 Debug.LogError("null");
+                return;
+            }
+        }
+        else if (rnd_element == 2)
+        {
+            // M
+            // compound / decompound M
+
+            if (M is CompoundTerm mComp)
+            {
+                // decompound: pick one subterm
+                int idx = UnityEngine.Random.Range(0, mComp.subterms.Count);
+                Term newM = (Term)mComp.subterms[idx];
+                new_statement = CreateContingencyStatement(S, newM, P);
+            }
+            else if (M is StatementTerm mSt)
+            {
+                // compound: add one more motor terms
+                var subterms = new List<Term> { mSt };
+
+                // add another unique motor term
+                subterms.Add(GetRandomMotorTerm(mSt));
+
+                Term newM = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
+                new_statement = CreateContingencyStatement(S, newM, P);
+            }
+            else
+            {
+                Debug.LogError("Unexpected M type");
                 return;
             }
         }
@@ -1037,7 +974,7 @@ public class NARSGenome : BrainGenome
 
         CompoundTerm subject = (CompoundTerm)implication.get_subject_term();
         Term S = (Term)subject.subterms[0];
-        StatementTerm M = (StatementTerm)subject.subterms[1];
+        Term M = (Term)subject.subterms[1];
         Term P = (Term)implication.get_predicate_term();
 
         StatementTerm new_statement;
@@ -1116,13 +1053,28 @@ public class NARSGenome : BrainGenome
         }
         else if (rnd == 1)
         {
-            // replace M
-            var randomM = GetRandomMotorTerm();
-            if (S.contains_variable())
+            // replace / compound / decompound M
+            if (M is CompoundTerm mComp)
             {
-                randomM = new StatementTerm(Term.from_string("(*,{SELF},#x)"), randomM.get_predicate_term(), Copula.Inheritance);
+                // decompound: pick one subterm
+                int idx = UnityEngine.Random.Range(0, mComp.subterms.Count);
+                Term newM = (Term)mComp.subterms[idx];
+                new_statement = CreateContingencyStatement(S, newM, P);
             }
-            new_statement = CreateContingencyStatement(subject.subterms[0], randomM, P);
+            else
+            {
+                // compound: add another motor term to M
+                var subterms = new List<Term> { M };
+
+                // avoid re-adding the same term if M is already a StatementTerm
+                if (M is StatementTerm mSt)
+                    subterms.Add(GetRandomMotorTerm(mSt));
+                else
+                    subterms.Add(GetRandomMotorTerm());
+
+                Term newM2 = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
+                new_statement = CreateContingencyStatement(S, newM2, P);
+            }
         }
         else //if (rnd == 2)
         {

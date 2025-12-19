@@ -313,30 +313,56 @@ public class SoftVoxelRobot : AnimatBody
         else if (animat.mind is NARS nar)
         {
             if (this.NARSVoxelContractedStates == null) this.NARSVoxelContractedStates = new bool[this.genome.voxel_array.Length];
+            List<StatementTerm> current_states = new();
+
             for (int i = 0; i < this.genome.voxel_array.Length; i++)
             {
                 if (this.genome.voxel_array[i] == RobotVoxel.Empty) continue;
-                var contracted = this.NARSVoxelContractedStates[i];
-                StatementTerm contracted_sensor_term;
-                if (contracted)
-                {
-                    contracted_sensor_term= (StatementTerm)Term.from_string("(voxel" + i + " --> Contracted)");
-                }
-                else
-                {
-                    contracted_sensor_term= (StatementTerm)Term.from_string("(voxel" + i + " --> Relaxed)");
-                }
 
-                var contracted_sensation = new Judgment(nar, contracted_sensor_term, new(1.0f, 0.99f));
-                nar.SendInput(contracted_sensation);
+                // Contracted / Relaxed state
+                bool contracted = this.NARSVoxelContractedStates[i];
+                var contracted_sensor_term = (StatementTerm)Term.from_string(
+                    contracted
+                        ? $"(voxel{i} --> Contracted)"
+                        : $"(voxel{i} --> Relaxed)"
+                );
+                current_states.Add(contracted_sensor_term);
 
+                // Touch state (optional)
                 var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
                 bool is_touching_ground = VoxelyzeEngine.GetVoxelFloorPenetration(cvx_voxel) > 0;
                 if (is_touching_ground)
                 {
-                    var touch_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Touch)");
-                    var touch_sensation = new Judgment(nar, touch_sensor_term, new(1.0f, 0.99f));
-                    nar.SendInput(touch_sensation);
+                    var touch_sensor_term = (StatementTerm)Term.from_string($"(voxel{i} --> Touch)");
+                    current_states.Add(touch_sensor_term);
+                }
+            }
+
+            int cycle = nar.current_cycle_number;
+
+            for (int i = 0; i < current_states.Count; i++)
+            {
+                var s1 = current_states[i];
+                nar.SendInput(new Judgment(nar, s1, new(1.0f, 0.99f), cycle));
+
+                for (int j = i + 1; j < current_states.Count; j++)
+                {
+                    var s2 = current_states[j];
+                    var c2 = TermHelperFunctions.TryGetCompoundTerm(
+                        new() { s1, s2 },
+                        TermConnector.ParallelConjunction
+                    );
+                    nar.SendInput(new Judgment(nar, c2, new(1.0f, 0.99f), cycle));
+
+                    //for (int k = j + 1; k < current_states.Count; k++)
+                    //{
+                    //    var s3 = current_states[k];
+                    //    var c3 = TermHelperFunctions.TryGetCompoundTerm(
+                    //        new() { s1, s2, s3 },
+                    //        TermConnector.ParallelConjunction
+                    //    );
+                    //    nar.SendInput(new Judgment(nar, c3, new(1.0f, 0.99f), cycle));
+                    //}
                 }
             }
 

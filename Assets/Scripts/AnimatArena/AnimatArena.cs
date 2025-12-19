@@ -367,17 +367,12 @@ public class AnimatArena : MonoBehaviour
             var animat_position = animat.body._GetCenterOfMass();
             bool out_of_bounds = IsOutOfArenaBounds(animat_position);
             // check for death conditions
-            if (generation_timer > TIME_PER_GENERATION ||
-                animat.body.energy <= 0 ||
-                animat.body.health <= 0 ||
-                animat.body.age > AnimatBody.MAX_AGE ||
-                animat.body.Crashed() ||
-                out_of_bounds)
+            if (generation_timer > TIME_PER_GENERATION)
             {
                 bool ignore_for_reproduction = animat.body.Crashed();
                 if (out_of_bounds){
                     animat.body.energy = 0; // dont leave food behind if fell thru mesh
-                    ignore_for_reproduction = true;
+                    ignore_for_reproduction = false;
                     Debug.LogError("animat fell outs of bounds");
                 }
                 if (animat.body.health > 0) animat.body.energy = 0; // dont leave food behind if didnt die from predation, it spams too much food in the world

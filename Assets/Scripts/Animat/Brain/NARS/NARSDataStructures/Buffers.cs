@@ -148,7 +148,7 @@ public class TemporalModule
     {
         if (derivedSentence != null && this.nars != null)
         {
-            this.nars.global_buffer.PUT_NEW(derivedSentence);
+            this.nars.global_buffer.Enqueue(derivedSentence);
         }
     }
 
@@ -472,7 +472,7 @@ public class TemporalModule
 
                 // disappoint; the anticipation failed
                 var disappoint = new Judgment(this.nars, a.term_expected,new EvidentialValue(0.0f,this.nars.helperFunctions.get_unit_evidence()));
-                this.nars.global_buffer.PUT_NEW(disappoint);
+                this.nars.global_buffer.Enqueue(disappoint);
             }
             else
             {

@@ -26,7 +26,7 @@ public class NARS : Mind
     public NARSInferenceEngine inferenceEngine;
     public Memory memory;
 
-    public Buffer<Sentence> global_buffer;
+    public ConcurrentQueue<Sentence> global_buffer;
     public TemporalModule temporal_module;
 
     public HelperFunctions helperFunctions;
@@ -58,7 +58,7 @@ public class NARS : Mind
 
         this.helperFunctions = new HelperFunctions(this);
 
-        this.global_buffer = new Buffer<Sentence>(this.config.GLOBAL_BUFFER_CAPACITY);
+        this.global_buffer = new();
         this.temporal_module = new(this, this.config.EVENT_BUFFER_CAPACITY);
 
 
@@ -110,13 +110,13 @@ public class NARS : Mind
         this.Observe();
 
         // global buffer
-        int buffer_len = this.global_buffer.GetCount();
+        int buffer_len = this.global_buffer.Count();
 
-        if (buffer_len >= 3 * global_buffer.capacity / 4) Debug.LogWarning("NARS buffer about  to overflow");
+        //if (buffer_len >= 3 * global_buffer.capacity / 4) Debug.LogWarning("NARS buffer about  to overflow");
         int tasks_left = buffer_len;
         while (tasks_left > 0)
         {
-            Sentence buffer_item = this.global_buffer.take().obj;
+            this.global_buffer.TryDequeue(out Sentence buffer_item);
             tasks_left--;
 
             if (buffer_item is Goal && this.inferenceEngine.get_sentence_value_time_decayed(buffer_item).confidence < 0.1)
@@ -303,8 +303,8 @@ public class NARS : Mind
 
         statement_concept.belief_table.put(j);
 
-        Judgment current_belief = statement_concept.belief_table.peek();
-        this.process_judgment_continued(current_belief);
+       // Judgment current_belief = statement_concept.belief_table.peek();
+       // this.process_judgment_continued(current_belief);
 
         var j_term = j.get_statement_term();
         if (temporal_module.DoesAnticipate(j_term))
@@ -334,7 +334,7 @@ public class NARS : Mind
         //List<Sentence> results = this.process_sentence_semantic_inference(j1);
         //foreach (Sentence result in results)
         //{
-        //    this.global_buffer.PUT_NEW(result);
+        //    this.global_buffer.Enqueue(result);
         //}
     }
 
@@ -451,7 +451,15 @@ public class NARS : Mind
         {
             //if not j.executed:
             //this.queue_operation(j);
-            this.execute_atomic_operation((StatementTerm)j.statement, j.get_desirability(this), new List<string>());
+            //if(statement is CompoundTerm)
+            //{
+            //    this.execute_atomic_operation((StatementTerm)j.statement, j.get_desirability(this), new List<string>());
+            //}
+            //else
+            //{
+            //    this.execute_atomic_operation((StatementTerm)j.statement, j.get_desirability(this), new List<string>());
+            //}
+                
             //    j.executed = false
         }
         else
@@ -611,13 +619,22 @@ public class NARS : Mind
                     results = this.inferenceEngine.do_semantic_inference_two_premise(j, first_subterm_belief);
                     //}
 
-                    if (first_subterm_belief.statement.connector == TermConnector.ParallelConjunction)
-                    {
-                        int test = 1;
-                    }
+
                     foreach (Sentence result in results)
                     {
-                        this.global_buffer.PUT_NEW(result);
+                        if(result is Goal && result.statement is CompoundTerm compResult)
+                        {
+                            foreach(StatementTerm element in compResult.subterms)
+                            {
+                                var goal = new Goal(this, element, result.evidential_value, occurrence_time: this.current_cycle_number);
+                                this.global_buffer.Enqueue(result);
+                            }
+                        }
+                        else
+                        {
+                            this.global_buffer.Enqueue(result);
+                        }
+                        
                     }
                     return; // done deriving goals
                 }
@@ -636,14 +653,14 @@ public class NARS : Mind
                     //    foreach(var subterm in c.subterms)
                     //    {
                     //        Goal subtermgoal = (Goal)this.helperFunctions.create_resultant_sentence_one_premise(j, c.subterms[1], null, j.evidential_value);
-                    //        this.global_buffer.PUT_NEW(subtermgoal);
+                    //        this.global_buffer.Enqueue(subtermgoal);
                     //    }
                     //}
                     //else
                     //{
                         //first belief was not positive, so derive a goal to make it positive
                         Goal first_subterm_goal = (Goal)this.helperFunctions.create_resultant_sentence_one_premise(j, first_subterm_statement, null, j.evidential_value);
-                        this.global_buffer.PUT_NEW(first_subterm_goal);
+                        this.global_buffer.Enqueue(first_subterm_goal);
                     //}
                 }
                 
@@ -663,7 +680,7 @@ public class NARS : Mind
                 //        List<Sentence> results = this.inferenceEngine.do_semantic_inference_two_premise(j, belief);
                 //        foreach (Sentence result in results)
                 //        {
-                //            this.global_buffer.PUT_NEW(result);
+                //            this.global_buffer.Enqueue(result);
                 //        }
 
                 //        return; // done deriving goals
@@ -710,21 +727,21 @@ public class NARS : Mind
                                 Concept second_subterm_concept = this.memory.peek_concept(second_subterm_statement);
                                 Judgment second_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
 
-                                if (NARSGenome.USE_LEARNING())
-                                {
-                                    if (first_subterm_belief != null
-                                        && this.inferenceEngine.is_positive(first_subterm_belief)
-                                        && second_subterm_statement.is_op())
-                                    {
-                                        // since the contextual event is true,and the second term  is a motor op, form an anticipation for the postcondition
-                                        this.temporal_module.Anticipate(j.get_statement_term());
-                                    }
-                                }
+                                //if (NARSGenome.USE_LEARNING())
+                                //{
+                                //    if (first_subterm_belief != null
+                                //        && this.inferenceEngine.is_positive(first_subterm_belief)
+                                //        && second_subterm_statement.is_op())
+                                //    {
+                                //        // since the contextual event is true,and the second term  is a motor op, form an anticipation for the postcondition
+                                //        this.temporal_module.Anticipate(j.get_statement_term());
+                                //    }
+                                //}
 
                             }
                         }
 
-                        this.global_buffer.PUT_NEW(result);
+                        this.global_buffer.Enqueue(result);
                     }
                 }
                 //}
@@ -848,8 +865,8 @@ public class NARS : Mind
         //Debug.Log(str);
 
         // input the operation statement
-        Judgment operation_event = new Judgment(this, operation_statement_to_execute, new EvidentialValue(1.0f, 0.99f), this.current_cycle_number);
-        this.process_judgment_initial(operation_event);
+        //Judgment operation_event = new Judgment(this, operation_statement_to_execute, new EvidentialValue(1.0f, 0.99f), this.current_cycle_number);
+        //this.process_judgment_initial(operation_event);
     }
 
 
@@ -864,7 +881,7 @@ public class NARS : Mind
         }
         input_sentence.is_from_input = true;
 
-        this.global_buffer.PUT_NEW(input_sentence);
+        this.global_buffer.Enqueue(input_sentence);
     }
 
 
