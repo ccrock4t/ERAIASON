@@ -110,7 +110,7 @@ public class SoftVoxelRobotBodyGenome : BodyGenome
                     RobotVoxel voxel = RobotVoxel.Touch_Sensor;
                     if (z == genome.dimensions3D.z - 1)
                     {
-                        if (x == 2 && y == 2)
+                        if (x == dims.x/2 && y == dims.y-1)
                         {
                             voxel = RobotVoxel.Raycast_Vision_Sensor;
                         }
@@ -122,18 +122,36 @@ public class SoftVoxelRobotBodyGenome : BodyGenome
                     }
 
                     // quadruped legs
-                    if (y <= 1 && !genome.IsInCorner(x, z, genome.dimensions3D))
+                    if (z < genome.dimensions3D.z - 2 && z > 0 && y < dims.y - 1)
                     {
-                        if ((z == 0 || z == genome.dimensions3D.z - 2) && x == 2)
-                        {
-                            // third leg
-                        }
-                        else
-                        {
-                            voxel = RobotVoxel.Empty;
-                        }
+                        //if ((z == 0 || z == genome.dimensions3D.z - 2) && x == 2)
+                        //{
+                        //    // third leg
+                        //}
+                        //else
+                        //{
+                        voxel = RobotVoxel.Empty;
+                        //}
 
                     }
+
+                    if (x == dims.x/2 && y <= dims.y/2)
+                    {
+                        voxel = RobotVoxel.Empty;
+                    }
+
+                    //if(z == 0 && y == 0)
+                    //{
+                    //    //if ((z == 0 || z == genome.dimensions3D.z - 2) && x == 2)
+                    //    //{
+                    //    //    // third leg
+                    //    //}
+                    //    //else
+                    //    //{
+                    //    voxel = RobotVoxel.Empty;
+                    //    //}
+
+                    //}
 
                     //if (y == 0)
                     //{

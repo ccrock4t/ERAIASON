@@ -16,13 +16,13 @@ public class NARSGenome : BrainGenome
     const float CHANCE_TO_MUTATE_BELIEFS = 0.8f;
 
     const bool ALLOW_VARIABLES = false;
-    const bool ALLOW_COMPOUNDS = true;
+    public const bool ALLOW_COMPOUNDS = false;
     public static bool USE_GENERALIZATION = false;
 
     public bool LIMIT_SIZE = false;
     public int SIZE_LIMIT = 20;
 
-    const int MAX_COMPOUND_SIZE = 2; // 2 or 3
+
 
     public enum NARS_Evolution_Type
     {
@@ -119,7 +119,7 @@ public class NARSGenome : BrainGenome
         public float Time_Projection_Event;
         public float Time_Projection_Goal;
 
-        public float Compound_Confidence;
+        public float Sine_Speed;
 
 
 
@@ -139,7 +139,7 @@ public class NARSGenome : BrainGenome
             else if (i == 6) return Evidential_Base_Length;
             else if (i == 7) return Time_Projection_Event;
             else if (i == 8) return Time_Projection_Goal;
-            else if (i == 9) return Compound_Confidence;
+            else if (i == 9) return Sine_Speed;
             else if (i == 10) return RuntimeCompounds1;
             else if (i == 11) return RuntimeCompounds2;
             else if (i == 12) return RuntimeCompounds3;
@@ -158,7 +158,7 @@ public class NARSGenome : BrainGenome
             else if (i == 6) return "Evidential_Base_Length";
             else if (i == 7) return "Time_Projection_Event";
             else if (i == 8) return "Time_Projection_Goal";
-            else if (i == 9) return "Compound_Confidence";
+            else if (i == 9) return "Sine_Speed";
             else if (i == 10) return "RuntimeCompounds1";
             else if (i == 11) return "RuntimeCompounds2";
             else if (i == 12) return "RuntimeCompounds3";
@@ -178,7 +178,7 @@ public class NARSGenome : BrainGenome
             else if (i == 6) Evidential_Base_Length = (int)value;
             else if (i == 7) Time_Projection_Event = (float)value;
             else if (i == 8) Time_Projection_Goal = (float)value;
-            else if (i == 9) Compound_Confidence = (float)value;
+            else if (i == 9) Sine_Speed = (float)value;
             else if (i == 10) RuntimeCompounds1 = (int)value;
             else if (i == 11) RuntimeCompounds2 = (int)value;
             else if (i == 12) RuntimeCompounds3 = (int)value;
@@ -306,6 +306,10 @@ public class NARSGenome : BrainGenome
         };
         AddEvolvableSentences(goals, statement_strings);
     }
+
+    public static StatementTerm sine_high;
+    public static StatementTerm sine_medium;
+    public static StatementTerm sine_low;
     public void SetupSoftVoxelRobotBodyGenome(SoftVoxelRobotBodyGenome body_genome)
     {
         if (!sensorymotor_statements_initialized)
@@ -319,6 +323,7 @@ public class NARSGenome : BrainGenome
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Touch)"));
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Contracted)"));
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Relaxed)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Neutral)"));
                 //for(int pitch=-45; pitch <= 45; pitch += 15)
                 //{
                 //    string deg = math.abs(pitch).ToString();
@@ -338,10 +343,18 @@ public class NARSGenome : BrainGenome
 
 
                 motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACT)"));
-                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)"));
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)"));;
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> NORMALIZE)"));;
             }
-            energy_full = (StatementTerm)Term.from_string("({ENERGY} --> [FULL])");
+            energy_full = (StatementTerm)Term.from_string("(ENERGY --> FULL)");
             sensoryStatements.Add(energy_full);
+
+            //sine_high = (StatementTerm)Term.from_string("(sine --> high)");
+            //sine_medium = (StatementTerm)Term.from_string("(sine --> medium)");
+            //sine_low = (StatementTerm)Term.from_string("(sine --> low)");
+            //sensoryStatements.Add(sine_high);
+            //sensoryStatements.Add(sine_medium);
+            //sensoryStatements.Add(sine_low);
 
             SENSORY_TERM_SET = sensoryStatements;
 
@@ -438,7 +451,7 @@ public class NARSGenome : BrainGenome
         personality_parameters.Time_Projection_Goal = 1;
 
         // Generalization Confidence
-        personality_parameters.Compound_Confidence = 0.99f;
+        personality_parameters.Sine_Speed = 0.99f;
 
 
         return personality_parameters;
@@ -484,7 +497,7 @@ public class NARSGenome : BrainGenome
 
         // Compound Confidence
         var compoundConfidenceRange = GetCompoundConfidenceRange();
-        personality_parameters.Compound_Confidence = UnityEngine.Random.Range(compoundConfidenceRange.x, compoundConfidenceRange.y);
+        personality_parameters.Sine_Speed = UnityEngine.Random.Range(compoundConfidenceRange.x, compoundConfidenceRange.y);
 
 
         // Runtime compounds
@@ -920,7 +933,7 @@ public class NARSGenome : BrainGenome
 
         // --- Compound Confidence ---
         var generalizationConfidenceRange = GetCompoundConfidenceRange();
-        MutateFloat(ref this.personality_parameters.Compound_Confidence, generalizationConfidenceRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
+        MutateFloat(ref this.personality_parameters.Sine_Speed, generalizationConfidenceRange, CHANCE_TO_REPLACE_PARAM, CHANCE_TO_MUTATE);
 
         // flip compounding on/off
         var compoundRange = GetRuntimeCompoundRange();
@@ -934,7 +947,7 @@ public class NARSGenome : BrainGenome
 
     public void AddNewRandomBelief()
     {
-        StatementTerm statement = CreateContingencyStatement(GetRandomSensoryTerm(), GetRandomMotorTerm(), GetRandomSensoryTerm());
+        StatementTerm statement = CreateContingencyStatement(GetRandomSensoryTerm(), GetRandomMotorTerm(), GetRandomSensoryTerm(true));
         string statement_string = statement.ToString();
         if (!belief_statement_strings.ContainsKey(statement_string))
         {
@@ -1137,7 +1150,7 @@ public class NARSGenome : BrainGenome
             }
             else if (P is StatementTerm)
             {
-                var randomP = GetRandomSensoryTerm();
+                var randomP = GetRandomSensoryTerm(true);
                 new_statement = CreateContingencyStatement(S, M, randomP);
             }
             else
@@ -1159,9 +1172,9 @@ public class NARSGenome : BrainGenome
         this.beliefs[rnd_idx] = belief;
     }
 
-    public StatementTerm GetRandomSensoryTerm()
+    public StatementTerm GetRandomSensoryTerm(bool bias = false)
     {
-        //if (UnityEngine.Random.value < 0.05) return energy_increasing;
+        if (bias || UnityEngine.Random.value < 0.05) return energy_full;
         int rnd = UnityEngine.Random.Range(0, SENSORY_TERM_SET.Count);
         return SENSORY_TERM_SET[rnd];
     }

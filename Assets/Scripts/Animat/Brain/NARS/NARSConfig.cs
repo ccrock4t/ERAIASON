@@ -90,5 +90,5 @@ public class NARSConfig {
     public bool RUNTIME_COMPOUNDS1 { get; internal set; }
     public bool RUNTIME_COMPOUNDS2 { get; internal set; }
     public bool RUNTIME_COMPOUNDS3 { get; internal set; }
-    public float COMPOUND_CONFIDENCE { get; internal set; }
+    public float SINE_SPEED { get; internal set; }
 }

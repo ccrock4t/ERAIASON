@@ -105,11 +105,7 @@ public abstract class AnimatBody : MonoBehaviour
             //};
 
             // enter instinctual goals
-            foreach (var goal_data in ((NARSGenome)animat.genome.brain_genome).goals)
-            {
-                var goal = new Goal(nar, goal_data.statement, goal_data.evidence, occurrence_time: nar.current_cycle_number);
-                nar.SendInput(goal);
-            }
+
         }
 
         //vision

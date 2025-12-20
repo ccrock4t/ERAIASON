@@ -49,12 +49,14 @@ public abstract class NoveltySearch
         if (GlobalConfig.novelty_search_processing_method == GlobalConfig.ProcessingMethod.GPU)
         {
             Color gpu_datapoint = new();
-            gpu_datapoint.r = x;// a.body.food_was_seen;
-            gpu_datapoint.g = a.body.food_was_seen;
+            gpu_datapoint.r = 0;// a.body.food_was_seen;
+            gpu_datapoint.g = 0;
             //gpu_datapoint.g = a.body.food_was_seen;
-            gpu_datapoint.b = z;
+            float nz = a.GetCenterOfMass().z;
+            if (nz < 0) nz = 0;
+            gpu_datapoint.b = nz;
 
-          
+
             a.behavior_characterization_list_GPU.Add(gpu_datapoint);
         }
 

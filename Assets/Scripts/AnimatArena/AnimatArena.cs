@@ -71,6 +71,10 @@ public class AnimatArena : MonoBehaviour
 
     public const float BEHAVIOR_CHARACTERIZATION_RECORD_PERIOD = 1.0f;
 
+
+    float generation_timer;
+    const float TIME_PER_GENERATION = 10;
+
     GameObject worldUIcanvas;
 
     private void Awake()
@@ -329,16 +333,14 @@ public class AnimatArena : MonoBehaviour
 
     public bool IsOutOfArenaBounds(Vector3 position)
     {
-        return
-            (position.x < 0 || position.x > WORLD_DIMENSIONS.x)
-            || (position.y < -10)
-            || (position.z < 0 || position.z > WORLD_DIMENSIONS.z);
+        return false;
+            //(position.x < 0 || position.x > WORLD_DIMENSIONS.x)
+            //|| (position.y < -10)
+            //|| (position.z < 0 || position.z > WORLD_DIMENSIONS.z);
     }
 
 
 
-    float generation_timer;
-    const float TIME_PER_GENERATION = 10;
     public void FixedUpdate()
     {
         DataAnalyzer.TrackPopulationSnapshot();

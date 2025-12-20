@@ -91,7 +91,7 @@ public class NARS : Mind
         this.config.RUNTIME_COMPOUNDS1 = nars_genome.personality_parameters.RuntimeCompounds1 == 1;
         this.config.RUNTIME_COMPOUNDS2 = nars_genome.personality_parameters.RuntimeCompounds2 == 1;
         this.config.RUNTIME_COMPOUNDS3 = nars_genome.personality_parameters.RuntimeCompounds3 == 1;
-        this.config.COMPOUND_CONFIDENCE = nars_genome.personality_parameters.Compound_Confidence;
+        this.config.SINE_SPEED = nars_genome.personality_parameters.Sine_Speed;
 
     }
 

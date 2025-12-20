@@ -571,13 +571,23 @@ public class Animat : MonoBehaviour
 
         //this.SpendEnergy();
 
-        this.body.Sense(this);
+     
         if (GlobalConfig.BRAIN_PROCESSING_METHOD != BrainProcessingMethod.Random)
         {
-            this.mind.ScheduleWorkingCycle();
+            this.body.Sense(this);
+            //for (int i=0; i < 4; i++)
+           // {
+                foreach (var goal_data in ((NARSGenome)this.genome.brain_genome).goals)
+                {
+                    var goal = new Goal((NARS)this.mind, goal_data.statement, goal_data.evidence, occurrence_time: ((NARS)this.mind).current_cycle_number);
+                    ((NARS)this.mind).SendInput(goal);
+                }
+                this.mind.ScheduleWorkingCycle();
+           // }
+            
         }
         this.body.MotorEffect(this);
-
+        ((SoftVoxelRobot )this.body).DoVoxelyzeTimestep();
 
 
 

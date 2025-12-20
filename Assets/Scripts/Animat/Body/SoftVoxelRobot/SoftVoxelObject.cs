@@ -53,6 +53,7 @@ public class SoftVoxelObject
     public Dictionary<CVX_Voxel, double3> voxel_angular_velocities;
     public Dictionary<CVX_Voxel, double3> voxel_linear_velocities;
     public Dictionary<CVX_Voxel, float> voxel_sinusoid_states;
+    public Dictionary<CVX_Voxel, float> voxel_sinusoid_temps;
 
     ConcurrentDictionary<CVX_Voxel, Queue<double3>> recent_velocities;
     ConcurrentDictionary<CVX_Voxel, Queue<double3>> recent_temps;
@@ -107,13 +108,14 @@ public class SoftVoxelObject
         this.voxel_angular_velocities = new();
         this.voxel_linear_velocities = new();
         this.voxel_sinusoid_states = new();
+        this.voxel_sinusoid_temps = new();
         
 
-        float density = MPa/4;
+        float density = 10000;
         float poisson_ratio = 0.35f;
-        float soft_material_modulus = 50 * MPa;
-        float medium_material_modulus = 50 * MPa;
-        float hard_material_modulus = 50 * MPa;
+        float soft_material_modulus = 10 * MPa;
+        float medium_material_modulus = 10 * MPa;
+        float hard_material_modulus = 10 * MPa;
         Color brown_color = new Color(100 / 255f, 65 / 255f, 23 / 255f);
       
         this.robot_voxel_to_voxelyze_materials[RobotVoxel.Touch_Sensor]
@@ -334,11 +336,12 @@ public class SoftVoxelObject
 
 
     // activation in [-1,1]
-    public void SinusoidalMovementFromNeuronActivation(CVX_Voxel voxel, float activation)
+    public void SinusoidalMovementFromNeuronActivation(CVX_Voxel voxel, float activation, float speed)
     {
         if (!this.voxel_sinusoid_states.ContainsKey(voxel)) this.voxel_sinusoid_states[voxel] = 0;
         this.voxel_sinusoid_states[voxel] += activation;
-        float new_temp = TEMP_MAX_MAGNITUDE * math.sin(SINUSOID_SPEED * this.voxel_sinusoid_states[voxel]);
+        float new_temp = TEMP_MAX_MAGNITUDE * math.sin(speed * this.voxel_sinusoid_states[voxel]);
+        voxel_sinusoid_temps[voxel] = new_temp;
         SetVoxelTemperature(voxel, new_temp);
     }
 

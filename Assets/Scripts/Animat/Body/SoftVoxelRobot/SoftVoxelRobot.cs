@@ -37,7 +37,7 @@ public class SoftVoxelRobot : AnimatBody
                 AngularAcceleration_Sensor,*/
     }
 
-    public bool[] NARSVoxelContractedStates;
+    public int[] NARSVoxelContractedStates;
 
 
     public SoftVoxelRobot() : base()
@@ -181,23 +181,29 @@ public class SoftVoxelRobot : AnimatBody
                 var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
                 var contract_term = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACT)");
                 var relax_term = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)");
+                var neutral_term = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> NORMALIZE)");
                 float contract_activation = nar.GetGoalActivation(contract_term);
                 float relax_activation = nar.GetGoalActivation(relax_term);
-                if (contract_activation < nar.config.T && relax_activation < nar.config.T) continue;
+                float neutral_activation = nar.GetGoalActivation(neutral_term);
+                //if (contract_activation < nar.config.T) continue;
 
-                bool contracted = false;
-                if (contract_activation >= nar.config.T && contract_activation >= relax_activation)
+                int activation = this.NARSVoxelContractedStates[i];
+                if (contract_activation >= nar.config.T)
                 {
-                    contracted = true;
-                }else if (relax_activation >= nar.config.T && relax_activation >= contract_activation)
+                    activation = 1;
+                }else if (relax_activation >= nar.config.T)
                 {
-                    contracted = false;
+                    activation = -1;
                 }
-                soft_voxel_object.SetVoxelTemperatureFromNeuronActivation(cvx_voxel, contracted ? 1 : -1);
-                this.NARSVoxelContractedStates[i] = contracted;
+                else if (neutral_activation >= nar.config.T)
+                {
+                    activation = 0;
+                }
+                soft_voxel_object.SinusoidalMovementFromNeuronActivation(cvx_voxel, activation, nar.config.SINE_SPEED*20);
+                this.NARSVoxelContractedStates[i] = activation;
             }
         }
-        this.DoVoxelyzeTimestep();
+       
     }
 
     public override void Sense(Animat animat)
@@ -312,24 +318,35 @@ public class SoftVoxelRobot : AnimatBody
         }
         else if (animat.mind is NARS nar)
         {
-            if (this.NARSVoxelContractedStates == null) this.NARSVoxelContractedStates = new bool[this.genome.voxel_array.Length];
+            if (this.NARSVoxelContractedStates == null) this.NARSVoxelContractedStates = new int[this.genome.voxel_array.Length];
             List<StatementTerm> current_states = new();
 
             for (int i = 0; i < this.genome.voxel_array.Length; i++)
             {
                 if (this.genome.voxel_array[i] == RobotVoxel.Empty) continue;
-
+                var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
                 // Contracted / Relaxed state
-                bool contracted = this.NARSVoxelContractedStates[i];
-                var contracted_sensor_term = (StatementTerm)Term.from_string(
-                    contracted
-                        ? $"(voxel{i} --> Contracted)"
-                        : $"(voxel{i} --> Relaxed)"
-                );
+                if (!this.soft_voxel_object.voxel_sinusoid_temps.ContainsKey(cvx_voxel)) continue;
+                float sine = this.soft_voxel_object.voxel_sinusoid_temps[cvx_voxel];
+                
+                StatementTerm contracted_sensor_term;
+     
+                if (sine > 0.33)
+                {
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Contracted)");
+                }
+                else if (sine < -0.33)
+                {
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Relaxed)");
+                }
+                else
+                {
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Neutral)");
+                }
                 current_states.Add(contracted_sensor_term);
 
                 // Touch state (optional)
-                var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
+     
                 bool is_touching_ground = VoxelyzeEngine.GetVoxelFloorPenetration(cvx_voxel) > 0;
                 if (is_touching_ground)
                 {
@@ -338,6 +355,7 @@ public class SoftVoxelRobot : AnimatBody
                 }
             }
 
+
             int cycle = nar.current_cycle_number;
 
             for (int i = 0; i < current_states.Count; i++)
@@ -345,25 +363,20 @@ public class SoftVoxelRobot : AnimatBody
                 var s1 = current_states[i];
                 nar.SendInput(new Judgment(nar, s1, new(1.0f, 0.99f), cycle));
 
-                for (int j = i + 1; j < current_states.Count; j++)
+                if (NARSGenome.ALLOW_COMPOUNDS)
                 {
-                    var s2 = current_states[j];
-                    var c2 = TermHelperFunctions.TryGetCompoundTerm(
-                        new() { s1, s2 },
-                        TermConnector.ParallelConjunction
-                    );
-                    nar.SendInput(new Judgment(nar, c2, new(1.0f, 0.99f), cycle));
+                    for (int j = i + 1; j < current_states.Count; j++)
+                    {
+                        var s2 = current_states[j];
+                        var c2 = TermHelperFunctions.TryGetCompoundTerm(
+                            new() { s1, s2 },
+                            TermConnector.ParallelConjunction
+                        );
+                        nar.SendInput(new Judgment(nar, c2, new(1.0f, 0.99f), cycle));
 
-                    //for (int k = j + 1; k < current_states.Count; k++)
-                    //{
-                    //    var s3 = current_states[k];
-                    //    var c3 = TermHelperFunctions.TryGetCompoundTerm(
-                    //        new() { s1, s2, s3 },
-                    //        TermConnector.ParallelConjunction
-                    //    );
-                    //    nar.SendInput(new Judgment(nar, c3, new(1.0f, 0.99f), cycle));
-                    //}
+                    }
                 }
+
             }
 
         }

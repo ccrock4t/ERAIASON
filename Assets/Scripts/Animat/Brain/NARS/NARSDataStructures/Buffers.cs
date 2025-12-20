@@ -236,7 +236,7 @@ public class TemporalModule
                     conjunction.stamp.occurrence_time = eventA.stamp.occurrence_time;
                     var implication = this.nars.inferenceEngine.temporalRules.TemporalInduction(conjunction, eventC);
                     implication.evidential_value.frequency = 1.0f;
-                    implication.evidential_value.confidence = this.nars.config.COMPOUND_CONFIDENCE;
+                    implication.evidential_value.confidence = this.nars.config.SINE_SPEED;
                     ProcessSentence(implication);
                 }
 
@@ -314,7 +314,7 @@ public class TemporalModule
                         StatementTerm implication_statement = new StatementTerm(subject, eventD.statement, Copula.PredictiveImplication);
                         Judgment implication = new(this.nars, implication_statement, new());
                         implication.evidential_value.frequency = 1.0f;
-                        implication.evidential_value.confidence = this.nars.config.COMPOUND_CONFIDENCE;
+                        implication.evidential_value.confidence = this.nars.config.SINE_SPEED;
                         ProcessSentence(implication);
                     }
                 }
@@ -419,7 +419,7 @@ public class TemporalModule
 
                             Judgment implication = new(this.nars, implication_statement, new());
                             implication.evidential_value.frequency = 1.0f;
-                            implication.evidential_value.confidence = this.nars.config.COMPOUND_CONFIDENCE;
+                            implication.evidential_value.confidence = this.nars.config.SINE_SPEED;
                             ProcessSentence(implication);
 
                         }
