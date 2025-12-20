@@ -135,7 +135,7 @@ public class SoftVoxelRobotBodyGenome : BodyGenome
 
                     }
 
-                    if (x == dims.x/2 && y <= dims.y/2)
+                    if (x !=0 && x != dims.x -1 && y <= dims.y/2)
                     {
                         voxel = RobotVoxel.Empty;
                     }

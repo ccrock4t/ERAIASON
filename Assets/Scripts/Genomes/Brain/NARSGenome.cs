@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
 using static MutationHelpers;
+using static SoftVoxelRobot;
 using static Unity.Burst.Intrinsics.X86.Avx;
 using Random = UnityEngine.Random;
 
@@ -321,9 +322,9 @@ public class NARSGenome : BrainGenome
                 var voxel = body_genome.voxel_array[i];
                 if (voxel == SoftVoxelRobot.RobotVoxel.Empty) continue;
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Touch)"));
-                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Contracted)"));
-                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Relaxed)"));
-                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Neutral)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> NoTouch)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> On)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Off)"));
                 //for(int pitch=-45; pitch <= 45; pitch += 15)
                 //{
                 //    string deg = math.abs(pitch).ToString();
@@ -344,10 +345,15 @@ public class NARSGenome : BrainGenome
 
                 motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACT)"));
                 motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)"));;
-                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> NORMALIZE)"));;
             }
             energy_full = (StatementTerm)Term.from_string("(ENERGY --> FULL)");
             sensoryStatements.Add(energy_full);
+
+            foreach (CardinalXZ dir in Enum.GetValues(typeof(CardinalXZ)))
+            {
+                // use dir
+                sensoryStatements.Add((StatementTerm)Term.from_string($"(facing --> {dir.ToString()})"));
+            }
 
             //sine_high = (StatementTerm)Term.from_string("(sine --> high)");
             //sine_medium = (StatementTerm)Term.from_string("(sine --> medium)");

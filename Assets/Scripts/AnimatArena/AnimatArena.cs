@@ -73,7 +73,7 @@ public class AnimatArena : MonoBehaviour
 
 
     float generation_timer;
-    const float TIME_PER_GENERATION = 10;
+    const float TIME_PER_GENERATION = 20;
 
     GameObject worldUIcanvas;
 

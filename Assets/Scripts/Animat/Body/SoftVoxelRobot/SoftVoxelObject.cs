@@ -130,13 +130,13 @@ public class SoftVoxelObject
                     = VoxelyzeEngine.AddNewMaterial(this.cpp_voxel_object, hard_material_modulus, density, poisson_ratio, Color.white);*/
 
       
-        float static_friction = 1f;
-        float kinetic_friction = 0.7f;
+        float static_friction = 2.0f;
+        float kinetic_friction = 1.4f;
         foreach (KeyValuePair<RobotVoxel, CVoxelyze> pair in this.robot_voxel_to_voxelyze_materials)
         {
             CVoxelyze voxelyze_material = pair.Value;
             VoxelyzeEngine.SetInternalDamping(voxelyze_material, 1);
-            VoxelyzeEngine.SetGlobalDamping(voxelyze_material, 0.01f);
+            VoxelyzeEngine.SetGlobalDamping(voxelyze_material, 0.05f);
             VoxelyzeEngine.SetCollisionDamping(voxelyze_material, 0.8f);
             VoxelyzeEngine.SetFriction(voxelyze_material, static_friction, kinetic_friction);
 

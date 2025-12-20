@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
 using UnityEngine;
 using static BodyGenome;
@@ -181,10 +182,8 @@ public class SoftVoxelRobot : AnimatBody
                 var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
                 var contract_term = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACT)");
                 var relax_term = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)");
-                var neutral_term = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> NORMALIZE)");
                 float contract_activation = nar.GetGoalActivation(contract_term);
                 float relax_activation = nar.GetGoalActivation(relax_term);
-                float neutral_activation = nar.GetGoalActivation(neutral_term);
                 //if (contract_activation < nar.config.T) continue;
 
                 int activation = this.NARSVoxelContractedStates[i];
@@ -193,18 +192,43 @@ public class SoftVoxelRobot : AnimatBody
                     activation = 1;
                 }else if (relax_activation >= nar.config.T)
                 {
-                    activation = -1;
-                }
-                else if (neutral_activation >= nar.config.T)
-                {
                     activation = 0;
                 }
-                soft_voxel_object.SinusoidalMovementFromNeuronActivation(cvx_voxel, activation, nar.config.SINE_SPEED*20);
+                soft_voxel_object.SinusoidalMovementFromNeuronActivation(cvx_voxel, activation, nar.config.SINE_SPEED);
                 this.NARSVoxelContractedStates[i] = activation;
             }
         }
        
     }
+
+    public enum CardinalXZ
+    {
+        PlusZ,
+        MinusZ,
+        PlusX,
+        MinusX
+    }
+
+    public static CardinalXZ GetFacingFromRayDirectionXZ(Vector3 dirWorld)
+    {
+
+
+        // project to XZ
+        Vector2 xz = new Vector2(dirWorld.x, dirWorld.z);
+
+        xz.Normalize();
+
+        float ax = Mathf.Abs(xz.x);
+        float az = Mathf.Abs(xz.y);
+
+        // pick the dominant axis
+        if (az >= ax)
+            return xz.y >= 0f ? CardinalXZ.PlusZ : CardinalXZ.MinusZ;
+        else
+            return xz.x >= 0f ? CardinalXZ.PlusX : CardinalXZ.MinusX;
+    }
+
+
 
     public override void Sense(Animat animat)
     {
@@ -326,22 +350,17 @@ public class SoftVoxelRobot : AnimatBody
                 if (this.genome.voxel_array[i] == RobotVoxel.Empty) continue;
                 var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
                 // Contracted / Relaxed state
-                if (!this.soft_voxel_object.voxel_sinusoid_temps.ContainsKey(cvx_voxel)) continue;
-                float sine = this.soft_voxel_object.voxel_sinusoid_temps[cvx_voxel];
-                
+
+                var contracted = this.NARSVoxelContractedStates[i];
                 StatementTerm contracted_sensor_term;
      
-                if (sine > 0.33)
+                if (contracted == 1)
                 {
-                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Contracted)");
-                }
-                else if (sine < -0.33)
-                {
-                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Relaxed)");
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> On)");
                 }
                 else
                 {
-                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Neutral)");
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Off)");
                 }
                 current_states.Add(contracted_sensor_term);
 
@@ -353,9 +372,15 @@ public class SoftVoxelRobot : AnimatBody
                     var touch_sensor_term = (StatementTerm)Term.from_string($"(voxel{i} --> Touch)");
                     current_states.Add(touch_sensor_term);
                 }
+                else
+                {
+                    var touch_sensor_term = (StatementTerm)Term.from_string($"(voxel{i} --> NoTouch)");
+                    current_states.Add(touch_sensor_term);
+                }
             }
 
-
+            var dir =GetFacingFromRayDirectionXZ(this.GetVisionSensorPositionAndDirection().Item2);
+            current_states.Add((StatementTerm)Term.from_string($"(facing --> {dir.ToString()})"));
             int cycle = nar.current_cycle_number;
 
             for (int i = 0; i < current_states.Count; i++)
