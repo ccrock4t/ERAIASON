@@ -131,7 +131,7 @@ public class SoftVoxelObject
 
       
         float static_friction = 2.0f;
-        float kinetic_friction = 1.4f;
+        float kinetic_friction = 10.4f;
         foreach (KeyValuePair<RobotVoxel, CVoxelyze> pair in this.robot_voxel_to_voxelyze_materials)
         {
             CVoxelyze voxelyze_material = pair.Value;
