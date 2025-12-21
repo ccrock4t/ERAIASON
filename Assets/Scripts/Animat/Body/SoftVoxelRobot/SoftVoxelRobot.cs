@@ -38,7 +38,7 @@ public class SoftVoxelRobot : AnimatBody
                 AngularAcceleration_Sensor,*/
     }
 
-    public int[] NARSVoxelContractedStates;
+    public Dictionary<(int,int),int> NARSVoxelContractedStates;
 
 
     public SoftVoxelRobot() : base()
@@ -178,54 +178,103 @@ public class SoftVoxelRobot : AnimatBody
         {
             for (int i = 0; i < this.genome.voxel_array.Length; i++)
             {
+                int3 coords = GlobalUtils.Index_int3FromFlat(i, this.soft_voxel_object.dimensions);
+                if (coords.y != 0) continue;
                 if (this.genome.voxel_array[i] == RobotVoxel.Empty) continue;
                 var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
-                var contract_term = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACT)");
-                var relax_term = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)");
-                float contract_activation = nar.GetGoalActivation(contract_term);
-                float relax_activation = nar.GetGoalActivation(relax_term);
+                var contract_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTX)");
+                var relax_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXX)");
+                var contract_termY = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTY)");
+                var relax_termY = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXY)");
+                var contract_termZ = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTZ)");
+                var relax_termZ = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXZ)");
+     
                 //if (contract_activation < nar.config.T) continue;
 
-                int activation = this.NARSVoxelContractedStates[i];
-                if (contract_activation >= nar.config.T)
+                int activationX = this.NARSVoxelContractedStates.ContainsKey((0,i)) ? this.NARSVoxelContractedStates[(0,i)] : 0;
+                if (nar.GetGoalActivation(contract_termX) >= nar.config.T)
                 {
-                    activation = 1;
-                }else if (relax_activation >= nar.config.T)
+                    activationX = 1;
+                }else if (nar.GetGoalActivation(relax_termX) >= nar.config.T)
                 {
-                    activation = 0;
+                    activationX = 0;
                 }
-                soft_voxel_object.SinusoidalMovementFromNeuronActivation(cvx_voxel, activation, nar.config.SINE_SPEED);
-                this.NARSVoxelContractedStates[i] = activation;
+                //soft_voxel_object.SinusoidalMovementFromCoordAndNeuronActivation(cvx_voxel, activationX, nar.config.SINE_SPEED, 0);
+                soft_voxel_object.SetVoxelTemperatureFromNeuronActivation(cvx_voxel, activationX);
+
+                //int activationY = this.NARSVoxelContractedStates.ContainsKey((0, i)) ? this.NARSVoxelContractedStates[(0, i)] : 0;
+                //if (nar.GetGoalActivation(contract_termY) >= nar.config.T)
+                //{
+                //    activationY = 1;
+                //}
+                //else if (nar.GetGoalActivation(relax_termY) >= nar.config.T)
+                //{
+                //    activationY = 0;
+                //}
+                //soft_voxel_object.SinusoidalMovementFromCoordAndNeuronActivation(cvx_voxel, activationY, nar.config.SINE_SPEED, 1);
+
+                //int activationZ = this.NARSVoxelContractedStates.ContainsKey((0, i)) ? this.NARSVoxelContractedStates[(0, i)] : 0;
+                //if (nar.GetGoalActivation(contract_termZ) >= nar.config.T)
+                //{
+                //    activationZ = 1;
+                //}
+                //else if (nar.GetGoalActivation(relax_termZ) >= nar.config.T)
+                //{
+                //    activationZ = 0;
+                //}
+                //soft_voxel_object.SinusoidalMovementFromCoordAndNeuronActivation(cvx_voxel, activationZ, nar.config.SINE_SPEED, 2);
+
+                this.NARSVoxelContractedStates[(0, i)] = activationX;
+                //this.NARSVoxelContractedStates[(1, i)] = activationY;
+                //this.NARSVoxelContractedStates[(2, i)] = activationZ;
             }
         }
        
     }
 
-    public enum CardinalXZ
+    public enum OctantXZ
     {
-        PlusZ,
-        MinusZ,
-        PlusX,
-        MinusX
+        PlusZ,          // N
+        PlusZPlusX,     // NE
+        PlusX,          // E
+        MinusZPlusX,    // SE
+        MinusZ,         // S
+        MinusZMinusX,   // SW
+        MinusX,         // W
+        PlusZMinusX     // NW
     }
 
-    public static CardinalXZ GetFacingFromRayDirectionXZ(Vector3 dirWorld)
+    public static OctantXZ GetFacingFromRayDirectionXZ(Vector3 dirWorld)
     {
-
-
-        // project to XZ
+        // Project to XZ
         Vector2 xz = new Vector2(dirWorld.x, dirWorld.z);
+
+        // Handle zero / near-zero direction
+        if (xz.sqrMagnitude < 1e-8f)
+            return OctantXZ.PlusZ;
 
         xz.Normalize();
 
-        float ax = Mathf.Abs(xz.x);
-        float az = Mathf.Abs(xz.y);
+        // Angle in degrees where:
+        // 0° = +Z, 90° = +X, 180° = -Z, 270° = -X
+        float angleDeg = Mathf.Atan2(xz.x, xz.y) * Mathf.Rad2Deg;
 
-        // pick the dominant axis
-        if (az >= ax)
-            return xz.y >= 0f ? CardinalXZ.PlusZ : CardinalXZ.MinusZ;
-        else
-            return xz.x >= 0f ? CardinalXZ.PlusX : CardinalXZ.MinusX;
+        // Shift by 22.5° so we round to nearest octant, then wrap to [0, 360)
+        angleDeg = (angleDeg + 360f + 22.5f) % 360f;
+
+        int oct = (int)(angleDeg / 45f); // 0..7
+
+        switch (oct)
+        {
+            case 0: return OctantXZ.PlusZ;
+            case 1: return OctantXZ.PlusZPlusX;
+            case 2: return OctantXZ.PlusX;
+            case 3: return OctantXZ.MinusZPlusX;
+            case 4: return OctantXZ.MinusZ;
+            case 5: return OctantXZ.MinusZMinusX;
+            case 6: return OctantXZ.MinusX;
+            default: return OctantXZ.PlusZMinusX; // case 7
+        }
     }
 
 
@@ -342,30 +391,56 @@ public class SoftVoxelRobot : AnimatBody
         }
         else if (animat.mind is NARS nar)
         {
-            if (this.NARSVoxelContractedStates == null) this.NARSVoxelContractedStates = new int[this.genome.voxel_array.Length];
+            if (this.NARSVoxelContractedStates == null)
+            {
+                this.NARSVoxelContractedStates = new();
+                return;
+            }
             List<StatementTerm> current_states = new();
 
             for (int i = 0; i < this.genome.voxel_array.Length; i++)
             {
+                int3 coords = GlobalUtils.Index_int3FromFlat(i, this.soft_voxel_object.dimensions);
+                if (coords.y != 0) continue;
                 if (this.genome.voxel_array[i] == RobotVoxel.Empty) continue;
                 var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
                 // Contracted / Relaxed state
 
-                var contracted = this.NARSVoxelContractedStates[i];
+            
                 StatementTerm contracted_sensor_term;
      
-                if (contracted == 1)
+                if (this.NARSVoxelContractedStates[(0, i)] == 1)
                 {
-                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> On)");
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> OnX)");
                 }
                 else
                 {
-                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Off)");
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> OffX)");
                 }
                 current_states.Add(contracted_sensor_term);
 
+                //if (this.NARSVoxelContractedStates[(1, i)] == 1)
+                //{
+                //    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> OnY)");
+                //}
+                //else
+                //{
+                //    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> OffY)");
+                //}
+                //current_states.Add(contracted_sensor_term);
+
+                //if (this.NARSVoxelContractedStates[(2, i)] == 1)
+                //{
+                //    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> OnZ)");
+                //}
+                //else
+                //{
+                //    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> OffZ)");
+                //}
+                //current_states.Add(contracted_sensor_term);
+
                 // Touch state (optional)
-     
+
                 bool is_touching_ground = VoxelyzeEngine.GetVoxelFloorPenetration(cvx_voxel) > 0;
                 if (is_touching_ground)
                 {

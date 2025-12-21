@@ -172,12 +172,12 @@ public class GlobalConfig : MonoBehaviour
 
     private void Awake()
     {
-        if(!TryLoadEnumFromFile<NARSGenome.NARS_Evolution_Type>("narstest.txt", out var type))
-        {
-            Application.Quit();
-        }
+        //if(!TryLoadEnumFromFile<NARSGenome.NARS_Evolution_Type>("narstest.txt", out var type))
+        //{
+        //    Application.Quit();
+        //}
 
-        NARSGenome.NARS_EVOLVE_TYPE = type;
+        //NARSGenome.NARS_EVOLVE_TYPE = type;
 
         // setup automaton
         WorldAutomaton world_automaton;

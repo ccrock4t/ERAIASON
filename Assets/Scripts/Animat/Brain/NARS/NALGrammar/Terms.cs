@@ -72,19 +72,19 @@ public static class TermHelperFunctions
             // handle multi-component sets
             if (is_a_set)
             {
-                // todo handle multi-component sets better
-                List<Term> singleton_set_subterms = new List<Term>();
+                //// todo handle multi-component sets better
+                //List<Term> singleton_set_subterms = new List<Term>();
 
-                foreach (Term subterm in sub_terms)
-                {
-                    // decompose the set into an intersection of singleton sets
-                    CompoundTerm singleton_set_subterm = TermHelperFunctions.TryGetCompoundTerm(new List<Term> { subterm }, TermConnectorMethods.get_set_end_connector_from_set_start_connector((TermConnector)term_connector));
+                //foreach (Term subterm in sub_terms)
+                //{
+                //    // decompose the set into an intersection of singleton sets
+                //    CompoundTerm singleton_set_subterm = TermHelperFunctions.TryGetCompoundTerm(new List<Term> { subterm }, TermConnectorMethods.get_set_end_connector_from_set_start_connector((TermConnector)term_connector));
 
-                    singleton_set_subterms.Add(singleton_set_subterm);
-                }
+                //    singleton_set_subterms.Add(singleton_set_subterm);
+                //}
 
 
-                subterms = singleton_set_subterms;
+                //subterms = singleton_set_subterms;
 
                 // set new term connector as intersection
                 if (is_a_set)

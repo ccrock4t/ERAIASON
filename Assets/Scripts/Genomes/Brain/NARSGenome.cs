@@ -319,12 +319,18 @@ public class NARSGenome : BrainGenome
             List<StatementTerm> motorStatements = new();
             for (int i = 0; i < body_genome.voxel_array.Length; i++)
             {
+                int3 coords = GlobalUtils.Index_int3FromFlat(i, body_genome.dimensions3D);
+                if (coords.y != 0) continue;
                 var voxel = body_genome.voxel_array[i];
                 if (voxel == SoftVoxelRobot.RobotVoxel.Empty) continue;
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Touch)"));
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> NoTouch)"));
-                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> On)"));
-                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Off)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OnX)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OffX)"));
+                //sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OnY)"));
+                //sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OffY)"));
+                //sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OnZ)"));
+                //sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OffZ)"));
                 //for(int pitch=-45; pitch <= 45; pitch += 15)
                 //{
                 //    string deg = math.abs(pitch).ToString();
@@ -343,13 +349,17 @@ public class NARSGenome : BrainGenome
                 //}
 
 
-                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACT)"));
-                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)"));;
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTX)"));
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXX)"));;
+                //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTY)"));
+                //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXY)")); ;
+                //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTZ)"));
+                //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXZ)")); ;
             }
             energy_full = (StatementTerm)Term.from_string("(ENERGY --> FULL)");
             sensoryStatements.Add(energy_full);
 
-            foreach (CardinalXZ dir in Enum.GetValues(typeof(CardinalXZ)))
+            foreach (OctantXZ dir in Enum.GetValues(typeof(OctantXZ)))
             {
                 // use dir
                 sensoryStatements.Add((StatementTerm)Term.from_string($"(facing --> {dir.ToString()})"));
@@ -613,15 +623,15 @@ public class NARSGenome : BrainGenome
         float rnd = 0;
 
         rnd = UnityEngine.Random.value;
-
-        if (USE_AND_EVOLVE_CONTINGENCIES() && rnd < CHANCE_TO_MUTATE_BELIEFS)
+        bool test = USE_AND_EVOLVE_CONTINGENCIES();
+        if (test && rnd < CHANCE_TO_MUTATE_BELIEFS)
         {
             MutateBeliefs();
         }
 
         rnd = UnityEngine.Random.value;
-
-        if (EVOLVE_PERSONALITY() && rnd < CHANCE_TO_MUTATE_PERSONALITY_PARAMETERS)
+        bool per = EVOLVE_PERSONALITY();
+        if (per && rnd < CHANCE_TO_MUTATE_PERSONALITY_PARAMETERS)
         {
             MutatePersonalityParameters();
         }
@@ -1075,24 +1085,65 @@ public class NARSGenome : BrainGenome
             // replace / compound / decompound M
             if (M is CompoundTerm mComp)
             {
-                // decompound: pick one subterm
-                int idx = UnityEngine.Random.Range(0, mComp.subterms.Count);
-                Term newM = (Term)mComp.subterms[idx];
-                new_statement = CreateContingencyStatement(S, newM, P);
+                // replace 1 part of the compound
+                List<Term> subterms = new();
+
+
+                int rnd_subterm_idx = UnityEngine.Random.Range(0, mComp.subterms.Count);
+
+                if (mComp.subterms.Count == 2)
+                {
+                    if (rnd_subterm_idx == 0)
+                    {
+                        subterms.Add(mComp.subterms[1]);
+                    }
+                    else if (rnd_subterm_idx == 1)
+                    {
+                        subterms.Add(mComp.subterms[0]);
+                    }
+                    else
+                    {
+                        Debug.LogError("null");
+                        return;
+                    }
+                }
+                else if (mComp.subterms.Count == 3)
+                {
+                    if (rnd_subterm_idx == 0)
+                    {
+                        subterms.Add(mComp.subterms[1]);
+                        subterms.Add(mComp.subterms[2]);
+                    }
+                    else if (rnd_subterm_idx == 1)
+                    {
+                        subterms.Add(mComp.subterms[0]);
+                        subterms.Add(mComp.subterms[2]);
+                    }
+                    else if (rnd_subterm_idx == 2)
+                    {
+                        subterms.Add(mComp.subterms[0]);
+                        subterms.Add(mComp.subterms[1]);
+                    }
+                    else
+                    {
+                        Debug.LogError("null");
+                        return;
+                    }
+                }
+                List<StatementTerm> ignore_subterms = new();
+                foreach (var t in subterms)
+                {
+                    ignore_subterms.Add((StatementTerm)t);
+                }
+                var randomM = GetRandomMotorTerm(ignore_subterms);
+                subterms.Add(randomM);
+                var new_M = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
+                new_statement = CreateContingencyStatement(S, new_M, P);
             }
             else
             {
-                // compound: add another motor term to M
-                var subterms = new List<Term> { M };
-
-                // avoid re-adding the same term if M is already a StatementTerm
-                if (M is StatementTerm mSt)
-                    subterms.Add(GetRandomMotorTerm(mSt));
-                else
-                    subterms.Add(GetRandomMotorTerm());
-
-                Term newM2 = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
-                new_statement = CreateContingencyStatement(S, newM2, P);
+                var randomM = GetRandomMotorTerm();
+                new_statement = CreateContingencyStatement(S, randomM, P);
             }
         }
         else //if (rnd == 2)
