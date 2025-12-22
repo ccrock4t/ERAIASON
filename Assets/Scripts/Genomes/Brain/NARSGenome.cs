@@ -867,13 +867,13 @@ public class NARSGenome : BrainGenome
             rnd_idx = UnityEngine.Random.Range(0, this.beliefs.Count);
             belief = this.beliefs[rnd_idx];
             cnt++;
-            if(cnt > 5)
+            if(cnt > this.beliefs.Count)
             {
                 break;
             }
         }
 
-        if(cnt > 5)
+        if(cnt > this.beliefs.Count)
         {
             return;
         }
