@@ -484,115 +484,137 @@ public class NARS : Mind
                 }
           
                 // if it's a conjunction (A &/ B), simplify using true beliefs (e.g. A) or derive a goal for A! if A is false
-                Term first_subterm_statement = (Term)((CompoundTerm)statement).subterms[0];
-                Concept first_subterm_concept = this.memory.peek_concept(first_subterm_statement);
-                //  Term sensory_predicate = first_subterm_statement.get_predicate_term();
-                //   Term sensory_subject = first_subterm_statement.get_subject_term();
-                Judgment first_subterm_belief = null;
-                //if (sensory_predicate is VariableTerm)
-                //{
-                //    variable_unifications_for_goal_derivation.Clear();
-                //    // find judgments which satisfy the variable, if any
-                //    Parallel.ForEach(this.memory.concepts_bag, concept_item =>
-                //    {
-                //        var concept = concept_item.obj;
-                //        var term = concept.term;
-                //        if (term is StatementTerm statement && term.is_first_order())
-                //        {
-                //            if (statement.get_subject_term() is AtomicTerm atom)
-                //            {
-                //                if (atom == sensory_subject)
-                //                {
-                //                    // subjects match, so it matches the variable predicate
-                //                    var judgment = concept.belief_table.peek_first_interactable(j);
-                //                    if (judgment != null)
-                //                    {
-                //                        variable_unifications_for_goal_derivation.Add(judgment);
-                //                    }
-                //                }
-                //            }
-                //        }
+                Term S = (Term)((CompoundTerm)statement).subterms[0];
+                Concept first_subterm_concept = this.memory.peek_concept(S);
 
-                //    });
+                Term sensory_predicate;
+                Term sensory_subject;
+                if (S is CompoundTerm sComp)
+                {
+                    StatementTerm first_statement_in_S = (StatementTerm)sComp.subterms[0];
+                    sensory_predicate = first_statement_in_S.get_predicate_term();
+                    sensory_subject = first_statement_in_S.get_subject_term();
+                }
+                else if(S is StatementTerm sState)
+                {
+                    sensory_predicate = sState.get_predicate_term();
+                    sensory_subject = sState.get_subject_term();
+                }
+                else
+                {
+                    Debug.LogError("error");
+                    return;
+                }
 
-                //    var candidates = variable_unifications_for_goal_derivation.ToArray();
-                //    if (candidates.Length > 0)
-                //    {
-                //        // 1. Compute total weight (sum of frequencies)
-                //        float totalWeight = 0f;
-                //        foreach (var jdg in candidates)
-                //        {
-                //            // clamp to >= 0 just in case
-                //            float w = Mathf.Max(0f, this.inferenceEngine.get_expectation(jdg));   // <-- use the right property here
-                //            totalWeight += w;
-                //        }
+                    Judgment S_belief = null;
+                if (sensory_subject is VariableTerm)
+                {
+                    variable_unifications_for_goal_derivation.Clear();
+                    // find judgments which satisfy the variable, if any
+                    Parallel.ForEach(this.memory.concepts_bag, concept_item =>
+                    {
+                        var concept = concept_item.obj;
+                        var term = concept.term;
+                        if (term is StatementTerm statement && term.is_first_order())
+                        {
+                            if (statement.get_predicate_term() is AtomicTerm atom)
+                            {
+                                if (atom == sensory_predicate)
+                                {
+                                    // predicates match, so it matches the variable subjec
+                                    var judgment = concept.belief_table.peek_first_interactable(j);
+                                    if (judgment != null)
+                                    {
+                                        variable_unifications_for_goal_derivation.Add(judgment);
+                                    }
+                                }
+                            }
+                        }
 
-                //        Judgment picked = null;
+                    });
 
-                //        if (totalWeight > 0f)
-                //        {
-                //            // 2. Pick a random point in [0, totalWeight)
-                //            float r = UnityEngine.Random.Range(0f, totalWeight);
+                    var candidates = variable_unifications_for_goal_derivation.ToArray();
+                    if (candidates.Length > 0)
+                    {
+                        // 1. Compute total weight (sum of frequencies)
+                        float totalWeight = 0f;
+                        foreach (var jdg in candidates)
+                        {
+                            // clamp to >= 0 just in case
+                            float w = Mathf.Max(0f, this.inferenceEngine.get_expectation(jdg));   // <-- use the right property here
+                            totalWeight += w;
+                        }
 
-                //            // 3. Walk through and find where r falls
-                //            float cumulative = 0f;
-                //            foreach (var jdg in candidates)
-                //            {
-                //                float w = Mathf.Max(0f, this.inferenceEngine.get_expectation(jdg));  // same property
-                //                cumulative += w;
-                //                if (r <= cumulative)
-                //                {
-                //                    picked = jdg;
-                //                    break;
-                //                }
-                //            }
-                //        }
+                        Judgment picked = null;
 
-                //        // Fallback: if all frequencies were 0 (or something weird), use uniform
-                //        if (picked == null)
-                //        {
-                //            int index = UnityEngine.Random.Range(0, candidates.Length);
-                //            picked = candidates[index];
-                //        }
+                        if (totalWeight > 0f)
+                        {
+                            // 2. Pick a random point in [0, totalWeight)
+                            float r = UnityEngine.Random.Range(0f, totalWeight);
 
-                //        first_subterm_belief = picked;
-                //    }
+                            // 3. Walk through and find where r falls
+                            float cumulative = 0f;
+                            foreach (var jdg in candidates)
+                            {
+                                float w = Mathf.Max(0f, this.inferenceEngine.get_expectation(jdg));  // same property
+                                cumulative += w;
+                                if (r <= cumulative)
+                                {
+                                    picked = jdg;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Fallback: if all frequencies were 0 (or something weird), use uniform
+                        if (picked == null)
+                        {
+                            int index = UnityEngine.Random.Range(0, candidates.Length);
+                            picked = candidates[index];
+                        }
+
+                        S_belief = picked;
+                    }
 
 
-                //}
-                //else
-                //{
-                first_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
+                }
+                else
+                {
+                    S_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
+                }
 
 
-
-                if (first_subterm_belief != null && this.inferenceEngine.is_positive(first_subterm_belief))
+                if (S_belief != null && this.inferenceEngine.is_positive(S_belief))
                 {
                     List<Sentence> results = null;
-                    //if (sensory_predicate is VariableTerm)
-                    //{
+                    if (sensory_subject is VariableTerm)
+                    {
+                        StatementTerm M = (StatementTerm)((CompoundTerm)statement).subterms[1];
+                        CompoundTerm M_subject = (CompoundTerm)M.get_subject_term();
+                        Term concretized_term = ((StatementTerm)S_belief.statement).get_subject_term();
+                        var subterms = new List<Term> { M_subject.subterms[0], //SELF
+                             concretized_term // block1, block2,etc
+                        };
+                        CompoundTerm unified_motor_compound = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.Product);
+                        StatementTerm unified_goal_statement = new(unified_motor_compound, M.get_predicate_term(), Copula.Inheritance);
+                        var value = this.inferenceEngine.truthValueFunctions.F_Deduction(
+                            S_belief.evidential_value.frequency,
+                            S_belief.evidential_value.confidence,
+                            j.evidential_value.frequency,
+                            j.evidential_value.confidence);
+                        Goal derived_variable_unified_goal = new Goal(this, unified_goal_statement, value);
 
-                    //    var subterms = new Term[] { ((CompoundTerm)motor_op_statement.get_subject_term()).subterms[0], ((StatementTerm)first_subterm_belief.statement).get_predicate_term() };
-                    //    CompoundTerm unified_motor_compound = null;// TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.Product);
-                    //    StatementTerm unified_goal_statement = new(unified_motor_compound, motor_op_statement.get_predicate_term(), Copula.Inheritance);
-                    //    var value = this.inferenceEngine.truthValueFunctions.F_Deduction(
-                    //        first_subterm_belief.evidential_value.frequency,
-                    //        first_subterm_belief.evidential_value.confidence,
-                    //        j.evidential_value.frequency,
-                    //        j.evidential_value.confidence);
-                    //    Goal derived_variable_unified_goal = new Goal(this, unified_goal_statement, value);
-
-                    //    results = new()
-                    //    {
-                    //        derived_variable_unified_goal
-                    //    };
-                    //}
-                    //else
-                    //{
+                        results = new()
+                        {
+                            derived_variable_unified_goal
+                        };
+                    }
+                    else
+                    {
 
                         // the first component of the goal is positive, do inference and derive the remaining goal component
-                    results = this.inferenceEngine.do_semantic_inference_two_premise(j, first_subterm_belief);
-                    //}
+                        results = this.inferenceEngine.do_semantic_inference_two_premise(j, S_belief);
+                    }
 
 
                     foreach (Sentence result in results)
@@ -619,11 +641,11 @@ public class NARS : Mind
                     //  {
                         //var unification_term = Term.from_string(AlpineGridManager.GetRandomDirectionString());
                         //StatementTerm first_subterm_statement_unified = new StatementTerm(sensory_subject, unification_term, Copula.Inheritance);
-                        //first_subterm_statement = first_subterm_statement_unified;
+                        //S = first_subterm_statement_unified;
                     //  }
 
 
-                    //if(first_subterm_statement is CompoundTerm c && first_subterm_statement.connector == TermConnector.ParallelConjunction)
+                    //if(S is CompoundTerm c && S.connector == TermConnector.ParallelConjunction)
                     //{
                     //    foreach(var subterm in c.subterms)
                     //    {
@@ -634,7 +656,7 @@ public class NARS : Mind
                     //else
                     //{
                         //first belief was not positive, so derive a goal to make it positive
-                        Goal first_subterm_goal = (Goal)this.helperFunctions.create_resultant_sentence_one_premise(j, first_subterm_statement, null, j.evidential_value);
+                        Goal first_subterm_goal = (Goal)this.helperFunctions.create_resultant_sentence_one_premise(j, S, null, j.evidential_value);
                         this.global_buffer.Enqueue(first_subterm_goal);
                     //}
                 }
@@ -704,8 +726,8 @@ public class NARS : Mind
 
                                 //if (NARSGenome.USE_LEARNING())
                                 //{
-                                //    if (first_subterm_belief != null
-                                //        && this.inferenceEngine.is_positive(first_subterm_belief)
+                                //    if (S_belief != null
+                                //        && this.inferenceEngine.is_positive(S_belief)
                                 //        && second_subterm_statement.is_op())
                                 //    {
                                 //        // since the contextual event is true,and the second term  is a motor op, form an anticipation for the postcondition

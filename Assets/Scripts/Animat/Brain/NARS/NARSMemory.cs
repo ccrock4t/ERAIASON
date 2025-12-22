@@ -631,23 +631,23 @@ public class Concept
         Does nothing if the link already exists
 
         :param subterm concept to this superterm concept (this)
-        */
-        if (this.term_links.Contains(subterm_concept)) return;  // already linked
+        //*/
+        //if (this.term_links.Contains(subterm_concept)) return;  // already linked
 
-        // add to term links
-        Item<Concept> item = this.term_links.PUT_NEW(subterm_concept);
-        this.term_links.change_priority(item.key, 0.5f);
+        //// add to term links
+        //Item<Concept> item = this.term_links.PUT_NEW(subterm_concept);
+        //this.term_links.change_priority(item.key, 0.5f);
 
-        item = subterm_concept.term_links.PUT_NEW(this);
-        subterm_concept.term_links.change_priority(item.key, 0.5f);
+        //item = subterm_concept.term_links.PUT_NEW(this);
+        //subterm_concept.term_links.change_priority(item.key, 0.5f);
 
-        // add to subterm links
-        item = this.subterm_links.PUT_NEW(subterm_concept);
-        this.subterm_links.change_priority(item.key, 0.5f);
+        //// add to subterm links
+        //item = this.subterm_links.PUT_NEW(subterm_concept);
+        //this.subterm_links.change_priority(item.key, 0.5f);
 
-        // add to superterm links
-        item = subterm_concept.superterm_links.PUT_NEW(this);
-        subterm_concept.superterm_links.change_priority(item.key, 0.5f);
+        //// add to superterm links
+        //item = subterm_concept.superterm_links.PUT_NEW(this);
+        //subterm_concept.superterm_links.change_priority(item.key, 0.5f);
     }
 
     public void remove_term_link(Concept concept)

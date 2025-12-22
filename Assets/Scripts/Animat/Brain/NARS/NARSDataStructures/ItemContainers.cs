@@ -169,6 +169,10 @@ public class Item<T>
         :return: key for object
     */
         string key = null;
+        if (obj == null)
+        {
+            int test = 1;
+        }
         if (obj is Concept)
         {
             key = (obj as Concept).term.ToString();

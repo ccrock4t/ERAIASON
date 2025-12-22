@@ -16,14 +16,14 @@ public class NARSGenome : BrainGenome
     const float CHANCE_TO_MUTATE_PERSONALITY_PARAMETERS = 0.8f;
     const float CHANCE_TO_MUTATE_BELIEFS = 0.8f;
 
-    const bool ALLOW_VARIABLES = false;
-    public const bool ALLOW_COMPOUNDS = true;
+    const bool ALLOW_VARIABLES = true;
+    public const bool ALLOW_COMPOUNDS = false;
     public static bool USE_GENERALIZATION = false;
 
     public bool LIMIT_SIZE = false;
     public int SIZE_LIMIT = 20;
 
-
+    static List<int> valid_voxels = new();
 
     public enum NARS_Evolution_Type
     {
@@ -92,12 +92,6 @@ public class NARSGenome : BrainGenome
     }
 
     public static bool sensorymotor_statements_initialized = false;
-    //public static Dictionary<Direction, StatementTerm> move_op_terms = new();
-    //public static Dictionary<Direction, StatementTerm> eat_op_terms = new();
-
-    //public static Dictionary<Direction, StatementTerm> grass_seen_terms = new();
-    //public static Dictionary<Direction, StatementTerm> goat_seen_terms = new();
-    //public static Dictionary<Direction, StatementTerm> water_seen = new();s
 
 
     public static List<StatementTerm> SENSORY_TERM_SET = new();
@@ -352,11 +346,14 @@ public class NARSGenome : BrainGenome
 
                 motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTX)"));
                 motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> NORMALIZEX)"));
-                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXX)"));;
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXX)"));
                 //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTY)"));
                 //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXY)")); ;
                 //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTZ)"));
                 //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXZ)")); ;
+
+                valid_voxels.Add(i);
+
             }
             energy_full = (StatementTerm)Term.from_string("(ENERGY --> FULL)");
             sensoryStatements.Add(energy_full);
@@ -645,7 +642,7 @@ public class NARSGenome : BrainGenome
         float rnd = UnityEngine.Random.value;
         if (rnd < CHANCE_TO_MUTATE_BELIEF_CONTENT)
         {
-            if (ALLOW_VARIABLES)
+            if (ALLOW_VARIABLES && !ALLOW_COMPOUNDS)
             {
                 int r = UnityEngine.Random.Range(0, 100); // 0–99
 
@@ -667,7 +664,7 @@ public class NARSGenome : BrainGenome
                     ToggleVariableRandomBelief();
                 }
             }
-            else if (ALLOW_COMPOUNDS)
+            else if (ALLOW_COMPOUNDS && !ALLOW_VARIABLES)
             {
                 int r = UnityEngine.Random.Range(0, 100); // 0–99
 
@@ -693,6 +690,10 @@ public class NARSGenome : BrainGenome
 
                     MutateCompound();
                 }
+            }
+            else if (ALLOW_COMPOUNDS && ALLOW_VARIABLES)
+            {
+                Debug.LogError("TODO");
             }
             else
             {
@@ -858,7 +859,25 @@ public class NARSGenome : BrainGenome
         if (this.beliefs.Count == 0) return;
         int rnd_idx = UnityEngine.Random.Range(0, this.beliefs.Count);
         EvolvableSentence belief = this.beliefs[rnd_idx];
+        CompoundTerm SandM = (CompoundTerm)belief.statement.get_subject_term();
+        StatementTerm testS = (StatementTerm)SandM.subterms[0];
+        int cnt = 0;
+        while (!(testS.term_string.Contains("#x") || testS.term_string.Contains("voxel")))
+        {
+            rnd_idx = UnityEngine.Random.Range(0, this.beliefs.Count);
+            belief = this.beliefs[rnd_idx];
+            cnt++;
+            if(cnt > 5)
+            {
+                break;
+            }
+        }
 
+        if(cnt > 5)
+        {
+            return;
+        }
+     
         string old_statement_string = belief.statement.ToString();
 
         // (S &/ ^M =/> P)
@@ -879,13 +898,13 @@ public class NARSGenome : BrainGenome
         if (S_predicate is VariableTerm && M_argument is VariableTerm)
         {
             //// turn from variable into concrete term
-            //new_S = new StatementTerm(S.get_subject_term(), Term.from_string(AlpineGridManager.GetRandomDirectionString()), Copula.Inheritance);
-            //new_M = new StatementTerm(Term.from_string("(*,{SELF}," + AlpineGridManager.GetRandomDirectionString() + ")"), M.get_predicate_term(), Copula.Inheritance);
+            new_S = new StatementTerm(Term.from_string(GetRandomValidVoxelNum()), S.get_predicate_term(), Copula.Inheritance);
+            new_M = new StatementTerm(Term.from_string("(*,{SELF}," + GetRandomValidVoxelNum() + ")"), M.get_predicate_term(), Copula.Inheritance);
         }
         else if (S_predicate is AtomicTerm && M_argument is AtomicTerm)
         {
             // turn from concrete term into variable
-            new_S = new StatementTerm(S.get_subject_term(), new VariableTerm("x", VariableTerm.VariableType.Dependent), Copula.Inheritance);
+            new_S = new StatementTerm(new VariableTerm("x", VariableTerm.VariableType.Dependent), S.get_predicate_term(), Copula.Inheritance);
             new_M = new StatementTerm(Term.from_string("(*,{SELF},#x)"), M.get_predicate_term(), Copula.Inheritance);
         }
         else
@@ -903,6 +922,11 @@ public class NARSGenome : BrainGenome
         belief_statement_strings.Add(new_statement_string, true);
 
         this.beliefs[rnd_idx] = belief;
+    }
+
+    string GetRandomValidVoxelNum()
+    {
+        return "voxel" + valid_voxels[UnityEngine.Random.Range(0, valid_voxels.Count)];
     }
 
     public void MutatePersonalityParameters()

@@ -418,21 +418,14 @@ public class VariableTerm : Term
         }
         else if (variable_type_symbol == VariableTerm.VARIABLE_SYM)
         {
-            if (dependency_list == null)
-            {
-                type = VariableTerm.VariableType.Independent;
-            }
-            else
-            {
-                type = VariableTerm.VariableType.Dependent;
-            }
+            type = VariableTerm.VariableType.Dependent;
         }
         else
         {
             //Asserts.assert(false, "Error: Variable type symbol invalid");
         }
 
-        return new VariableTerm(variable_name, (VariableTerm.VariableType)type, dependency_list.ToArray());
+        return new VariableTerm(variable_name, (VariableTerm.VariableType)type);
     }
 
     public override int _calculate_syntactic_complexity()
