@@ -16,6 +16,7 @@ public class SimulationUserInterface : MonoBehaviour
     public TMP_InputField animat_info_minimum_population;
 
     public Text high_score_text;
+    public Text generation_text;
 
     public TMP_Text animat_info_index;
     public TMP_Text animat_info_generation;
@@ -171,6 +172,10 @@ public class SimulationUserInterface : MonoBehaviour
     public void NextGeneration()
     {
         this.arena.KillAnimat(this.currently_viewed_animat_idx, false);
+    }
+    public void UpdateGenerationText(int gen)
+    {
+        this.generation_text.text = "GENERATION: " + gen;
     }
 
     public void UpdateHighScoreText(float high_score)

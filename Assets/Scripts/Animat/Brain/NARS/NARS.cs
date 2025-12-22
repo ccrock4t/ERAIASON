@@ -564,31 +564,6 @@ public class NARS : Mind
                 //{
                 first_subterm_belief = first_subterm_concept.belief_table.peek_first_interactable(j);
 
-                StatementTerm motor_op_statement = (StatementTerm)((CompoundTerm)statement).subterms[1];
-                Concept second_subterm_concept = this.memory.peek_concept(motor_op_statement);
-                CompoundTerm operation_product = (CompoundTerm)motor_op_statement.get_subject_term();
-                Term operation_argument = operation_product.subterms[1];
-
-                if(first_subterm_statement is CompoundTerm)
-                {
-                    int test = 1;
-                }
-
-                //if (!(operation_argument is VariableTerm == sensory_predicate is VariableTerm))
-                //{
-                //    Debug.LogError("assert both S and ^M must contain the same term types");
-                //    return;
-                //}
-
-
-                if (operation_argument is VariableTerm)
-                {
-                    // handle operation variable
-                }
-                else
-                {
-
-                }
 
 
                 if (first_subterm_belief != null && this.inferenceEngine.is_positive(first_subterm_belief))

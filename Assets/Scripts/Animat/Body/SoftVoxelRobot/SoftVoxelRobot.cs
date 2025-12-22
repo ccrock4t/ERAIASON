@@ -179,15 +179,16 @@ public class SoftVoxelRobot : AnimatBody
             for (int i = 0; i < this.genome.voxel_array.Length; i++)
             {
                 int3 coords = GlobalUtils.Index_int3FromFlat(i, this.soft_voxel_object.dimensions);
-                if (coords.y != 0) continue;
+                if (coords.y > 1) continue;
                 if (this.genome.voxel_array[i] == RobotVoxel.Empty) continue;
                 var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
                 var contract_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTX)");
                 var relax_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXX)");
-                var contract_termY = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTY)");
-                var relax_termY = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXY)");
-                var contract_termZ = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTZ)");
-                var relax_termZ = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXZ)");
+                var normalize_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> NORMALIZEX)");
+                //var contract_termY = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTY)");
+                //var relax_termY = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXY)");
+                //var contract_termZ = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTZ)");
+                //var relax_termZ = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXZ)");
      
                 //if (contract_activation < nar.config.T) continue;
 
@@ -196,6 +197,10 @@ public class SoftVoxelRobot : AnimatBody
                 {
                     activationX = 1;
                 }else if (nar.GetGoalActivation(relax_termX) >= nar.config.T)
+                {
+                    activationX = -1;
+                }
+                else if (nar.GetGoalActivation(normalize_termX) >= nar.config.T)
                 {
                     activationX = 0;
                 }
@@ -401,7 +406,7 @@ public class SoftVoxelRobot : AnimatBody
             for (int i = 0; i < this.genome.voxel_array.Length; i++)
             {
                 int3 coords = GlobalUtils.Index_int3FromFlat(i, this.soft_voxel_object.dimensions);
-                if (coords.y != 0) continue;
+                if (coords.y > 1) continue;
                 if (this.genome.voxel_array[i] == RobotVoxel.Empty) continue;
                 var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
                 // Contracted / Relaxed state
@@ -413,9 +418,15 @@ public class SoftVoxelRobot : AnimatBody
                 {
                     contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> OnX)");
                 }
-                else
+                else if (this.NARSVoxelContractedStates[(0, i)] == -1)
                 {
+                    
                     contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> OffX)");
+                }
+                else //if (this.NARSVoxelContractedStates[(0, i)] == 0)
+                {
+
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> NormalX)");
                 }
                 current_states.Add(contracted_sensor_term);
 

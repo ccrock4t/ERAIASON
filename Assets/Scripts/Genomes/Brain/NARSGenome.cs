@@ -17,7 +17,7 @@ public class NARSGenome : BrainGenome
     const float CHANCE_TO_MUTATE_BELIEFS = 0.8f;
 
     const bool ALLOW_VARIABLES = false;
-    public const bool ALLOW_COMPOUNDS = false;
+    public const bool ALLOW_COMPOUNDS = true;
     public static bool USE_GENERALIZATION = false;
 
     public bool LIMIT_SIZE = false;
@@ -320,12 +320,13 @@ public class NARSGenome : BrainGenome
             for (int i = 0; i < body_genome.voxel_array.Length; i++)
             {
                 int3 coords = GlobalUtils.Index_int3FromFlat(i, body_genome.dimensions3D);
-                if (coords.y != 0) continue;
+                if (coords.y > 1) continue;
                 var voxel = body_genome.voxel_array[i];
                 if (voxel == SoftVoxelRobot.RobotVoxel.Empty) continue;
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Touch)"));
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> NoTouch)"));
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OnX)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> NormalX)"));
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OffX)"));
                 //sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OnY)"));
                 //sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OffY)"));
@@ -350,6 +351,7 @@ public class NARSGenome : BrainGenome
 
 
                 motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTX)"));
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> NORMALIZEX)"));
                 motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXX)"));;
                 //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTY)"));
                 //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXY)")); ;

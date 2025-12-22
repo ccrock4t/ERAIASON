@@ -73,7 +73,7 @@ public class AnimatArena : MonoBehaviour
 
 
     float generation_timer;
-    const float TIME_PER_GENERATION = 20;
+    const float TIME_PER_GENERATION = 40;
 
     GameObject worldUIcanvas;
 
@@ -340,7 +340,7 @@ public class AnimatArena : MonoBehaviour
     }
 
 
-
+    int gen = 0;
     public void FixedUpdate()
     {
         DataAnalyzer.TrackPopulationSnapshot();
@@ -430,6 +430,8 @@ public class AnimatArena : MonoBehaviour
         if(generation_timer > TIME_PER_GENERATION)
         {
             generation_timer = 0;
+            gen++;
+            this.user_interface.UpdateGenerationText(gen);
         }
     }
 
