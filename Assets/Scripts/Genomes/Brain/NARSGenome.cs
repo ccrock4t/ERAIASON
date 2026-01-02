@@ -1,4 +1,4 @@
-
+ï»¿
 using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
@@ -16,14 +16,14 @@ public class NARSGenome : BrainGenome
     const float CHANCE_TO_MUTATE_PERSONALITY_PARAMETERS = 0.8f;
     const float CHANCE_TO_MUTATE_BELIEFS = 0.8f;
 
-    const bool ALLOW_VARIABLES = true;
+    const bool ALLOW_VARIABLES = false;
     public const bool ALLOW_COMPOUNDS = false;
     public static bool USE_GENERALIZATION = false;
 
     public bool LIMIT_SIZE = false;
     public int SIZE_LIMIT = 20;
 
-    static List<int> valid_voxels = new();
+    public static List<int> valid_voxels = new();
 
     public enum NARS_Evolution_Type
     {
@@ -319,9 +319,9 @@ public class NARSGenome : BrainGenome
                 if (voxel == SoftVoxelRobot.RobotVoxel.Empty) continue;
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Touch)"));
                 sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> NoTouch)"));
-                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OnX)"));
-                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> NormalX)"));
-                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OffX)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Contracting)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Resting)"));
+                sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> Relaxing)"));
                 //sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OnY)"));
                 //sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OffY)"));
                 //sensoryStatements.Add((StatementTerm)Term.from_string("(voxel" + i + " --> OnZ)"));
@@ -344,9 +344,9 @@ public class NARSGenome : BrainGenome
                 //}
 
 
-                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTX)"));
-                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> NORMALIZEX)"));
-                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXX)"));
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACT)"));
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> REST)"));
+                motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)"));
                 //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTY)"));
                 //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXY)")); ;
                 //motorStatements.Add((StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTZ)"));
@@ -644,7 +644,7 @@ public class NARSGenome : BrainGenome
         {
             if (ALLOW_VARIABLES && !ALLOW_COMPOUNDS)
             {
-                int r = UnityEngine.Random.Range(0, 100); // 0–99
+                int r = UnityEngine.Random.Range(0, 100); // 0â€“99
 
                 if (r < 25)
                 {
@@ -666,11 +666,11 @@ public class NARSGenome : BrainGenome
             }
             else if (ALLOW_COMPOUNDS && !ALLOW_VARIABLES)
             {
-                int r = UnityEngine.Random.Range(0, 100); // 0–99
+                int r = UnityEngine.Random.Range(0, 100); // 0â€“99
 
                 if (LIMIT_SIZE && this.beliefs.Count >= SIZE_LIMIT && r < 25)
                 {
-                    r = UnityEngine.Random.Range(25, 100); // 0–99
+                    r = UnityEngine.Random.Range(25, 100); // 0â€“99
                 }
 
                 if (r < 25)
@@ -693,11 +693,38 @@ public class NARSGenome : BrainGenome
             }
             else if (ALLOW_COMPOUNDS && ALLOW_VARIABLES)
             {
-                Debug.LogError("TODO");
+                int r = UnityEngine.Random.Range(0, 100); // 0Â–99
+
+                if (LIMIT_SIZE && this.beliefs.Count >= SIZE_LIMIT && r < 20)
+                {
+                    r = UnityEngine.Random.Range(20, 100); // 0Â–99
+                }
+
+                if (r < 20)
+                {
+                    AddNewRandomBelief();
+                }
+                else if (r < 40)
+                {
+                    RemoveRandomBelief();
+                }
+                else if (r < 60)
+                {
+                    ModifyRandomBelief();
+                }
+                else if (r < 80)
+                {
+                    ToggleVariableRandomBelief();
+                }
+                else
+                {
+
+                    MutateCompound();
+                }
             }
             else
             {
-                int r = UnityEngine.Random.Range(0, 100); // 0–99
+                int r = UnityEngine.Random.Range(0, 100); // 0â€“99
 
                 if (r < 33)
                 {
@@ -753,7 +780,7 @@ public class NARSGenome : BrainGenome
         StatementTerm new_statement;
 
 
-        int rnd_element = UnityEngine.Random.Range(0, 3);
+        int rnd_element = UnityEngine.Random.Range(0, 2);
         if (rnd_element == 0)
         {
             //S
@@ -814,29 +841,30 @@ public class NARSGenome : BrainGenome
             // M
             // compound / decompound M
 
-            if (M is CompoundTerm mComp)
-            {
-                // decompound: pick one subterm
-                int idx = UnityEngine.Random.Range(0, mComp.subterms.Count);
-                Term newM = (Term)mComp.subterms[idx];
-                new_statement = CreateContingencyStatement(S, newM, P);
-            }
-            else if (M is StatementTerm mSt)
-            {
-                // compound: add one more motor terms
-                var subterms = new List<Term> { mSt };
+            //if (M is CompoundTerm mComp)
+            //{
+            //    // decompound: pick one subterm
+            //    int idx = UnityEngine.Random.Range(0, mComp.subterms.Count);
+            //    Term newM = (Term)mComp.subterms[idx];
+            //    new_statement = CreateContingencyStatement(S, newM, P);
+            //}
+            //else if (M is StatementTerm mSt)
+            //{
+            //    // compound: add one more motor terms
+            //    var subterms = new List<Term> { mSt };
 
-                // add another unique motor term
-                subterms.Add(GetRandomMotorTerm(mSt));
+            //    // add another unique motor term
+            //    subterms.Add(GetRandomMotorTerm(mSt));
 
-                Term newM = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
-                new_statement = CreateContingencyStatement(S, newM, P);
-            }
-            else
-            {
-                Debug.LogError("Unexpected M type");
-                return;
-            }
+            //    Term newM = TermHelperFunctions.TryGetCompoundTerm(subterms, TermConnector.ParallelConjunction);
+            //    new_statement = CreateContingencyStatement(S, newM, P);
+            //}
+            //else
+            //{
+            //    Debug.LogError("Unexpected M type");
+            //    return;
+            //}
+            return;
         }
         else
         {
@@ -854,66 +882,277 @@ public class NARSGenome : BrainGenome
         this.beliefs[rnd_idx] = belief;
     }
 
+    private static bool ContainsVoxelName(Term t)
+    {
+        // Adjust if you have a better way to get the atom name than ToString()
+        // (e.g., t.get_name()).
+        string s = t.ToString();
+        return s.Contains("voxel");
+    }
+
+    private static bool TermContainsVoxel(Term t)
+    {
+        if (t == null) return false;
+
+        if (t is StatementTerm st)
+        {
+            return TermContainsVoxel(st.get_subject_term()) || TermContainsVoxel(st.get_predicate_term());
+        }
+
+        if (t is CompoundTerm ct)
+        {
+            for (int i = 0; i < ct.subterms.Count; i++)
+                if (TermContainsVoxel(ct.subterms[i])) return true;
+            return false;
+        }
+
+        // Atomic term
+        return ContainsVoxelName(t);
+    }
+
+
+    private static bool IsToggleCandidate(StatementTerm statement)
+    {
+        if (statement == null) return false;
+
+        // Must contain a voxel somewhere (S or P or nested)
+        if (!TermContainsVoxel(statement)) return false;
+
+        // Must be the shape your function expects:
+        // implication subject is a CompoundTerm (S &/ ^M)
+        return statement.get_subject_term() is CompoundTerm;
+    }
+
+
     private void ToggleVariableRandomBelief()
     {
         if (this.beliefs.Count == 0) return;
-        int rnd_idx = UnityEngine.Random.Range(0, this.beliefs.Count);
-        EvolvableSentence belief = this.beliefs[rnd_idx];
-        CompoundTerm SandM = (CompoundTerm)belief.statement.get_subject_term();
-        StatementTerm testS = (StatementTerm)SandM.subterms[0];
-        int cnt = 0;
-        while (!(testS.term_string.Contains("#x") || testS.term_string.Contains("voxel")))
+
+        // Build list of indices we are allowed to toggle
+        List<int> candidates = new();
+        for (int i = 0; i < this.beliefs.Count; i++)
         {
-            rnd_idx = UnityEngine.Random.Range(0, this.beliefs.Count);
-            belief = this.beliefs[rnd_idx];
-            cnt++;
-            if(cnt > this.beliefs.Count)
-            {
-                break;
-            }
+            StatementTerm st = this.beliefs[i].statement;
+            if (IsToggleCandidate(st))
+                candidates.Add(i);
         }
 
-        if(cnt > this.beliefs.Count)
-        {
-            return;
-        }
-     
+        // If everything is like ENERGY-->FULL, do nothing.
+        if (candidates.Count == 0) return;
+
+        int rnd_idx = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        EvolvableSentence belief = this.beliefs[rnd_idx];
+
         string old_statement_string = belief.statement.ToString();
 
         // (S &/ ^M =/> P)
         StatementTerm implication = belief.statement;
 
         CompoundTerm subject = (CompoundTerm)implication.get_subject_term();
-        StatementTerm predicate = (StatementTerm)implication.get_predicate_term();
+        Term P = implication.get_predicate_term();
 
         StatementTerm new_statement;
 
-        StatementTerm S = (StatementTerm)subject.subterms[0];
+        Term S = (Term)subject.subterms[0];
         StatementTerm M = (StatementTerm)subject.subterms[1];
+        CompoundTerm M_subject = (CompoundTerm)M.get_subject_term();
+        bool contains_var = implication.contains_variable();
 
-        Term S_predicate = S.get_predicate_term();
-        Term M_argument = ((CompoundTerm)M.get_subject_term()).subterms[1];
-        StatementTerm new_S = null;
-        StatementTerm new_M = null;
-        if (S_predicate is VariableTerm && M_argument is VariableTerm)
+        Term new_S;
+        Term new_M;
+        Term new_P;
+        if (contains_var)
         {
             //// turn from variable into concrete term
-            new_S = new StatementTerm(Term.from_string(GetRandomValidVoxelNum()), S.get_predicate_term(), Copula.Inheritance);
-            new_M = new StatementTerm(Term.from_string("(*,{SELF}," + GetRandomValidVoxelNum() + ")"), M.get_predicate_term(), Copula.Inheritance);
-        }
-        else if (S_predicate is AtomicTerm && M_argument is AtomicTerm)
-        {
-            // turn from concrete term into variable
-            new_S = new StatementTerm(new VariableTerm("x", VariableTerm.VariableType.Dependent), S.get_predicate_term(), Copula.Inheritance);
-            new_M = new StatementTerm(Term.from_string("(*,{SELF},#x)"), M.get_predicate_term(), Copula.Inheritance);
+            CompoundTerm new_M_subject;
+            if (M_subject.subterms.Count == 2)
+            {
+                new_M_subject = (CompoundTerm)Term.from_string("(*,{SELF}," + GetRandomVoxelName() + ")");
+            }
+            else if (M_subject.subterms.Count == 3)
+            {
+                if (M_subject.subterms[1].contains_variable())
+                {
+                    new_M_subject = (CompoundTerm)Term.from_string("(*,{SELF}," + GetRandomVoxelName() + "," + M_subject.subterms[2] + ")");
+                }
+                else if (M_subject.subterms[2].contains_variable())
+                {
+                    new_M_subject = (CompoundTerm)Term.from_string("(*,{SELF}," + M_subject.subterms[1] + "," + GetRandomVoxelName() + ")");
+                }
+                else
+                {
+                    Debug.LogError("error");
+                    return;
+                }
+
+            }
+            else
+            {
+                Debug.LogError("error");
+                return;
+            }
+            new_M = new StatementTerm(new_M_subject, M.get_predicate_term(), Copula.Inheritance);
+
+            if (S is StatementTerm sStatement)
+            {
+                new_S = ConcretizeSensoryStatement(sStatement);
+            }
+            else if (S is CompoundTerm sCompound)
+            {
+                List<Term> new_S_subterms = new();
+                for (int i = 0; i < sCompound.subterms.Count; i++)
+                {
+                    if (sCompound.subterms[i].contains_variable())
+                    {
+                        new_S_subterms.Add(ConcretizeSensoryStatement((StatementTerm)sCompound.subterms[i]));
+                    }
+                    else
+                    {
+                        new_S_subterms.Add(sCompound.subterms[i]);
+                    }
+                }
+
+                new_S = TermHelperFunctions.TryGetCompoundTerm(new_S_subterms, (TermConnector)sCompound.connector);
+            }
+            else
+            {
+                Debug.LogError("error");
+                return;
+            }
+
+            if (P is StatementTerm pStatement)
+            {
+                new_P = ConcretizeSensoryStatement(pStatement);
+            }
+            else if (P is CompoundTerm pCompound)
+            {
+                List<Term> new_P_subterms = new();
+                for (int i = 0; i < pCompound.subterms.Count; i++)
+                {
+                    if (pCompound.subterms[i].contains_variable())
+                    {
+                        new_P_subterms.Add(ConcretizeSensoryStatement((StatementTerm)pCompound.subterms[i]));
+                    }
+                    else
+                    {
+                        new_P_subterms.Add(pCompound.subterms[i]);
+                    }
+                }
+
+                new_P = TermHelperFunctions.TryGetCompoundTerm(new_P_subterms, (TermConnector)pCompound.connector);
+            }
+            else
+            {
+                Debug.LogError("error");
+                return;
+            }
+
+
         }
         else
         {
-            Debug.LogError("Error");
-            return;
+            //// turn from concrete term into variable
+            CompoundTerm new_M_subject;
+            if (M_subject.subterms.Count == 2)
+            {
+                new_M_subject = (CompoundTerm)Term.from_string("(*,{SELF},#x)");
+            }
+            else if (M_subject.subterms.Count == 3)
+            {
+                //int RND = UnityEngine.Random.Range(0, 2);
+                //if (RND == 0)
+                //{
+                new_M_subject = (CompoundTerm)Term.from_string("(*,{SELF},#x," + M_subject.subterms[2] + ")");
+                //}
+                //else if(RND == 1)
+                //{
+                //    new_M_subject = (CompoundTerm)Term.from_string("(*,{SELF}," + M_subject.subterms[1] + ",#x)");
+                //}
+                //else
+                //{
+                //    Debug.LogError("error");
+                //    return;
+                //}
+
+            }
+            else
+            {
+                Debug.LogError("error");
+                return;
+            }
+
+            new_M = new StatementTerm(new_M_subject, M.get_predicate_term(), Copula.Inheritance);
+
+
+            if (S is StatementTerm sStatement)
+            {
+                new_S = VariabilizeSensoryStatement(sStatement);
+            }
+            else if (S is CompoundTerm sCompound)
+            {
+                // S contains multiple statements
+                // select a random statement and variabilize it
+                List<Term> new_S_subterms = new();
+                int rnd_subterm_idx = UnityEngine.Random.Range(0, sCompound.subterms.Count);
+                StatementTerm statement_to_variablize = (StatementTerm)sCompound.subterms[rnd_subterm_idx];
+                StatementTerm variablized_statement = VariabilizeSensoryStatement(statement_to_variablize);
+
+                for (int i = 0; i < sCompound.subterms.Count; i++)
+                {
+                    if (i == rnd_subterm_idx)
+                    {
+                        new_S_subterms.Add(variablized_statement);
+                    }
+                    else
+                    {
+                        new_S_subterms.Add(sCompound.subterms[i]);
+                    }
+                }
+
+                new_S = TermHelperFunctions.TryGetCompoundTerm(new_S_subterms, (TermConnector)sCompound.connector);
+            }
+            else
+            {
+                Debug.LogError("error");
+                return;
+            }
+
+            if (P is StatementTerm pStatement)
+            {
+                new_P = VariabilizeSensoryStatement(pStatement);
+            }
+            else if (P is CompoundTerm pCompound)
+            {
+                // P contains multiple statements
+                // select a random statement and variabilize it
+                List<Term> new_P_subterms = new();
+                int rnd_subterm_idx = UnityEngine.Random.Range(0, pCompound.subterms.Count);
+                StatementTerm statement_to_variablize = (StatementTerm)pCompound.subterms[rnd_subterm_idx];
+                StatementTerm variablized_statement = VariabilizeSensoryStatement(statement_to_variablize);
+
+                for (int i = 0; i < pCompound.subterms.Count; i++)
+                {
+                    if (i == rnd_subterm_idx)
+                    {
+                        new_P_subterms.Add(variablized_statement);
+                    }
+                    else
+                    {
+                        new_P_subterms.Add(pCompound.subterms[i]);
+                    }
+                }
+
+                new_P = TermHelperFunctions.TryGetCompoundTerm(new_P_subterms, (TermConnector)pCompound.connector);
+            }
+            else
+            {
+                Debug.LogError("error");
+                return;
+            }
         }
 
-        new_statement = CreateContingencyStatement(new_S, new_M, predicate);
+
+        new_statement = CreateContingencyStatement(new_S, new_M, new_P);
         belief.statement = new_statement;
         string new_statement_string = new_statement.ToString();
         if (belief_statement_strings.ContainsKey(new_statement_string)) return;
@@ -924,7 +1163,80 @@ public class NARSGenome : BrainGenome
         this.beliefs[rnd_idx] = belief;
     }
 
-    string GetRandomValidVoxelNum()
+    StatementTerm VariabilizeSensoryStatement(StatementTerm statement)
+    {
+        // IMPORTANT: don't ever variabilize non-voxel statements like (ENERGY --> FULL)
+        if (!TermContainsVoxel(statement))
+            return statement;
+
+        StatementTerm variabilized_statement;
+        // S is a single statement
+        if (statement.get_subject_term() is CompoundTerm c)
+        {
+            // e.g., <(*,A,B) --> On>
+            int rnd_subterm_idx = 0;// UnityEngine.Random.Range(0, c.subterms.Count);
+            List<Term> new_subterms = new();
+            for (int i = 0; i < c.subterms.Count; i++)
+            {
+                if (i == rnd_subterm_idx)
+                {
+                    new_subterms.Add(new VariableTerm("x", VariableTerm.VariableType.Independent));
+                }
+                else
+                {
+                    new_subterms.Add(c.subterms[i]);
+                }
+            }
+            CompoundTerm new_subject = TermHelperFunctions.TryGetCompoundTerm(new_subterms, (TermConnector)c.connector);
+            variabilized_statement = new StatementTerm(new_subject, statement.get_predicate_term(), Copula.Inheritance);
+        }
+        else if (statement.get_subject_term() is AtomicTerm)
+        {
+            variabilized_statement = new StatementTerm(new VariableTerm("x", VariableTerm.VariableType.Independent), statement.get_predicate_term(), Copula.Inheritance);
+        }
+        else
+        {
+            Debug.LogError("error");
+            return null;
+        }
+        return variabilized_statement;
+    }
+
+    StatementTerm ConcretizeSensoryStatement(StatementTerm statement)
+    {
+        StatementTerm concretized_statement;
+        // S is a single statement
+        if (statement.get_subject_term() is CompoundTerm c)
+        {
+            // e.g., <(*,A,B) --> On>
+            List<Term> new_subterms = new();
+            for (int i = 0; i < c.subterms.Count; i++)
+            {
+                if (c.subterms[i].contains_variable())
+                {
+                    new_subterms.Add(Term.from_string(GetRandomVoxelName()));
+                }
+                else
+                {
+                    new_subterms.Add(c.subterms[i]);
+                }
+            }
+            CompoundTerm new_subject = TermHelperFunctions.TryGetCompoundTerm(new_subterms, (TermConnector)c.connector);
+            concretized_statement = new StatementTerm(new_subject, statement.get_predicate_term(), Copula.Inheritance);
+        }
+        else if (statement.get_subject_term() is VariableTerm)
+        {
+            concretized_statement = new StatementTerm(Term.from_string(GetRandomVoxelName()), statement.get_predicate_term(), Copula.Inheritance);
+        }
+        else
+        {
+            Debug.LogError("error");
+            return null;
+        }
+        return concretized_statement;
+    }
+
+    public static string GetRandomVoxelName()
     {
         return "voxel" + valid_voxels[UnityEngine.Random.Range(0, valid_voxels.Count)];
     }
@@ -1257,7 +1569,7 @@ public class NARSGenome : BrainGenome
 
     public StatementTerm GetRandomSensoryTerm(bool bias = false)
     {
-        if (bias || UnityEngine.Random.value < 0.05) return energy_full;
+        if (bias && UnityEngine.Random.value < 0.3) return energy_full;
         int rnd = UnityEngine.Random.Range(0, SENSORY_TERM_SET.Count);
         return SENSORY_TERM_SET[rnd];
     }

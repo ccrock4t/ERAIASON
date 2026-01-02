@@ -73,10 +73,25 @@ public class NARS : Mind
         // add the instinctual eternal beliefs
         foreach (var gene in nars_genome.beliefs)
         {
-            var belief = new Judgment(this, gene.statement, gene.evidence);
-            CompoundTerm subject = (CompoundTerm)((StatementTerm)belief.statement).get_subject_term();
-            SendInput(belief);
+            if (gene.statement.contains_variable())
+            {
+                for (int i = 0; i < NARSGenome.valid_voxels.Count; i++)
+                {
+                    string variable_string = gene.statement.term_string;
+                    string concretized_string = variable_string.Replace("#x", "voxel" + NARSGenome.valid_voxels[i]);
+                    StatementTerm concretized_statement = (StatementTerm)Term.from_string(concretized_string);
+                    var belief = new Judgment(this, concretized_statement, gene.evidence);
+                    SendInput(belief);
+                }
+            }
+            else
+            {
+                var belief = new Judgment(this, gene.statement, gene.evidence);
+                SendInput(belief);
+            }
+
         }
+
 
 
         this.config.k = nars_genome.personality_parameters.k;

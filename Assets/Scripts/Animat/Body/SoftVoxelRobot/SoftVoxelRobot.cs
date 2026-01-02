@@ -182,9 +182,9 @@ public class SoftVoxelRobot : AnimatBody
                 if (coords.y > 1) continue;
                 if (this.genome.voxel_array[i] == RobotVoxel.Empty) continue;
                 var cvx_voxel = this.soft_voxel_object.NARS_voxels[i];
-                var contract_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTX)");
-                var relax_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXX)");
-                var normalize_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> NORMALIZEX)");
+                var contract_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACT)");
+                var relax_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAX)");
+                var normalize_termX = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> REST)");
                 //var contract_termY = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTY)");
                 //var relax_termY = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> RELAXY)");
                 //var contract_termZ = (StatementTerm)Term.from_string("((*,{SELF},voxel" + i + ") --> CONTRACTZ)");
@@ -416,17 +416,17 @@ public class SoftVoxelRobot : AnimatBody
      
                 if (this.NARSVoxelContractedStates[(0, i)] == 1)
                 {
-                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> OnX)");
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Contracting)");
                 }
                 else if (this.NARSVoxelContractedStates[(0, i)] == -1)
                 {
                     
-                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> OffX)");
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Relaxing)");
                 }
                 else //if (this.NARSVoxelContractedStates[(0, i)] == 0)
                 {
 
-                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> NormalX)");
+                    contracted_sensor_term = (StatementTerm)Term.from_string("(voxel" + i + " --> Resting)");
                 }
                 current_states.Add(contracted_sensor_term);
 
@@ -465,7 +465,7 @@ public class SoftVoxelRobot : AnimatBody
                 }
             }
 
-            var dir =GetFacingFromRayDirectionXZ(this.GetVisionSensorPositionAndDirection().Item2);
+            var dir = GetFacingFromRayDirectionXZ(this.GetVisionSensorPositionAndDirection().Item2);
             current_states.Add((StatementTerm)Term.from_string($"(facing --> {dir.ToString()})"));
             int cycle = nar.current_cycle_number;
 

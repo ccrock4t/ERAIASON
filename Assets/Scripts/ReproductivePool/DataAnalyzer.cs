@@ -92,15 +92,20 @@ public class DataAnalyzer : MonoBehaviour
         {
             write_data_timer = 0;
 
-            Debug.Log("trying datatool update #" + update_num);
-            SendDataToGUIAndWriteToFile();
-            //task_queue.Enqueue(tables);
-            //itemAdded.Set();
-            update_num++;
+  
 
 
         }
 
+    }
+
+    public void WriteCSV()
+    {
+        Debug.Log("trying datatool update #" + update_num);
+        SendDataToGUIAndWriteToFile();
+        //task_queue.Enqueue(tables);
+        //itemAdded.Set();
+        update_num++;
     }
 
     enum ReproductionTables

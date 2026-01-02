@@ -432,6 +432,12 @@ public class AnimatArena : MonoBehaviour
             generation_timer = 0;
             gen++;
             this.user_interface.UpdateGenerationText(gen);
+            this.data_analyzer.WriteCSV();
+        }
+
+        if(gen >= 101)
+        {
+            Application.Quit();
         }
     }
 
