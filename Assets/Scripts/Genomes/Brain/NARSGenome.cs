@@ -1,4 +1,5 @@
 
+using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
@@ -22,7 +23,9 @@ public class NARSGenome : BrainGenome
         NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_LEARNING,
 
         NARS_EVOLVE_PERSONALITY_LEARNING,
-        NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_LEARNING
+        NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_LEARNING,
+
+        NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_NO_LEARNING
     }
 
     public static NARS_Evolution_Type NARS_EVOLVE_TYPE = NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_NO_LEARNING;
@@ -48,7 +51,8 @@ public class NARSGenome : BrainGenome
     public static bool EVOLVE_PERSONALITY()
     {
         return NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_LEARNING 
-            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_LEARNING;
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_NO_LEARNING;
     }
 
     public static bool USE_AND_EVOLVE_CONTINGENCIES()
@@ -57,7 +61,8 @@ public class NARSGenome : BrainGenome
             || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_NO_LEARNING
             || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_FIXED_PERSONALITY_LEARNING
             || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_CONTINGENCIES_RANDOM_PERSONALITY_LEARNING
-            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_LEARNING;
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_LEARNING
+            || NARS_EVOLVE_TYPE == NARS_Evolution_Type.NARS_EVOLVE_PERSONALITY_AND_CONTINGENCIES_NO_LEARNING;
     }
 
     public struct EvolvableSentence
@@ -174,6 +179,8 @@ public class NARSGenome : BrainGenome
 
     Judgment move_instinct;
 
+    PersonalityParameters defaults;
+
     public NARSGenome(WheeledRobotBodyGenome body_genome,
         List<EvolvableSentence> beliefs_to_clone = null,
         List<EvolvableSentence> goals_to_clone = null,
@@ -201,6 +208,8 @@ public class NARSGenome : BrainGenome
             energy_full = (StatementTerm)Term.from_string("({ENERGY} --> [FULL])");
             self_mated = (StatementTerm)Term.from_string("({SELF} --> [mated])");
             sensorymotor_statements_initialized = true;
+
+            defaults = CreateDefaultPersonality();
         }
 
 
@@ -280,7 +289,7 @@ public class NARSGenome : BrainGenome
             }
             else
             {
-                this.personality_parameters = DefaultParameters();
+                this.personality_parameters = defaults;
             }
         }
 
@@ -288,6 +297,13 @@ public class NARSGenome : BrainGenome
         {
             RandomizePersonalityParameters(ref this.personality_parameters);
         }
+    }
+
+    private PersonalityParameters CreateDefaultPersonality()
+    {
+        PersonalityParameters parameters = new();
+        RandomizePersonalityParameters(ref parameters);
+        return parameters;
     }
 
     public static PersonalityParameters DefaultParameters()
@@ -665,48 +681,61 @@ public class NARSGenome : BrainGenome
 
     }
 
-    public override (BrainGenome, BrainGenome) Reproduce(BrainGenome parent2genome)
+    public (NARSGenome, NARSGenome) Reproduce(NARSGenome parent2genome)
     {
         NARSGenome parent1 = this;
-        NARSGenome parent2 =  (NARSGenome)parent2genome;
+        NARSGenome parent2 = (NARSGenome)parent2genome;
         int longer_array = math.max(parent1.beliefs.Count, parent2.beliefs.Count);
 
-        NARSGenome offspring1 = new(parent1.body_genome);
-        NARSGenome offspring2 = new(parent2.body_genome);
-        //for (int i = 0; i < longer_array; i++)
-        //{
-        //    int rnd = UnityEngine.Random.Range(0, 2);
+        NARSGenome offspring1 = new();
+        offspring1.beliefs.Clear();
+        offspring1.belief_statement_strings.Clear();
+        NARSGenome offspring2 = new();
+        offspring2.beliefs.Clear();
+        offspring2.belief_statement_strings.Clear();
 
-        //    if (rnd == 0)
-        //    {
-        //        if (i < parent1.beliefs.Count) offspring1.AddNewBelief(parent1.beliefs[i]);
-        //        if (i < parent2.beliefs.Count) offspring2.AddNewBelief(parent2.beliefs[i]);
-        //    }
-        //    else
-        //    {
-        //        if (i < parent2.beliefs.Count) offspring1.AddNewBelief(parent2.beliefs[i]);
-        //        if (i < parent1.beliefs.Count) offspring2.AddNewBelief(parent1.beliefs[i]);
-        //    }
-        //}
-
-        for (int i = 0; i < PersonalityParameters.GetParameterCount(); i++)
+        if (USE_AND_EVOLVE_CONTINGENCIES())
         {
-            int rnd = UnityEngine.Random.Range(0, 2);
-            if (rnd == 0)
+            for (int i = 0; i < longer_array; i++)
             {
-                offspring1.personality_parameters.Set(i, parent1.personality_parameters.Get(i));
-                offspring2.personality_parameters.Set(i, parent2.personality_parameters.Get(i));
+                int rnd = UnityEngine.Random.Range(0, 2);
+
+                if (rnd == 0)
+                {
+                    if (i < parent1.beliefs.Count) offspring1.AddNewBelief(parent1.beliefs[i]);
+                    if (i < parent2.beliefs.Count) offspring2.AddNewBelief(parent2.beliefs[i]);
+                }
+                else
+                {
+                    if (i < parent2.beliefs.Count) offspring1.AddNewBelief(parent2.beliefs[i]);
+                    if (i < parent1.beliefs.Count) offspring2.AddNewBelief(parent1.beliefs[i]);
+                }
             }
-            else
+        }
+
+        if (EVOLVE_PERSONALITY())
+        {
+            for (int i = 0; i < PersonalityParameters.GetParameterCount(); i++)
             {
-                offspring1.personality_parameters.Set(i, parent2.personality_parameters.Get(i));
-                offspring2.personality_parameters.Set(i, parent1.personality_parameters.Get(i));
+                int rnd = UnityEngine.Random.Range(0, 2);
+                if (rnd == 0)
+                {
+                    offspring1.personality_parameters.Set(i, parent1.personality_parameters.Get(i));
+                    offspring2.personality_parameters.Set(i, parent2.personality_parameters.Get(i));
+                }
+                else
+                {
+                    offspring1.personality_parameters.Set(i, parent2.personality_parameters.Get(i));
+                    offspring2.personality_parameters.Set(i, parent1.personality_parameters.Get(i));
+                }
             }
         }
 
 
+
         return (offspring1, offspring2);
     }
+
 
     public override float CalculateHammingDistance(BrainGenome other_genome)
     {
