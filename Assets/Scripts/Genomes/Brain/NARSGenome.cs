@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 using static MutationHelpers;
 public class NARSGenome : BrainGenome
@@ -681,16 +682,16 @@ public class NARSGenome : BrainGenome
 
     }
 
-    public (NARSGenome, NARSGenome) Reproduce(NARSGenome parent2genome)
+    public override (BrainGenome, BrainGenome) Reproduce(BrainGenome parent2genome)
     {
         NARSGenome parent1 = this;
         NARSGenome parent2 = (NARSGenome)parent2genome;
         int longer_array = math.max(parent1.beliefs.Count, parent2.beliefs.Count);
 
-        NARSGenome offspring1 = new();
+        NARSGenome offspring1 = new(parent1.body_genome);
         offspring1.beliefs.Clear();
         offspring1.belief_statement_strings.Clear();
-        NARSGenome offspring2 = new();
+        NARSGenome offspring2 = new(parent2.body_genome);
         offspring2.beliefs.Clear();
         offspring2.belief_statement_strings.Clear();
 
