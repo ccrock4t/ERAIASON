@@ -124,11 +124,6 @@ public class NARS : Mind
         if (NARSGenome.USE_LEARNING())
         {
             this.temporal_module.UpdateAnticipations();
-            Parallel.ForEach(this.memory.concepts_bag, concept_item =>
-            {
-                var concept = concept_item.obj;
-                concept.belief_table.Forget();
-            });
         }
 
 /*                #todo this.temporal_module.process_anticipations()
